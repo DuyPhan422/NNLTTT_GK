@@ -1,17 +1,29 @@
 package com.company.ems;
 
-//TIP To <b>Run</b> code, press <shortcut actionId="Run"/> or
-// click the <icon src="AllIcons.Actions.Execute"/> icon in the gutter.
+import com.company.ems.repo.jpa.*;
+import com.company.ems.service.*;
+import com.company.ems.ui.UI;
+import com.company.ems.ui.MainFrame;
+
+import javax.swing.*;
+
 public class Main {
     public static void main(String[] args) {
-        //TIP Press <shortcut actionId="ShowIntentionActions"/> with your caret at the highlighted text
-        // to see how IntelliJ IDEA suggests fixing it.
-        System.out.printf("Hello and welcome!");
+        UI.initLookAndFeel();
 
-        for (int i = 1; i <= 5; i++) {
-            //TIP Press <shortcut actionId="Debug"/> to start debugging your code. We have set one <icon src="AllIcons.Debugger.Db_set_breakpoint"/> breakpoint
-            // for you, but you can always add more by pressing <shortcut actionId="ToggleLineBreakpoint"/>.
-            System.out.println("i = " + i);
-        }
+        // Manual DI: tạo toàn bộ dependencies tại đây, truyền vào constructor
+        StudentService studentService = new StudentService(new JpaStudentRepository());
+        TeacherService teacherService = new TeacherService(new JpaTeacherRepository());
+        CourseService  courseService  = new CourseService(new JpaCourseRepository());
+        RoomService    roomService    = new RoomService(new JpaRoomRepository());
+        StaffService   staffService   = new StaffService(new JpaStaffRepository());
+
+        SwingUtilities.invokeLater(() -> {
+            MainFrame frame = new MainFrame(
+                    studentService, teacherService,
+                    courseService, roomService, staffService
+            );
+            frame.setVisible(true);
+        });
     }
 }
