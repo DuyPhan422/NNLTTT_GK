@@ -17,11 +17,13 @@ public class Main {
         CourseService  courseService  = new CourseService(new JpaCourseRepository());
         RoomService    roomService    = new RoomService(new JpaRoomRepository());
         StaffService   staffService   = new StaffService(new JpaStaffRepository());
+        ClassService   classService   = new ClassService(new JpaClassRepository());
 
         SwingUtilities.invokeLater(() -> {
             MainFrame frame = new MainFrame(
                     studentService, teacherService,
-                    courseService, roomService, staffService
+                    courseService, roomService, staffService,
+                    classService
             );
             frame.setVisible(true);
         });

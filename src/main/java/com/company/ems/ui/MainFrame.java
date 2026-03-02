@@ -4,6 +4,9 @@ import com.company.ems.service.*;
 import com.company.ems.ui.components.HeaderPanel;
 import com.company.ems.ui.components.SidebarPanel;
 import com.company.ems.ui.panels.StudentPanel;
+import com.company.ems.ui.panels.TeacherPanel;
+import com.company.ems.ui.panels.CoursePanel;
+import com.company.ems.ui.panels.ClassPanel;
 
 import javax.swing.*;
 import java.awt.*;
@@ -35,7 +38,8 @@ public class MainFrame extends JFrame {
                      TeacherService teacherService,
                      CourseService courseService,
                      RoomService roomService,
-                     StaffService staffService) {
+                     StaffService staffService,
+                     ClassService classService) {
 
         setTitle("Language Center Management System");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -61,10 +65,16 @@ public class MainFrame extends JFrame {
 
         // Đăng ký các panel — truyền service đã được inject vào
         contentPanel.add(new StudentPanel(studentService), "students");
+        contentPanel.add(new TeacherPanel(teacherService), "teachers");
+        contentPanel.add(new CoursePanel(courseService), "courses");
+        contentPanel.add(new ClassPanel(classService, courseService, teacherService, roomService), "classes");
 
         // Placeholder cho các panel chưa làm
         for (String key : PAGE_META.keySet()) {
-            if (!key.equals("students")) {
+            if (!key.equals("students")
+                    && !key.equals("teachers")
+                    && !key.equals("courses")
+                    && !key.equals("classes")) {
                 contentPanel.add(buildPlaceholder(PAGE_META.get(key)[0]), key);
             }
         }

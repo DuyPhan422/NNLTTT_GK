@@ -23,23 +23,17 @@
     <class>com.company.ems.model.Result</class>
 
     <properties>
-      <!-- Kết nối MySQL -->
       <property name="jakarta.persistence.jdbc.driver" value="com.mysql.cj.jdbc.Driver"/>
       <property name="jakarta.persistence.jdbc.url"
                 value="jdbc:mysql://localhost:3306/mis_language_center?useSSL=false&amp;allowPublicKeyRetrieval=true&amp;serverTimezone=Asia/Ho_Chi_Minh"/>
-      <property name="jakarta.persistence.jdbc.user" value="root"/>
-      <property name="jakarta.persistence.jdbc.password" value="root"/>
+      
+      <property name="jakarta.persistence.jdbc.user" value="duyphan42"/>
+      <property name="jakarta.persistence.jdbc.password" value="40938813dD#"/>
 
-      <!-- Hibernate config -->
       <property name="hibernate.dialect" value="org.hibernate.dialect.MySQLDialect"/>
       <property name="hibernate.show_sql" value="true"/>
       <property name="hibernate.format_sql" value="true"/>
 
-      <!--
-        update: Hibernate tự tạo / cập nhật bảng theo Entity
-        Dùng "create" nếu muốn xoá và tạo lại toàn bộ bảng mỗi lần chạy (chỉ dùng khi dev)
-        Dùng "validate" khi đã ổn định schema trên production
-      -->
       <property name="hibernate.hbm2ddl.auto" value="update"/>
     </properties>
 

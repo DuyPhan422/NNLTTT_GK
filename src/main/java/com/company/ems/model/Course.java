@@ -55,6 +55,11 @@ public class Course {
     @OneToMany(mappedBy = "course", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Class> classes;
 
+    @Override
+    public String toString() {
+        return courseName != null ? courseName : ("Course#" + courseId);
+    }
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
