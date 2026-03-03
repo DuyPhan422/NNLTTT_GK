@@ -63,6 +63,9 @@ public class TeacherFormDialog extends JDialog {
 
         buildUI();
         pack();
+        if (getWidth() < 600) {
+            setSize(600, getHeight());
+        }
         setResizable(false);
         setLocationRelativeTo(owner);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);

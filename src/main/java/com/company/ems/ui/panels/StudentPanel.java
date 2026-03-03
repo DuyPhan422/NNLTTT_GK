@@ -5,6 +5,7 @@ import com.company.ems.service.StudentService;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.JTableHeader;
 import javax.swing.table.TableRowSorter;
 import java.awt.*;
 import java.awt.event.KeyAdapter;
@@ -44,7 +45,7 @@ public class StudentPanel extends JPanel {
     private static final Font FONT_SMALL = new Font("Segoe UI", Font.PLAIN, 12);
 
     private static final String[] COLUMNS = {
-        "ID", "Họ và tên", "Ngày sinh", "Giới tính", "Điện thoại", "Email", "Trạng thái"
+        "ID", "STT", "Mã HV", "Họ và tên", "Ngày sinh", "Giới tính", "Điện thoại", "Email", "Trạng thái"
     };
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
@@ -139,7 +140,13 @@ public class StudentPanel extends JPanel {
     private DefaultTableModel buildTableModel() {
         return new DefaultTableModel(COLUMNS, 0) {
             @Override public boolean isCellEditable(int r, int c) { return false; }
-            @Override public Class<?> getColumnClass(int c) { return c == 0 ? Long.class : String.class; }
+            @Override public Class<?> getColumnClass(int c) {
+                return switch (c) {
+                    case 0 -> Long.class;   // hidden ID
+                    case 1 -> Integer.class; // STT
+                    default -> String.class;
+                };
+            }
         };
     }
 
@@ -161,13 +168,22 @@ public class StudentPanel extends JPanel {
         t.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         t.setBackground(BG_CARD);
 
-        t.getTableHeader().setFont(FONT_BOLD);
-        t.getTableHeader().setBackground(new Color(241, 245, 249));
-        t.getTableHeader().setForeground(TEXT_MUTED);
-        t.getTableHeader().setPreferredSize(new Dimension(0, 44));
-        t.getTableHeader().setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, BORDER_COLOR));
+        JTableHeader header = t.getTableHeader();
+        header.setFont(FONT_BOLD);
+        header.setBackground(new Color(241, 245, 249));
+        header.setForeground(TEXT_MUTED);
+        header.setPreferredSize(new Dimension(0, 44));
+        header.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, BORDER_COLOR));
+        var baseRenderer = header.getDefaultRenderer();
+        header.setDefaultRenderer((tbl, value, isSelected, hasFocus, row, col) -> {
+            Component comp = baseRenderer.getTableCellRendererComponent(tbl, value, isSelected, hasFocus, row, col);
+            if (comp instanceof JLabel lbl) {
+                lbl.setHorizontalAlignment(SwingConstants.LEFT);
+            }
+            return comp;
+        });
 
-        // Ẩn cột ID — vẫn giữ trong model để lấy khi thao tác
+        // Ẩn cột ID kỹ thuật — vẫn giữ trong model để thao tác
         t.getColumnModel().getColumn(0).setMinWidth(0);
         t.getColumnModel().getColumn(0).setMaxWidth(0);
         t.getColumnModel().getColumn(0).setWidth(0);
@@ -185,9 +201,15 @@ public class StudentPanel extends JPanel {
         try {
             List<Student> list = studentService.findAll();
             tableModel.setRowCount(0);
+            int index = 1;
             for (Student s : list) {
+                String code = s.getStudentId() != null
+                        ? String.format("HV%04d", s.getStudentId())
+                        : "";
                 tableModel.addRow(new Object[]{
-                    s.getStudentId(),
+                    s.getStudentId(),   // hidden technical ID
+                    index++,
+                    code,
                     s.getFullName(),
                     s.getDateOfBirth() != null ? s.getDateOfBirth().format(DATE_FMT) : "",
                     s.getGender()  != null ? s.getGender()  : "",
@@ -204,7 +226,7 @@ public class StudentPanel extends JPanel {
 
     private void filterTable(String keyword) {
         sorter.setRowFilter(keyword.isEmpty() ? null
-                : RowFilter.regexFilter("(?i)" + keyword, 1, 4, 5));
+                : RowFilter.regexFilter("(?i)" + keyword, 3, 6, 7));
         statusLabel.setText("Hiển thị: " + table.getRowCount() + " bản ghi");
     }
 

@@ -11,6 +11,7 @@ import com.company.ems.service.TeacherService;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.JTableHeader;
 import javax.swing.table.TableRowSorter;
 import java.awt.*;
 import java.time.format.DateTimeFormatter;
@@ -40,7 +41,7 @@ public class ClassPanel extends JPanel {
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     private static final String[] COLUMNS = {
-            "ID", "Tên lớp", "Khóa học", "Giáo viên", "Phòng học", "Bắt đầu", "Kết thúc", "Trạng thái"
+            "ID", "STT", "Mã lớp", "Tên lớp", "Khóa học", "Giáo viên", "Phòng học", "Bắt đầu", "Kết thúc", "Trạng thái"
     };
 
     private final ClassService classService;
@@ -147,7 +148,13 @@ public class ClassPanel extends JPanel {
     private DefaultTableModel buildTableModel() {
         return new DefaultTableModel(COLUMNS, 0) {
             @Override public boolean isCellEditable(int r, int c) { return false; }
-            @Override public java.lang.Class<?> getColumnClass(int c) { return c == 0 ? Long.class : String.class; }
+            @Override public java.lang.Class<?> getColumnClass(int c) {
+                return switch (c) {
+                    case 0 -> Long.class;     // hidden ID
+                    case 1 -> Integer.class;  // STT
+                    default -> String.class;
+                };
+            }
         };
     }
 
@@ -169,11 +176,20 @@ public class ClassPanel extends JPanel {
         t.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         t.setBackground(BG_CARD);
 
-        t.getTableHeader().setFont(FONT_BOLD);
-        t.getTableHeader().setBackground(new Color(241, 245, 249));
-        t.getTableHeader().setForeground(TEXT_MUTED);
-        t.getTableHeader().setPreferredSize(new Dimension(0, 44));
-        t.getTableHeader().setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, BORDER_COLOR));
+        JTableHeader header = t.getTableHeader();
+        header.setFont(FONT_BOLD);
+        header.setBackground(new Color(241, 245, 249));
+        header.setForeground(TEXT_MUTED);
+        header.setPreferredSize(new Dimension(0, 44));
+        header.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, BORDER_COLOR));
+        var baseRenderer = header.getDefaultRenderer();
+        header.setDefaultRenderer((tbl, value, isSelected, hasFocus, row, col) -> {
+            Component comp = baseRenderer.getTableCellRendererComponent(tbl, value, isSelected, hasFocus, row, col);
+            if (comp instanceof JLabel lbl) {
+                lbl.setHorizontalAlignment(SwingConstants.LEFT);
+            }
+            return comp;
+        });
 
         t.getColumnModel().getColumn(0).setMinWidth(0);
         t.getColumnModel().getColumn(0).setMaxWidth(0);
@@ -189,16 +205,24 @@ public class ClassPanel extends JPanel {
             List<Class> list = classService.findAll();
             tableModel.setRowCount(0);
 
-            list.forEach(c -> tableModel.addRow(new Object[]{
-                    c.getClassId(),
-                    c.getClassName(),
-                    c.getCourse()  != null ? c.getCourse().getCourseName()  : "",
-                    c.getTeacher() != null ? c.getTeacher().getFullName()   : "",
-                    c.getRoom()    != null ? c.getRoom().getRoomName()      : "",
-                    c.getStartDate() != null ? c.getStartDate().format(DATE_FMT) : "",
-                    c.getEndDate()   != null ? c.getEndDate().format(DATE_FMT)   : "",
-                    c.getStatus()
-            }));
+            int index = 1;
+            for (Class c : list) {
+                String code = c.getClassId() != null
+                        ? String.format("L%04d", c.getClassId())
+                        : "";
+                tableModel.addRow(new Object[]{
+                        c.getClassId(),   // hidden technical ID
+                        index++,
+                        code,
+                        c.getClassName(),
+                        c.getCourse()  != null ? c.getCourse().getCourseName()  : "",
+                        c.getTeacher() != null ? c.getTeacher().getFullName()   : "",
+                        c.getRoom()    != null ? c.getRoom().getRoomName()      : "",
+                        c.getStartDate() != null ? c.getStartDate().format(DATE_FMT) : "",
+                        c.getEndDate()   != null ? c.getEndDate().format(DATE_FMT)   : "",
+                        c.getStatus()
+                });
+            }
 
             statusLabel.setText("Tổng: " + list.size() + " lớp học");
             applyFilters();
@@ -214,9 +238,9 @@ public class ClassPanel extends JPanel {
         sorter.setRowFilter(new RowFilter<>() {
             @Override
             public boolean include(Entry<? extends DefaultTableModel, ? extends Integer> entry) {
-                String className  = String.valueOf(entry.getValue(1));
-                String courseName = String.valueOf(entry.getValue(2));
-                String statusVal  = String.valueOf(entry.getValue(7));
+                String className  = String.valueOf(entry.getValue(3));
+                String courseName = String.valueOf(entry.getValue(4));
+                String statusVal  = String.valueOf(entry.getValue(9));
 
                 boolean matchKeyword = keyword.isEmpty()
                         || className.toLowerCase().contains(keyword)
