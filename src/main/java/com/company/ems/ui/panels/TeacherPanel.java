@@ -2,6 +2,7 @@ package com.company.ems.ui.panels;
 
 import com.company.ems.model.Teacher;
 import com.company.ems.service.TeacherService;
+import com.company.ems.ui.UI;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
@@ -46,6 +47,9 @@ public class TeacherPanel extends JPanel {
     private final JLabel statusLabel;
     private final JTextField searchField;
     private TableRowSorter<DefaultTableModel> sorter;
+    private Runnable onDataChanged;
+
+    public void setOnDataChanged(Runnable r) { this.onDataChanged = r; }
 
     public TeacherPanel(TeacherService teacherService) {
         this.teacherService = teacherService;
@@ -146,6 +150,7 @@ public class TeacherPanel extends JPanel {
         t.setFont(FONT_MAIN);
         t.setRowHeight(40);
         t.setShowGrid(false);
+        t.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
         t.setIntercellSpacing(new Dimension(0, 0));
         t.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         t.setBackground(BG_CARD);
@@ -169,25 +174,35 @@ public class TeacherPanel extends JPanel {
         t.getColumnModel().getColumn(0).setMinWidth(0);
         t.getColumnModel().getColumn(0).setMaxWidth(0);
         t.getColumnModel().getColumn(0).setWidth(0);
+        UI.alignColumn(t, 1, SwingConstants.LEFT);
+
+        // ── Độ rộng cột ────────────────────────────────
+        var cm = t.getColumnModel();
+        cm.getColumn(1).setMinWidth(40);  cm.getColumn(1).setMaxWidth(55);   cm.getColumn(1).setPreferredWidth(50);  // STT
+        cm.getColumn(2).setMinWidth(70);  cm.getColumn(2).setMaxWidth(100);  cm.getColumn(2).setPreferredWidth(88);  // Mã GV
+        cm.getColumn(3).setPreferredWidth(180);                                                                        // Họ và tên
+        cm.getColumn(4).setMinWidth(90);  cm.getColumn(4).setMaxWidth(140);  cm.getColumn(4).setPreferredWidth(115); // Điện thoại
+        cm.getColumn(5).setPreferredWidth(170);                                                                        // Email
+        cm.getColumn(6).setPreferredWidth(150);                                                                        // Chuyên môn
+        cm.getColumn(7).setMinWidth(90);  cm.getColumn(7).setMaxWidth(130);  cm.getColumn(7).setPreferredWidth(110); // Trạng thái
 
         sorter = new TableRowSorter<>(tableModel);
         t.setRowSorter(sorter);
         return t;
     }
 
-    private void loadData() {
+    public void loadData() {
         try {
             List<Teacher> list = teacherService.findAll();
             tableModel.setRowCount(0);
-
-            int index = 1;
-            for (Teacher t : list) {
+            int[] idx = {1};
+            list.forEach(t -> {
                 String code = t.getTeacherId() != null
                         ? String.format("GV%04d", t.getTeacherId())
                         : "";
                 tableModel.addRow(new Object[]{
-                        t.getTeacherId(),   // hidden technical ID
-                        index++,
+                        t.getTeacherId(),
+                        idx[0]++,
                         code,
                         t.getFullName(),
                         t.getPhone()     != null ? t.getPhone()     : "",
@@ -195,9 +210,9 @@ public class TeacherPanel extends JPanel {
                         t.getSpecialty() != null ? t.getSpecialty() : "",
                         t.getStatus()
                 });
-            }
-
+            });
             statusLabel.setText("Tổng: " + list.size() + " giáo viên");
+            SwingUtilities.invokeLater(() -> UI.autoResizeColumns(table));
         } catch (Exception e) {
             showError("Không thể tải dữ liệu: " + e.getMessage());
         }
@@ -237,8 +252,8 @@ public class TeacherPanel extends JPanel {
 
         try {
             teacherService.delete(id);
-            loadData();
             showSuccess("Đã xóa giáo viên \"" + name + "\" thành công.");
+            notifyDataChanged();
         } catch (Exception e) {
             showError("Không thể xóa: " + e.getMessage());
         }
@@ -258,10 +273,14 @@ public class TeacherPanel extends JPanel {
                 teacherService.save(dlg.getTeacher());
                 showSuccess("Thêm giáo viên mới thành công.");
             }
-            loadData();
+            notifyDataChanged();
         } catch (Exception e) {
             showError("Lỗi: " + e.getMessage());
         }
+    }
+
+    private void notifyDataChanged() {
+        if (onDataChanged != null) onDataChanged.run(); else loadData();
     }
 
     private JButton createPrimaryButton(String text) {

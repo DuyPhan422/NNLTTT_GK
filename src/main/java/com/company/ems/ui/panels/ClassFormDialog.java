@@ -55,15 +55,21 @@ public class ClassFormDialog extends JDialog {
         cbCourse = new JComboBox<>(courses.toArray(new Course[0]));
         cbCourse.setFont(FONT_MAIN);
         if (isEdit && existing.getCourse() != null) {
-            cbCourse.setSelectedItem(existing.getCourse());
+            Long targetId = existing.getCourse().getCourseId();
+            for (int i = 0; i < cbCourse.getItemCount(); i++) {
+                Course c = cbCourse.getItemAt(i);
+                if (c != null && targetId.equals(c.getCourseId())) { cbCourse.setSelectedIndex(i); break; }
+            }
         }
 
         cbTeacher = new JComboBox<>(teachers.toArray(new Teacher[0]));
         cbTeacher.setFont(FONT_MAIN);
-        cbTeacher.insertItemAt(null, 0); // optional
-        cbTeacher.setSelectedIndex(0);
         if (isEdit && existing.getTeacher() != null) {
-            cbTeacher.setSelectedItem(existing.getTeacher());
+            Long targetId = existing.getTeacher().getTeacherId();
+            for (int i = 0; i < cbTeacher.getItemCount(); i++) {
+                Teacher tc = cbTeacher.getItemAt(i);
+                if (tc != null && targetId.equals(tc.getTeacherId())) { cbTeacher.setSelectedIndex(i); break; }
+            }
         }
 
         cbRoom = new JComboBox<>(rooms.toArray(new Room[0]));
@@ -71,7 +77,11 @@ public class ClassFormDialog extends JDialog {
         cbRoom.insertItemAt(null, 0);
         cbRoom.setSelectedIndex(0);
         if (isEdit && existing.getRoom() != null) {
-            cbRoom.setSelectedItem(existing.getRoom());
+            Long targetId = existing.getRoom().getRoomId();
+            for (int i = 0; i < cbRoom.getItemCount(); i++) {
+                Room r = cbRoom.getItemAt(i);
+                if (r != null && targetId.equals(r.getRoomId())) { cbRoom.setSelectedIndex(i); break; }
+            }
         }
 
         tfStartDate = createField(isEdit && existing.getStartDate() != null
@@ -82,7 +92,7 @@ public class ClassFormDialog extends JDialog {
         tfMaxStudent = createField(isEdit && existing.getMaxStudent() != null
                 ? String.valueOf(existing.getMaxStudent()) : "");
 
-        cbStatus = new JComboBox<>(new String[]{"Planned", "Open", "Ongoing", "Completed", "Cancelled"});
+        cbStatus = new JComboBox<>(new String[]{"Lên kế hoạch", "Mở lớp", "Đang diễn ra", "Hoàn thành", "Hủy lớp"});
         cbStatus.setFont(FONT_MAIN);
         if (isEdit && existing.getStatus() != null) {
             cbStatus.setSelectedItem(existing.getStatus());
@@ -214,7 +224,7 @@ public class ClassFormDialog extends JDialog {
 
         gbc.gridy  = row * 2 + 1;
         gbc.insets = new Insets(0, 0, 0, 0);
-        field.setPreferredSize(new Dimension(0, 36));
+        field.setPreferredSize(new Dimension(150, 36));
         panel.add(field, gbc);
     }
 

@@ -2,6 +2,7 @@ package com.company.ems.ui.panels;
 
 import com.company.ems.model.Course;
 import com.company.ems.service.CourseService;
+import com.company.ems.ui.UI;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
@@ -48,6 +49,9 @@ public class CoursePanel extends JPanel {
     private final JComboBox<String> filterLevel;
     private final JComboBox<String> filterStatus;
     private TableRowSorter<DefaultTableModel> sorter;
+    private Runnable onDataChanged;
+
+    public void setOnDataChanged(Runnable r) { this.onDataChanged = r; }
 
     private final NumberFormat currencyFormat =
             NumberFormat.getCurrencyInstance(new Locale("vi", "VN"));
@@ -58,8 +62,8 @@ public class CoursePanel extends JPanel {
         this.table         = buildTable();
         this.statusLabel   = new JLabel();
         this.searchField   = new JTextField();
-        this.filterLevel   = new JComboBox<>(new String[]{"Tất cả", "Beginner", "Intermediate", "Advanced"});
-        this.filterStatus  = new JComboBox<>(new String[]{"Tất cả", "Active", "Inactive"});
+        this.filterLevel   = new JComboBox<>(new String[]{"Tất cả", "Cơ bản", "Trung cấp", "Nâng cao"});
+        this.filterStatus  = new JComboBox<>(new String[]{"Tất cả", "Hoạt động", "Không hoạt động"});
 
         setLayout(new BorderLayout());
         setBackground(BG_PAGE);
@@ -165,6 +169,7 @@ public class CoursePanel extends JPanel {
         t.setFont(FONT_MAIN);
         t.setRowHeight(40);
         t.setShowGrid(false);
+        t.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
         t.setIntercellSpacing(new Dimension(0, 0));
         t.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         t.setBackground(BG_CARD);
@@ -187,25 +192,35 @@ public class CoursePanel extends JPanel {
         t.getColumnModel().getColumn(0).setMinWidth(0);
         t.getColumnModel().getColumn(0).setMaxWidth(0);
         t.getColumnModel().getColumn(0).setWidth(0);
+        UI.alignColumn(t, 1, SwingConstants.LEFT);
+
+        // ── Độ rộng cột ────────────────────────────────
+        var cm = t.getColumnModel();
+        cm.getColumn(1).setMinWidth(40);  cm.getColumn(1).setMaxWidth(55);   cm.getColumn(1).setPreferredWidth(50);  // STT
+        cm.getColumn(2).setMinWidth(70);  cm.getColumn(2).setMaxWidth(100);  cm.getColumn(2).setPreferredWidth(88);  // Mã KH
+        cm.getColumn(3).setPreferredWidth(220);                                                                        // Tên khóa học
+        cm.getColumn(4).setMinWidth(70);  cm.getColumn(4).setMaxWidth(110);  cm.getColumn(4).setPreferredWidth(90);  // Cấp độ
+        cm.getColumn(5).setMinWidth(70);  cm.getColumn(5).setMaxWidth(110);  cm.getColumn(5).setPreferredWidth(90);  // Thời lượng
+        cm.getColumn(6).setMinWidth(100); cm.getColumn(6).setMaxWidth(160);  cm.getColumn(6).setPreferredWidth(130); // Học phí
+        cm.getColumn(7).setMinWidth(90);  cm.getColumn(7).setMaxWidth(130);  cm.getColumn(7).setPreferredWidth(110); // Trạng thái
 
         sorter = new TableRowSorter<>(tableModel);
         t.setRowSorter(sorter);
         return t;
     }
 
-    private void loadData() {
+    public void loadData() {
         try {
             List<Course> list = courseService.findAll();
             tableModel.setRowCount(0);
-
-            int index = 1;
-            for (Course c : list) {
+            int[] idx = {1};
+            list.forEach(c -> {
                 String code = c.getCourseId() != null
                         ? String.format("KH%04d", c.getCourseId())
                         : "";
                 tableModel.addRow(new Object[]{
-                        c.getCourseId(),   // hidden technical ID
-                        index++,
+                        c.getCourseId(),
+                        idx[0]++,
                         code,
                         c.getCourseName(),
                         c.getLevel() != null ? c.getLevel() : "",
@@ -213,10 +228,10 @@ public class CoursePanel extends JPanel {
                         formatFee(c.getFee()),
                         c.getStatus()
                 });
-            }
-
+            });
             statusLabel.setText("Tổng: " + list.size() + " khóa học");
             applyFilters();
+            SwingUtilities.invokeLater(() -> UI.autoResizeColumns(table));
         } catch (Exception e) {
             showError("Không thể tải dữ liệu: " + e.getMessage());
         }
@@ -287,8 +302,8 @@ public class CoursePanel extends JPanel {
 
         try {
             courseService.delete(id);
-            loadData();
             showSuccess("Đã xóa khóa học \"" + name + "\" thành công.");
+            notifyDataChanged();
         } catch (Exception e) {
             showError("Không thể xóa: " + e.getMessage());
         }
@@ -308,10 +323,14 @@ public class CoursePanel extends JPanel {
                 courseService.save(dlg.getCourse());
                 showSuccess("Thêm khóa học mới thành công.");
             }
-            loadData();
+            notifyDataChanged();
         } catch (Exception e) {
             showError("Lỗi: " + e.getMessage());
         }
+    }
+
+    private void notifyDataChanged() {
+        if (onDataChanged != null) onDataChanged.run(); else loadData();
     }
 
     private JButton createPrimaryButton(String text) {

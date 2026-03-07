@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
+import lombok.EqualsAndHashCode;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -21,11 +23,13 @@ public class Enrollment {
     @Column(name = "enrollment_id")
     private Long enrollmentId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    // Đã đổi LAZY thành EAGER
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "student_id", nullable = false)
     private Student student;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    // Đã đổi LAZY thành EAGER
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "class_id", nullable = false)
     private Class clazz;
 
@@ -46,6 +50,9 @@ public class Enrollment {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
+    // Loại trừ khỏi toString để tránh lỗi Lazy Initialization sau này
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     @OneToMany(mappedBy = "enrollment", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Payment> payments;
 
@@ -61,4 +68,3 @@ public class Enrollment {
         updatedAt = LocalDateTime.now();
     }
 }
-

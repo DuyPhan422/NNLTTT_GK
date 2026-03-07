@@ -57,11 +57,12 @@ public class StudentFormDialog extends JDialog {
         tfEmail   = createField(isEdit && existing.getEmail()   != null ? existing.getEmail()   : "");
         tfAddress = createField(isEdit && existing.getAddress() != null ? existing.getAddress() : "");
 
-        cbGender = new JComboBox<>(new String[]{"", "Male", "Female", "Other"});
+        cbGender = new JComboBox<>(new String[]{"Nam", "Nữ", "Khác"});
+        
         cbGender.setFont(FONT_MAIN);
         if (isEdit && existing.getGender() != null) cbGender.setSelectedItem(existing.getGender());
 
-        cbStatus = new JComboBox<>(new String[]{"Active", "Inactive"});
+        cbStatus = new JComboBox<>(new String[]{"Hoạt động", "Không hoạt động"});
         cbStatus.setFont(FONT_MAIN);
         if (isEdit) cbStatus.setSelectedItem(existing.getStatus());
 
@@ -132,10 +133,18 @@ public class StudentFormDialog extends JDialog {
             }
         }
 
+        // ── Xác nhận trước khi lưu ────────────────────────────
+        String confirmMsg = student.getStudentId() != null
+                ? "Bạn có chắc muốn lưu các thay đổi cho học viên \"" + name + "\"?"
+                : "Bạn có chắc muốn thêm học viên mới \"" + name + "\"?";
+        int confirm = JOptionPane.showConfirmDialog(this, confirmMsg, "Xác nhận",
+                JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
+        if (confirm != JOptionPane.YES_OPTION) return;
+
         // ── Gán vào entity ────────────────────────────
         student.setFullName(name);
         student.setDateOfBirth(dob);
-        student.setGender(cbGender.getSelectedIndex() == 0 ? null : (String) cbGender.getSelectedItem());
+        student.setGender((String) cbGender.getSelectedItem());
         student.setPhone(tfPhone.getText().trim().isEmpty()   ? null : tfPhone.getText().trim());
         student.setEmail(tfEmail.getText().trim().isEmpty()   ? null : tfEmail.getText().trim());
         student.setAddress(tfAddress.getText().trim().isEmpty() ? null : tfAddress.getText().trim());
@@ -163,7 +172,9 @@ public class StudentFormDialog extends JDialog {
 
         gbc.gridy  = row * 2 + 1;
         gbc.insets = new Insets(0, 0, 0, 0);
-        field.setPreferredSize(new Dimension(0, 36));
+        // Dùng width=150 thay 0: GridBagLayout sẽ tự stretch theo HORIZONTAL fill,
+        // nhưng JComboBox cần width > 0 để FlatLaf tính đúng vị trí popup
+        field.setPreferredSize(new Dimension(150, 36));
         panel.add(field, gbc);
     }
 

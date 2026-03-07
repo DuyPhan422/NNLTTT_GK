@@ -88,7 +88,11 @@ INSERT INTO students(full_name, date_of_birth, gender, phone, email, address, re
 INSERT INTO classes(class_name, course_id, teacher_id, start_date, end_date, max_student, room_id, status, branch_id) VALUES
 ('COM-A1-0201', 1, 1, '2026-02-10', '2026-04-05', 25, 1, 'Ongoing', 1),
 ('IELTS-F-0201',2, 2, '2026-02-12', '2026-04-20', 30, 2, 'Ongoing', 1),
-('TOEIC-650-0201',3,3,'2026-02-15', '2026-04-10', 28, 4, 'Ongoing', 2);
+('TOEIC-650-0201',3,3,'2026-02-15', '2026-04-10', 28, 4, 'Ongoing', 2),
+-- Lớp mới mở đăng ký (để test chức năng đăng ký)
+('COM-A1-0301', 1, 1, '2026-03-10', '2026-05-05', 25, 3, 'Open', 2),
+('IELTS-F-0301', 2, 2, '2026-03-12', '2026-05-20', 30, 1, 'Open', 1),
+('TOEIC-650-0301', 3, 3, '2026-03-15', '2026-05-10', 28, 2, 'Open', 1);
 
 -- =========================
 -- 8) Schedules (mỗi lớp 4 buổi mẫu)

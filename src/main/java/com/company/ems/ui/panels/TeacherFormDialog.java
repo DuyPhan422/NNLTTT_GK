@@ -55,7 +55,7 @@ public class TeacherFormDialog extends JDialog {
         tfHireDate  = createField(isEdit && existing.getHireDate() != null
                 ? existing.getHireDate().format(DATE_FMT) : "");
 
-        cbStatus = new JComboBox<>(new String[]{"Active", "Inactive"});
+        cbStatus = new JComboBox<>(new String[]{"Hoạt động", "Không hoạt động"});
         cbStatus.setFont(FONT_MAIN);
         if (isEdit && existing.getStatus() != null) {
             cbStatus.setSelectedItem(existing.getStatus());
@@ -151,7 +151,7 @@ public class TeacherFormDialog extends JDialog {
 
         gbc.gridy  = row * 2 + 1;
         gbc.insets = new Insets(0, 0, 0, 0);
-        field.setPreferredSize(new Dimension(0, 36));
+        field.setPreferredSize(new Dimension(150, 36));
         panel.add(field, gbc);
     }
 

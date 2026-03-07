@@ -4,10 +4,15 @@ import com.company.ems.model.Class;
 import com.company.ems.model.Course;
 import com.company.ems.model.Room;
 import com.company.ems.model.Teacher;
+import com.company.ems.model.Enrollment;
+import com.company.ems.model.Invoice;
 import com.company.ems.service.ClassService;
 import com.company.ems.service.CourseService;
+import com.company.ems.service.EnrollmentService;
+import com.company.ems.service.InvoiceService;
 import com.company.ems.service.RoomService;
 import com.company.ems.service.TeacherService;
+import com.company.ems.ui.UI;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
@@ -16,7 +21,9 @@ import javax.swing.table.TableRowSorter;
 import java.awt.*;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 /**
  * Panel quản lý Lớp học.
@@ -41,13 +48,15 @@ public class ClassPanel extends JPanel {
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     private static final String[] COLUMNS = {
-            "ID", "STT", "Mã lớp", "Tên lớp", "Khóa học", "Giáo viên", "Phòng học", "Bắt đầu", "Kết thúc", "Trạng thái"
+            "ID", "STT", "Mã lớp", "Tên lớp", "Khóa học", "Giáo viên", "Phòng học", "SL học viên", "Bắt đầu", "Kết thúc", "Trạng thái"
     };
 
     private final ClassService classService;
     private final CourseService courseService;
     private final TeacherService teacherService;
     private final RoomService roomService;
+    private final EnrollmentService enrollmentService;
+    private final InvoiceService invoiceService;
 
     private final DefaultTableModel tableModel;
     private final JTable table;
@@ -55,21 +64,28 @@ public class ClassPanel extends JPanel {
     private final JTextField searchField;
     private final JComboBox<String> filterStatus;
     private TableRowSorter<DefaultTableModel> sorter;
+    private Runnable onDataChanged;
+
+    public void setOnDataChanged(Runnable r) { this.onDataChanged = r; }
 
     public ClassPanel(ClassService classService,
                       CourseService courseService,
                       TeacherService teacherService,
-                      RoomService roomService) {
+                      RoomService roomService,
+                      EnrollmentService enrollmentService,
+                      InvoiceService invoiceService) {
         this.classService = classService;
         this.courseService = courseService;
         this.teacherService = teacherService;
         this.roomService = roomService;
+        this.enrollmentService = enrollmentService;
+        this.invoiceService = invoiceService;
 
         this.tableModel   = buildTableModel();
         this.table        = buildTable();
         this.statusLabel  = new JLabel();
         this.searchField  = new JTextField();
-        this.filterStatus = new JComboBox<>(new String[]{"Tất cả", "Planned", "Open", "Ongoing", "Completed", "Cancelled"});
+        this.filterStatus = new JComboBox<>(new String[]{"Tất cả", "Lên kế hoạch", "Mở lớp", "Đang diễn ra", "Hoàn thành", "Hủy lớp"});
 
         setLayout(new BorderLayout());
         setBackground(BG_PAGE);
@@ -172,6 +188,7 @@ public class ClassPanel extends JPanel {
         t.setFont(FONT_MAIN);
         t.setRowHeight(40);
         t.setShowGrid(false);
+        t.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
         t.setIntercellSpacing(new Dimension(0, 0));
         t.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         t.setBackground(BG_CARD);
@@ -194,35 +211,58 @@ public class ClassPanel extends JPanel {
         t.getColumnModel().getColumn(0).setMinWidth(0);
         t.getColumnModel().getColumn(0).setMaxWidth(0);
         t.getColumnModel().getColumn(0).setWidth(0);
+        UI.alignColumn(t, 1, SwingConstants.LEFT);
+
+        // ── Độ rộng cột ────────────────────────────────
+        var cm = t.getColumnModel();
+        cm.getColumn(1).setMinWidth(40);  cm.getColumn(1).setMaxWidth(55);   cm.getColumn(1).setPreferredWidth(50);  // STT
+        cm.getColumn(2).setMinWidth(65);  cm.getColumn(2).setMaxWidth(95);   cm.getColumn(2).setPreferredWidth(80);  // Mã lớp
+        cm.getColumn(3).setPreferredWidth(140);                                                                        // Tên lớp
+        cm.getColumn(4).setPreferredWidth(155);                                                                        // Khóa học
+        cm.getColumn(5).setPreferredWidth(125);                                                                        // Giáo viên
+        cm.getColumn(6).setMinWidth(70);  cm.getColumn(6).setMaxWidth(110);  cm.getColumn(6).setPreferredWidth(90);  // Phòng học
+        cm.getColumn(7).setMinWidth(80);  cm.getColumn(7).setMaxWidth(120);  cm.getColumn(7).setPreferredWidth(100); // SL học viên
+        cm.getColumn(8).setMinWidth(90);  cm.getColumn(8).setMaxWidth(115);  cm.getColumn(8).setPreferredWidth(100); // Bắt đầu
+        cm.getColumn(9).setMinWidth(90);  cm.getColumn(9).setMaxWidth(115);  cm.getColumn(9).setPreferredWidth(100); // Kết thúc
+        cm.getColumn(10).setMinWidth(80); cm.getColumn(10).setMaxWidth(120); cm.getColumn(10).setPreferredWidth(100); // Trạng thái
 
         sorter = new TableRowSorter<>(tableModel);
         t.setRowSorter(sorter);
         return t;
     }
 
-    private void loadData() {
+    public void loadData() {
         try {
             List<Class> list = classService.findAll();
             tableModel.setRowCount(0);
 
-            int index = 1;
-            for (Class c : list) {
+            // Count active enrollments per class
+            Map<Long, Long> enrollCounts = enrollmentService.findAll().stream()
+                    .filter(e -> e.getClazz() != null && !"Hủy".equals(e.getStatus()))
+                    .collect(Collectors.groupingBy(e -> e.getClazz().getClassId(), Collectors.counting()));
+
+            int[] idx = {1};
+            list.forEach(c -> {
                 String code = c.getClassId() != null
                         ? String.format("L%04d", c.getClassId())
                         : "";
+                long cur = enrollCounts.getOrDefault(c.getClassId(), 0L);
+                String slHV = cur + " / " + (c.getMaxStudent() != null && c.getMaxStudent() > 0
+                        ? String.valueOf(c.getMaxStudent()) : "∞");
                 tableModel.addRow(new Object[]{
-                        c.getClassId(),   // hidden technical ID
-                        index++,
+                        c.getClassId(),
+                        idx[0]++,
                         code,
                         c.getClassName(),
                         c.getCourse()  != null ? c.getCourse().getCourseName()  : "",
                         c.getTeacher() != null ? c.getTeacher().getFullName()   : "",
                         c.getRoom()    != null ? c.getRoom().getRoomName()      : "",
+                        slHV,
                         c.getStartDate() != null ? c.getStartDate().format(DATE_FMT) : "",
                         c.getEndDate()   != null ? c.getEndDate().format(DATE_FMT)   : "",
                         c.getStatus()
                 });
-            }
+            });
 
             statusLabel.setText("Tổng: " + list.size() + " lớp học");
             applyFilters();
@@ -240,7 +280,7 @@ public class ClassPanel extends JPanel {
             public boolean include(Entry<? extends DefaultTableModel, ? extends Integer> entry) {
                 String className  = String.valueOf(entry.getValue(3));
                 String courseName = String.valueOf(entry.getValue(4));
-                String statusVal  = String.valueOf(entry.getValue(9));
+                String statusVal  = String.valueOf(entry.getValue(10));
 
                 boolean matchKeyword = keyword.isEmpty()
                         || className.toLowerCase().contains(keyword)
@@ -282,8 +322,8 @@ public class ClassPanel extends JPanel {
 
         try {
             classService.delete(id);
-            loadData();
             showSuccess("Đã xóa lớp \"" + name + "\" thành công.");
+            notifyDataChanged();
         } catch (Exception e) {
             showError("Không thể xóa: " + e.getMessage());
         }
@@ -301,16 +341,73 @@ public class ClassPanel extends JPanel {
             if (!dlg.isSaved()) return;
 
             if (existing != null) {
+                String oldStatus = existing.getStatus();
                 classService.update(dlg.getClazz());
+                // Nếu Admin hủy lớp: tự động hủy tất cả ghi danh và cập nhật bill
+                if (!"Hủy lớp".equals(oldStatus) && "Hủy lớp".equals(dlg.getClazz().getStatus())) {
+                    cancelClassEnrollments(dlg.getClazz());
+                }
                 showSuccess("Cập nhật lớp học thành công.");
             } else {
                 classService.save(dlg.getClazz());
                 showSuccess("Thêm lớp học mới thành công.");
             }
-            loadData();
+            notifyDataChanged();
         } catch (Exception e) {
             showError("Lỗi: " + e.getMessage());
         }
+    }
+
+    /**
+     * Hủy tất cả ghi danh trong lớp và cập nhật hóa đơn cho từng học viên.
+     */
+    private void cancelClassEnrollments(Class clazz) {
+        try {
+            List<Enrollment> enrollments = enrollmentService.findAll().stream()
+                    .filter(e -> e.getClazz() != null
+                              && e.getClazz().getClassId().equals(clazz.getClassId())
+                              && "Đã đăng ký".equals(e.getStatus()))
+                    .toList();
+
+            java.util.Set<Long> affectedStudentIds = new java.util.HashSet<>();
+            enrollments.forEach(e -> {
+                e.setStatus("Đã hủy");
+                enrollmentService.update(e);
+                if (e.getStudent() != null) affectedStudentIds.add(e.getStudent().getStudentId());
+            });
+
+            affectedStudentIds.forEach(this::recalcInvoice);
+            System.out.println("[Hủy lớp] Đã cập nhật " + enrollments.size() + " ghi danh cho " + affectedStudentIds.size() + " học viên.");
+        } catch (Exception ex) {
+            System.err.println("[Hủy lớp] Lỗi cập nhật ghi danh: " + ex.getMessage());
+        }
+    }
+
+    /** Tính lại số tiền hóa đơn chờ thanh toán cho học viên. */
+    private void recalcInvoice(Long studentId) {
+        java.math.BigDecimal total = enrollmentService.findAll().stream()
+                .filter(e -> e.getStudent() != null
+                          && e.getStudent().getStudentId().equals(studentId)
+                          && "Đã đăng ký".equals(e.getStatus()))
+                .map(e -> e.getClazz().getCourse().getFee())
+                .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
+
+        Invoice pending = invoiceService.findAll().stream()
+                .filter(i -> i.getStudent() != null
+                          && i.getStudent().getStudentId().equals(studentId)
+                          && "Chờ thanh toán".equals(i.getStatus()))
+                .findFirst().orElse(null);
+
+        if (total.compareTo(java.math.BigDecimal.ZERO) <= 0) {
+            if (pending != null) invoiceService.delete(pending.getInvoiceId());
+        } else if (pending != null) {
+            pending.setTotalAmount(total);
+            invoiceService.update(pending);
+        }
+    }
+
+    private void notifyDataChanged() {
+        if (onDataChanged != null) onDataChanged.run(); else loadData();
     }
 
     private JButton createPrimaryButton(String text) {

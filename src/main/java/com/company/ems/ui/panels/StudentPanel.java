@@ -2,6 +2,7 @@ package com.company.ems.ui.panels;
 
 import com.company.ems.model.Student;
 import com.company.ems.service.StudentService;
+import com.company.ems.ui.UI;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
@@ -56,6 +57,10 @@ public class StudentPanel extends JPanel {
     private final JLabel statusLabel;
     private final JTextField searchField;
     private TableRowSorter<DefaultTableModel> sorter;
+    private Runnable onDataChanged;
+
+    /** Đăng ký callback được gọi mỗi khi dữ liệu thay đổi (dùng để refresh các panel khác). */
+    public void setOnDataChanged(Runnable r) { this.onDataChanged = r; }
 
     public StudentPanel(StudentService studentService) {
         this.studentService = studentService;
@@ -160,10 +165,12 @@ public class StudentPanel extends JPanel {
                 return c;
             }
         };
+        t.setFocusable(false);
 
         t.setFont(FONT_MAIN);
         t.setRowHeight(40);
         t.setShowGrid(false);
+        t.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
         t.setIntercellSpacing(new Dimension(0, 0));
         t.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         t.setBackground(BG_CARD);
@@ -187,6 +194,18 @@ public class StudentPanel extends JPanel {
         t.getColumnModel().getColumn(0).setMinWidth(0);
         t.getColumnModel().getColumn(0).setMaxWidth(0);
         t.getColumnModel().getColumn(0).setWidth(0);
+        UI.alignColumn(t, 1, SwingConstants.LEFT);
+
+        // ── Độ rộng cột theo nội dung ─────────────────
+        var cm = t.getColumnModel();
+        cm.getColumn(1).setMinWidth(40);  cm.getColumn(1).setMaxWidth(55);   cm.getColumn(1).setPreferredWidth(50);  // STT
+        cm.getColumn(2).setMinWidth(70);  cm.getColumn(2).setMaxWidth(100);  cm.getColumn(2).setPreferredWidth(88);  // Mã HV
+        cm.getColumn(3).setPreferredWidth(180);                                                                        // Họ và tên
+        cm.getColumn(4).setMinWidth(90);  cm.getColumn(4).setMaxWidth(120);  cm.getColumn(4).setPreferredWidth(105); // Ngày sinh
+        cm.getColumn(5).setMinWidth(60);  cm.getColumn(5).setMaxWidth(90);   cm.getColumn(5).setPreferredWidth(75);  // Giới tính
+        cm.getColumn(6).setMinWidth(90);  cm.getColumn(6).setMaxWidth(140);  cm.getColumn(6).setPreferredWidth(115); // Điện thoại
+        cm.getColumn(7).setPreferredWidth(170);                                                                        // Email
+        cm.getColumn(8).setMinWidth(90);  cm.getColumn(8).setMaxWidth(130);  cm.getColumn(8).setPreferredWidth(110); // Trạng thái
 
         sorter = new TableRowSorter<>(tableModel);
         t.setRowSorter(sorter);
@@ -197,18 +216,18 @@ public class StudentPanel extends JPanel {
     //  DATA OPERATIONS
     // ══════════════════════════════════════════════════
 
-    private void loadData() {
+    public void loadData() {
         try {
             List<Student> list = studentService.findAll();
             tableModel.setRowCount(0);
-            int index = 1;
-            for (Student s : list) {
+            int[] idx = {1};
+            list.forEach(s -> {
                 String code = s.getStudentId() != null
                         ? String.format("HV%04d", s.getStudentId())
                         : "";
                 tableModel.addRow(new Object[]{
-                    s.getStudentId(),   // hidden technical ID
-                    index++,
+                    s.getStudentId(),
+                    idx[0]++,
                     code,
                     s.getFullName(),
                     s.getDateOfBirth() != null ? s.getDateOfBirth().format(DATE_FMT) : "",
@@ -217,8 +236,9 @@ public class StudentPanel extends JPanel {
                     s.getEmail()   != null ? s.getEmail()   : "",
                     s.getStatus()
                 });
-            }
+            });
             statusLabel.setText("Tổng: " + list.size() + " học viên");
+            SwingUtilities.invokeLater(() -> UI.autoResizeColumns(table));
         } catch (Exception e) {
             showError("Không thể tải dữ liệu: " + e.getMessage());
         }
@@ -252,8 +272,8 @@ public class StudentPanel extends JPanel {
 
         try {
             studentService.delete(id);
-            loadData();
             showSuccess("Đã xóa học viên \"" + name + "\" thành công.");
+            notifyDataChanged();
         } catch (Exception e) {
             showError("Không thể xóa: " + e.getMessage());
         }
@@ -277,9 +297,22 @@ public class StudentPanel extends JPanel {
                 studentService.save(dlg.getStudent());
                 showSuccess("Thêm học viên mới thành công.");
             }
-            loadData();
+            notifyDataChanged();
         } catch (Exception e) {
             showError("Lỗi: " + e.getMessage());
+        }
+    }
+
+    // ══════════════════════════════════════════════════
+    //  REFRESH HELPER
+    // ══════════════════════════════════════════════════
+
+    /** Nếu có callback (được set từ MainFrame) thì refresh tất cả panel; nếu không chỉ refresh bản thân. */
+    private void notifyDataChanged() {
+        if (onDataChanged != null) {
+            onDataChanged.run();
+        } else {
+            loadData();
         }
     }
 

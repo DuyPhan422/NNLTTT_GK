@@ -49,7 +49,7 @@ public class CourseFormDialog extends JDialog {
                 BorderFactory.createEmptyBorder(4, 10, 4, 10)
         ));
 
-        cbLevel = new JComboBox<>(new String[]{"", "Beginner", "Intermediate", "Advanced"});
+        cbLevel = new JComboBox<>(new String[]{"Cơ bản", "Trung cấp", "Nâng cao"});
         cbLevel.setFont(FONT_MAIN);
         if (isEdit && existing.getLevel() != null) {
             cbLevel.setSelectedItem(existing.getLevel());
@@ -58,7 +58,7 @@ public class CourseFormDialog extends JDialog {
         tfDuration = createField(isEdit && existing.getDuration() != null
                 ? String.valueOf(existing.getDuration()) : "");
 
-        cbDurationUnit = new JComboBox<>(new String[]{"Hour", "Week"});
+        cbDurationUnit = new JComboBox<>(new String[]{"Giờ","Tuần", "Tháng"});
         cbDurationUnit.setFont(FONT_MAIN);
         if (isEdit && existing.getDurationUnit() != null) {
             cbDurationUnit.setSelectedItem(existing.getDurationUnit());
@@ -67,7 +67,7 @@ public class CourseFormDialog extends JDialog {
         tfFee = createField(isEdit && existing.getFee() != null
                 ? existing.getFee().toPlainString() : "");
 
-        cbStatus = new JComboBox<>(new String[]{"Active", "Inactive"});
+        cbStatus = new JComboBox<>(new String[]{"Hoạt động", "Không hoạt động"});
         cbStatus.setFont(FONT_MAIN);
         if (isEdit && existing.getStatus() != null) {
             cbStatus.setSelectedItem(existing.getStatus());
@@ -177,7 +177,7 @@ public class CourseFormDialog extends JDialog {
 
         course.setCourseName(name);
         course.setDescription(taDescription.getText().trim().isEmpty() ? null : taDescription.getText().trim());
-        course.setLevel(cbLevel.getSelectedIndex() == 0 ? null : (String) cbLevel.getSelectedItem());
+        course.setLevel((String) cbLevel.getSelectedItem());
         course.setDuration(duration);
         course.setDurationUnit((String) cbDurationUnit.getSelectedItem());
         course.setFee(fee);
@@ -201,7 +201,7 @@ public class CourseFormDialog extends JDialog {
 
         gbc.gridy  = base + 1;
         gbc.insets = new Insets(0, 0, 0, 0);
-        field.setPreferredSize(new Dimension(0, 36));
+        field.setPreferredSize(new Dimension(150, 36));
         panel.add(field, gbc);
     }
 

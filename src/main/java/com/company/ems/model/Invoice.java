@@ -22,8 +22,8 @@ public class Invoice {
     @Column(name = "invoice_id")
     private Long invoiceId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "student_id", nullable = false)
+    @ManyToOne(fetch = FetchType.EAGER) 
+    @JoinColumn(name = "student_id")
     private Student student;
 
     @Column(name = "total_amount", nullable = false, precision = 15, scale = 2)
