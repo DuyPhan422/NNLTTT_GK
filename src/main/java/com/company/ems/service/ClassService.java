@@ -1,6 +1,7 @@
 package com.company.ems.service;
 
 import com.company.ems.model.Class;
+import com.company.ems.model.Student;
 import com.company.ems.repo.ClassRepository;
 
 import java.time.LocalDate;
@@ -44,6 +45,15 @@ public class ClassService extends AbstractBaseService<Class, Long> {
             return txManager.runInTransaction(em -> classRepository.findStartingFrom(em, fromDate));
         } catch (Exception e) {
             throw new RuntimeException("Lỗi khi tìm lớp từ ngày: " + e.getMessage(), e);
+        }
+    }
+
+    /** Lấy danh sách học viên đang Enrolled của một lớp — trong 1 transaction */
+    public List<Student> findEnrolledStudents(Long classId) {
+        try {
+            return txManager.runInTransaction(em -> classRepository.findEnrolledStudents(em, classId));
+        } catch (Exception e) {
+            throw new RuntimeException("Lỗi khi lấy danh sách học viên: " + e.getMessage(), e);
         }
     }
 }

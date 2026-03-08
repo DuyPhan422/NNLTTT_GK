@@ -2,16 +2,17 @@ package com.company.ems.model;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.ToString;
-import lombok.EqualsAndHashCode;
+import lombok.Setter;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
@@ -57,23 +58,15 @@ public class Class {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    @ToString.Exclude
-    @EqualsAndHashCode.Exclude
     @OneToMany(mappedBy = "clazz", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Enrollment> enrollments;
 
-    @ToString.Exclude
-    @EqualsAndHashCode.Exclude
     @OneToMany(mappedBy = "clazz", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Schedule> schedules;
 
-    @ToString.Exclude
-    @EqualsAndHashCode.Exclude
     @OneToMany(mappedBy = "clazz", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Attendance> attendances;
 
-    @ToString.Exclude
-    @EqualsAndHashCode.Exclude
     @OneToMany(mappedBy = "clazz", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Result> results;
 
@@ -86,5 +79,22 @@ public class Class {
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Class other)) return false;
+        return classId != null && classId.equals(other.classId);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(classId);
+    }
+
+    @Override
+    public String toString() {
+        return className != null ? className : ("Class#" + classId);
     }
 }

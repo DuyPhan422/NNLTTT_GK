@@ -9,6 +9,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 public class MainFrame extends JFrame {
 
@@ -46,7 +47,8 @@ public class MainFrame extends JFrame {
                      ClassService classService,
                      EnrollmentService enrollmentService,
                      InvoiceService invoiceService, // Thêm để tự động tạo hóa đơn
-                     PaymentService paymentService) { // Thêm để quản lý thanh toán
+                     PaymentService paymentService,// Thêm để quản lý thanh toán
+                     ScheduleService scheduleService) {
 
         setTitle("Language Center Management System - ADMIN");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -55,11 +57,11 @@ public class MainFrame extends JFrame {
         setLocationRelativeTo(null);
         setLayout(new BorderLayout());
 
-        // Sidebar điều hướng
+        // Sidebar
         SidebarPanel sidebar = new SidebarPanel(this::navigateTo);
         add(sidebar, BorderLayout.WEST);
 
-        // Vùng nội dung bên phải
+        // Vùng bên phải = Header + Content
         JPanel rightPanel = new JPanel(new BorderLayout());
         rightPanel.setBackground(new Color(248, 250, 252));
 
@@ -73,24 +75,16 @@ public class MainFrame extends JFrame {
         // ============================================
         // ĐĂNG KÝ CÁC PANEL CHÍNH
         // ============================================
-        
+
         // 1. Quản lý cơ bản
-        studentPanel    = new StudentPanel(studentService);
-        teacherPanel    = new TeacherPanel(teacherService);
-        coursePanel     = new CoursePanel(courseService);
-        classPanel      = new ClassPanel(classService, courseService, teacherService, roomService, enrollmentService, invoiceService);
-        contentPanel.add(studentPanel, "students");
-        contentPanel.add(teacherPanel, "teachers");
-        contentPanel.add(coursePanel,  "courses");
-        contentPanel.add(classPanel,   "classes");
-        
-        // 2. ✨ Ghi danh học viên (Tự động sync Invoice)
-        enrollmentPanel = new EnrollmentPanel(enrollmentService, studentService, classService, invoiceService);
-        contentPanel.add(enrollmentPanel, "enrollments");
-        
-        // 3. ✨ Thu học phí & In biên lai
-        tuitionPanel = new TuitionPanel(enrollmentService, invoiceService, paymentService, studentService, true, null);
-        contentPanel.add(tuitionPanel, "payments");
+        contentPanel.add(new StudentPanel(studentService), "students");
+        contentPanel.add(new TeacherPanel(teacherService), "teachers");
+        contentPanel.add(new CoursePanel(courseService), "courses");
+        contentPanel.add(new ClassPanel(classService, courseService, teacherService, roomService, enrollmentService, invoiceService), "classes");
+        contentPanel.add(new RoomPanel(roomService), "rooms");
+        contentPanel.add(new ScheduleManagerPanel(classService, scheduleService, roomService), "schedules");
+        contentPanel.add(new EnrollmentPanel(enrollmentService, studentService, classService, invoiceService), "enrollments");
+        contentPanel.add(new TuitionPanel(enrollmentService, invoiceService, paymentService, studentService, true, null), "payments");
 
         // 4. Kết nối callback refresh toàn bộ sau khi tạo xong tất cả panel
         Runnable refreshAll = this::refreshAllPanels;

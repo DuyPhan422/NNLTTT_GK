@@ -64,6 +64,7 @@ public class ClassPanel extends JPanel {
     private final JTextField searchField;
     private final JComboBox<String> filterStatus;
     private TableRowSorter<DefaultTableModel> sorter;
+    // Observer Design Pattern sơ khai
     private Runnable onDataChanged;
 
     public void setOnDataChanged(Runnable r) { this.onDataChanged = r; }
@@ -236,33 +237,38 @@ public class ClassPanel extends JPanel {
             List<Class> list = classService.findAll();
             tableModel.setRowCount(0);
 
-            // Count active enrollments per class
+            // 1. Giữ lại logic lấy dữ liệu Số Lượng Học Viên CỦA BÊN PHẢI
             Map<Long, Long> enrollCounts = enrollmentService.findAll().stream()
                     .filter(e -> e.getClazz() != null && !"Hủy".equals(e.getStatus()))
                     .collect(Collectors.groupingBy(e -> e.getClazz().getClassId(), Collectors.counting()));
 
-            int[] idx = {1};
-            list.forEach(c -> {
-                String code = c.getClassId() != null
-                        ? String.format("L%04d", c.getClassId())
-                        : "";
-                long cur = enrollCounts.getOrDefault(c.getClassId(), 0L);
-                String slHV = cur + " / " + (c.getMaxStudent() != null && c.getMaxStudent() > 0
-                        ? String.valueOf(c.getMaxStudent()) : "∞");
-                tableModel.addRow(new Object[]{
-                        c.getClassId(),
-                        idx[0]++,
-                        code,
-                        c.getClassName(),
-                        c.getCourse()  != null ? c.getCourse().getCourseName()  : "",
-                        c.getTeacher() != null ? c.getTeacher().getFullName()   : "",
-                        c.getRoom()    != null ? c.getRoom().getRoomName()      : "",
-                        slHV,
-                        c.getStartDate() != null ? c.getStartDate().format(DATE_FMT) : "",
-                        c.getEndDate()   != null ? c.getEndDate().format(DATE_FMT)   : "",
-                        c.getStatus()
-                });
-            });
+            // 2. Giữ lại cấu trúc Stream API gọn gàng CỦA BÊN TRÁI
+            var index = new java.util.concurrent.atomic.AtomicInteger(1);
+            list.stream()
+                    .map(c -> {
+                        String code = c.getClassId() != null ? String.format("L%04d", c.getClassId()) : "";
+
+                        // 3. Tính toán cột slHV (Số lượng học viên)
+                        long cur = enrollCounts.getOrDefault(c.getClassId(), 0L);
+                        String slHV = cur + " / " + (c.getMaxStudent() != null && c.getMaxStudent() > 0
+                                ? String.valueOf(c.getMaxStudent()) : "∞");
+
+                        // Trả về mảng 11 CỘT (Đã bao gồm cột slHV)
+                        return new Object[]{
+                                c.getClassId(),
+                                index.getAndIncrement(),
+                                code,
+                                c.getClassName(),
+                                c.getCourse()  != null ? c.getCourse().getCourseName()  : "",
+                                c.getTeacher() != null ? c.getTeacher().getFullName()   : "",
+                                c.getRoom()    != null ? c.getRoom().getRoomName()      : "",
+                                slHV, // <--- Cột mới được chèn vào đây
+                                c.getStartDate() != null ? c.getStartDate().format(DATE_FMT) : "",
+                                c.getEndDate()   != null ? c.getEndDate().format(DATE_FMT)   : "",
+                                c.getStatus()
+                        };
+                    })
+                    .forEach(tableModel::addRow);
 
             statusLabel.setText("Tổng: " + list.size() + " lớp học");
             applyFilters();
@@ -283,10 +289,9 @@ public class ClassPanel extends JPanel {
                 String statusVal  = String.valueOf(entry.getValue(10));
 
                 boolean matchKeyword = keyword.isEmpty()
-                        || className.toLowerCase().contains(keyword)
-                        || courseName.toLowerCase().contains(keyword);
-                boolean matchStatus = "Tất cả".equals(status)
-                        || Objects.equals(statusVal, status);
+                        || className.contains(keyword)
+                        || courseName.contains(keyword);
+                boolean matchStatus = "Tất cả".equals(status) || statusVal.equals(status);
                 return matchKeyword && matchStatus;
             }
         });
@@ -312,7 +317,7 @@ public class ClassPanel extends JPanel {
             return;
         }
         int modelRow = table.convertRowIndexToModel(viewRow);
-        String name = (String) tableModel.getValueAt(modelRow, 1);
+        String name = (String) tableModel.getValueAt(modelRow, 3);
         Long   id   = (Long)   tableModel.getValueAt(modelRow, 0);
 
         int ok = JOptionPane.showConfirmDialog(this,

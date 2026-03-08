@@ -2,12 +2,15 @@ package com.company.ems.model;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
+import java.util.Objects;
 
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
@@ -55,5 +58,21 @@ public class Staff {
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
     }
-}
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Staff other)) return false;
+        return staffId != null && staffId.equals(other.staffId);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(staffId);
+    }
+
+    @Override
+    public String toString() {
+        return fullName != null ? fullName : ("Staff#" + staffId);
+    }
+}

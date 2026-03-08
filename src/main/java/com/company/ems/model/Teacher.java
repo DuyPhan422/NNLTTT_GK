@@ -2,14 +2,17 @@ package com.company.ems.model;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
@@ -30,7 +33,6 @@ public class Teacher {
     @Column(name = "email", length = 150, unique = true)
     private String email;
 
-    // e.g. "IELTS", "TOEIC", "Giao tiếp"
     @Column(name = "specialty", length = 100)
     private String specialty;
 
@@ -65,8 +67,19 @@ public class Teacher {
     }
 
     @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Teacher other)) return false;
+        return teacherId != null && teacherId.equals(other.teacherId);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(teacherId);
+    }
+
+    @Override
     public String toString() {
         return fullName != null ? fullName : ("Teacher#" + teacherId);
     }
 }
-

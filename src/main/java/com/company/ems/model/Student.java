@@ -2,16 +2,17 @@ package com.company.ems.model;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.ToString;
-import lombok.EqualsAndHashCode;
+import lombok.Setter;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
@@ -55,33 +56,21 @@ public class Student {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    @ToString.Exclude
-    @EqualsAndHashCode.Exclude
     @OneToMany(mappedBy = "student", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Enrollment> enrollments;
 
-    @ToString.Exclude
-    @EqualsAndHashCode.Exclude
     @OneToMany(mappedBy = "student", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Attendance> attendances;
 
-    @ToString.Exclude
-    @EqualsAndHashCode.Exclude
     @OneToMany(mappedBy = "student", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Payment> payments;
 
-    @ToString.Exclude
-    @EqualsAndHashCode.Exclude
     @OneToMany(mappedBy = "student", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Invoice> invoices;
 
-    @ToString.Exclude
-    @EqualsAndHashCode.Exclude
     @OneToMany(mappedBy = "student", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Result> results;
 
-    @ToString.Exclude
-    @EqualsAndHashCode.Exclude
     @OneToOne(mappedBy = "student", fetch = FetchType.LAZY)
     private UserAccount userAccount;
 
@@ -95,5 +84,22 @@ public class Student {
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Student other)) return false;
+        return studentId != null && studentId.equals(other.studentId);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(studentId);
+    }
+
+    @Override
+    public String toString() {
+        return fullName != null ? fullName : ("Student#" + studentId);
     }
 }
