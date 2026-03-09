@@ -229,6 +229,12 @@ public class ClassPanel extends JPanel {
 
         sorter = new TableRowSorter<>(tableModel);
         t.setRowSorter(sorter);
+
+        t.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override public void mouseClicked(java.awt.event.MouseEvent e) {
+                if (e.getClickCount() == 2 && t.getSelectedRow() >= 0) editSelected();
+            }
+        });
         return t;
     }
 
@@ -239,21 +245,16 @@ public class ClassPanel extends JPanel {
 
             // 1. Giữ lại logic lấy dữ liệu Số Lượng Học Viên CỦA BÊN PHẢI
             Map<Long, Long> enrollCounts = enrollmentService.findAll().stream()
-                    .filter(e -> e.getClazz() != null && !"Hủy".equals(e.getStatus()))
-                    .collect(Collectors.groupingBy(e -> e.getClazz().getClassId(), Collectors.counting()));
+                    .filter((Enrollment e) -> e.getClazz() != null && !"Hủy".equals(e.getStatus()))
+                    .collect(Collectors.groupingBy((Enrollment e) -> e.getClazz().getClassId(), Collectors.counting()));
 
-            // 2. Giữ lại cấu trúc Stream API gọn gàng CỦA BÊN TRÁI
             var index = new java.util.concurrent.atomic.AtomicInteger(1);
             list.stream()
-                    .map(c -> {
+                    .map((Class c) -> {
                         String code = c.getClassId() != null ? String.format("L%04d", c.getClassId()) : "";
-
-                        // 3. Tính toán cột slHV (Số lượng học viên)
                         long cur = enrollCounts.getOrDefault(c.getClassId(), 0L);
                         String slHV = cur + " / " + (c.getMaxStudent() != null && c.getMaxStudent() > 0
                                 ? String.valueOf(c.getMaxStudent()) : "∞");
-
-                        // Trả về mảng 11 CỘT (Đã bao gồm cột slHV)
                         return new Object[]{
                                 c.getClassId(),
                                 index.getAndIncrement(),
@@ -262,7 +263,7 @@ public class ClassPanel extends JPanel {
                                 c.getCourse()  != null ? c.getCourse().getCourseName()  : "",
                                 c.getTeacher() != null ? c.getTeacher().getFullName()   : "",
                                 c.getRoom()    != null ? c.getRoom().getRoomName()      : "",
-                                slHV, // <--- Cột mới được chèn vào đây
+                                slHV,
                                 c.getStartDate() != null ? c.getStartDate().format(DATE_FMT) : "",
                                 c.getEndDate()   != null ? c.getEndDate().format(DATE_FMT)   : "",
                                 c.getStatus()
@@ -369,13 +370,13 @@ public class ClassPanel extends JPanel {
     private void cancelClassEnrollments(Class clazz) {
         try {
             List<Enrollment> enrollments = enrollmentService.findAll().stream()
-                    .filter(e -> e.getClazz() != null
+                    .filter((Enrollment e) -> e.getClazz() != null
                               && e.getClazz().getClassId().equals(clazz.getClassId())
                               && "Đã đăng ký".equals(e.getStatus()))
                     .toList();
 
             java.util.Set<Long> affectedStudentIds = new java.util.HashSet<>();
-            enrollments.forEach(e -> {
+            enrollments.forEach((Enrollment e) -> {
                 e.setStatus("Đã hủy");
                 enrollmentService.update(e);
                 if (e.getStudent() != null) affectedStudentIds.add(e.getStudent().getStudentId());
@@ -388,17 +389,16 @@ public class ClassPanel extends JPanel {
         }
     }
 
-    /** Tính lại số tiền hóa đơn chờ thanh toán cho học viên. */
     private void recalcInvoice(Long studentId) {
         java.math.BigDecimal total = enrollmentService.findAll().stream()
-                .filter(e -> e.getStudent() != null
+                .filter((Enrollment e) -> e.getStudent() != null
                           && e.getStudent().getStudentId().equals(studentId)
                           && "Đã đăng ký".equals(e.getStatus()))
-                .map(e -> e.getClazz().getCourse().getFee())
+                .map((Enrollment e) -> e.getClazz().getCourse().getFee())
                 .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
 
         Invoice pending = invoiceService.findAll().stream()
-                .filter(i -> i.getStudent() != null
+                .filter((Invoice i) -> i.getStudent() != null
                           && i.getStudent().getStudentId().equals(studentId)
                           && "Chờ thanh toán".equals(i.getStatus()))
                 .findFirst().orElse(null);

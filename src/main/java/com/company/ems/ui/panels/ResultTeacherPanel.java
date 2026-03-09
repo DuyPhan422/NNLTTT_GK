@@ -1,11 +1,11 @@
-package com.company.ems.ui.panels.attendance;
+package com.company.ems.ui.panels;
 
-import com.company.ems.model.Attendance;
 import com.company.ems.model.Class;
+import com.company.ems.model.Result;
 import com.company.ems.model.Student;
 import com.company.ems.model.Teacher;
-import com.company.ems.service.AttendanceService;
 import com.company.ems.service.ClassService;
+import com.company.ems.service.ResultService;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -13,19 +13,19 @@ import javax.swing.border.MatteBorder;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
 import java.awt.*;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Panel điểm danh dành cho Teacher.
- * Layout: Sidebar chọn lớp (chỉ lớp mình dạy) | Panel điểm danh theo buổi
+ * Panel Nhập điểm dành cho Teacher.
+ * Đồng bộ layout với AttendanceTeacherPanel (SRP + OCP).
  *
- * Luồng: Chọn lớp → Chọn ngày buổi học → Load DS học viên enrolled
- *        → Tick Present/Absent/Late → Lưu hàng loạt
+ * Layout: Sidebar chọn lớp | Bảng nhập điểm theo lớp
+ * Luồng: Chọn lớp → Load DS học viên enrolled
+ *        → Nhập điểm (editable) → Xếp loại tự động → Lưu
  */
-public class AttendanceTeacherPanel extends JPanel {
+public class ResultTeacherPanel extends JPanel {
 
     // ── Design tokens ─────────────────────────────────────────────────────
     private static final Color BG_PAGE     = new Color(248, 250, 252);
@@ -37,6 +37,7 @@ public class AttendanceTeacherPanel extends JPanel {
     private static final Color GREEN       = new Color(22,  163, 74);
     private static final Color AMBER       = new Color(217, 119, 6);
     private static final Color RED         = new Color(220, 38,  38);
+    private static final Color BLUE        = new Color(59,  130, 246);
     private static final Color TEXT_MAIN   = new Color(15,  23,  42);
     private static final Color TEXT_MUTED  = new Color(100, 116, 139);
     private static final Color ITEM_HOVER  = new Color(239, 246, 255);
@@ -50,68 +51,56 @@ public class AttendanceTeacherPanel extends JPanel {
     private static final Font FONT_SMALL  = new Font("Segoe UI", Font.PLAIN,  12);
     private static final Font FONT_HEADER = new Font("Segoe UI", Font.BOLD,   14);
 
-    private static final DateTimeFormatter DATE_FMT  = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-    private static final DateTimeFormatter LABEL_FMT = DateTimeFormatter.ofPattern("EEEE, dd/MM/yyyy",
-            java.util.Locale.forLanguageTag("vi"));
-
-    private static final String[] STATUS_OPTIONS = {"Present", "Absent", "Late"};
-    private static final String[] TABLE_COLS = {"STT", "Họ và tên", "Trạng thái", "Ghi chú"};
+    private static final String[] TABLE_COLS = {"STT", "Họ và tên", "Điểm (0–10)", "Xếp loại", "Nhận xét"};
 
     // ── Services ──────────────────────────────────────────────────────────
-    private final AttendanceService attendanceService;
-    private final ClassService      classService;
-    private final Teacher           currentTeacher; // null = xem tất cả (dev mode admin)
+    private final ResultService resultService;
+    private final ClassService  classService;
+    private final Teacher       currentTeacher;
 
     // ── State ─────────────────────────────────────────────────────────────
-    private List<Class>      allClasses     = new ArrayList<>();
-    private Class            selectedClass  = null;
-    private List<Attendance> currentSheet   = new ArrayList<>(); // sheet đang chỉnh sửa
-    private JPanel           activeClassItem = null;
+    private List<Class>   allClasses    = new ArrayList<>();
+    private Class         selectedClass = null;
+    private List<Result>  currentSheet  = new ArrayList<>();
+    private JPanel        activeClassItem = null;
 
-    // ── UI components ─────────────────────────────────────────────────────
-    private final JPanel     classListPanel;
-    private final JTextField searchField;
-    // Right side
-    private final JLabel     lblClassName;
-    private final JLabel     lblDateDisplay;
-    private final JSpinner   datePicker;
-    private final JButton    btnMarkAll;
-    private final JButton    btnSave;
-    private final JLabel     statusLabel;
-    private final JLabel     statPresent;
-    private final JLabel     statAbsent;
-    private final JLabel     statLate;
+    // ── UI ────────────────────────────────────────────────────────────────
+    private final JPanel            classListPanel;
+    private final JTextField        searchField;
+    private final JLabel            lblClassName;
+    private final JLabel            lblStats;
+    private final JButton           btnSaveAll;
+    private final JButton           btnClearAll;
+    private final JLabel            statusLabel;
     private final DefaultTableModel tableModel;
-    private final JTable     table;
-    private final JPanel     rightPanel;
-    private final JPanel     emptyState;
+    private final JTable            table;
+    private final JPanel            rightPanel;
+    private final JPanel            emptyState;
 
-    public AttendanceTeacherPanel(AttendanceService attendanceService,
-                                  ClassService classService,
-                                  Teacher currentTeacher) {
-        this.attendanceService = attendanceService;
-        this.classService      = classService;
-        this.currentTeacher    = currentTeacher;
+    public ResultTeacherPanel(ResultService resultService,
+                              ClassService classService,
+                              Teacher currentTeacher) {
+        this.resultService  = resultService;
+        this.classService   = classService;
+        this.currentTeacher = currentTeacher;
 
-        // Build components
         classListPanel = new JPanel();
         searchField    = new JTextField();
         lblClassName   = new JLabel("Chưa chọn lớp");
-        lblDateDisplay = new JLabel("");
-        datePicker     = buildDateSpinner(LocalDate.now());
-        btnMarkAll     = createSecondaryButton("✅ Đánh dấu tất cả Có mặt");
-        btnSave        = createPrimaryButton("💾 Lưu điểm danh");
+        lblStats       = new JLabel(" ");
+        btnSaveAll     = createPrimaryButton("💾 Lưu tất cả điểm");
+        btnClearAll    = createSecondaryButton("🔄 Xóa trắng");
         statusLabel    = new JLabel();
-        statPresent    = statBadge("Có mặt: 0", GREEN);
-        statAbsent     = statBadge("Vắng: 0",   RED);
-        statLate       = statBadge("Trễ: 0",    AMBER);
         tableModel     = buildTableModel();
         table          = buildTable();
         emptyState     = buildEmptyState();
-        rightPanel     = buildRightPanel();
+        rightPanel     = new JPanel(new BorderLayout());
 
-        btnMarkAll.addActionListener(e -> markAll("Present"));
-        btnSave   .addActionListener(e -> saveAttendance());
+        btnSaveAll .addActionListener(e -> saveResults());
+        btnClearAll.addActionListener(e -> clearAll());
+
+        rightPanel.setBackground(BG_PAGE);
+        rightPanel.add(emptyState, BorderLayout.CENTER);
 
         setLayout(new BorderLayout());
         setBackground(BG_PAGE);
@@ -139,8 +128,7 @@ public class AttendanceTeacherPanel extends JPanel {
         header.setBackground(BG_SIDEBAR);
         header.setBorder(new EmptyBorder(16, 12, 12, 12));
 
-        JLabel title = new JLabel(currentTeacher != null
-                ? "Lớp của tôi" : "Tất cả lớp");
+        JLabel title = new JLabel(currentTeacher != null ? "Lớp của tôi" : "Tất cả lớp");
         title.setFont(FONT_HEADER);
         title.setForeground(TEXT_MAIN);
         header.add(title, BorderLayout.NORTH);
@@ -186,6 +174,7 @@ public class AttendanceTeacherPanel extends JPanel {
     }
 
     private JPanel buildClassItem(Class c) {
+        // Tính % đã nhập điểm để hiển thị trên sidebar
         JPanel item = new JPanel(new BorderLayout(0, 3));
         item.setOpaque(true);
         item.setBackground(BG_SIDEBAR);
@@ -196,7 +185,7 @@ public class AttendanceTeacherPanel extends JPanel {
                 new EmptyBorder(8, 12, 8, 12)));
         item.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
-        JLabel lblName = new JLabel(c.getClassName());
+        JLabel lblName   = new JLabel(c.getClassName());
         lblName.setFont(FONT_BOLD);
         lblName.setForeground(TEXT_MAIN);
 
@@ -209,11 +198,12 @@ public class AttendanceTeacherPanel extends JPanel {
 
         JPanel top = new JPanel(new BorderLayout());
         top.setOpaque(false);
-        top.add(lblName, BorderLayout.CENTER);
+        top.add(lblName,   BorderLayout.CENTER);
         top.add(lblStatus, BorderLayout.EAST);
 
-        String teacher = c.getTeacher() != null ? c.getTeacher().getFullName() : "Chưa phân công";
-        JLabel lblSub = new JLabel(teacher);
+        String courseName = c.getCourse() != null ? c.getCourse().getCourseName() : "";
+        JLabel lblSub = new JLabel(courseName.length() > 30
+                ? courseName.substring(0, 28) + "…" : courseName);
         lblSub.setFont(FONT_SMALL);
         lblSub.setForeground(TEXT_MUTED);
 
@@ -239,68 +229,40 @@ public class AttendanceTeacherPanel extends JPanel {
 
     // ── Right panel ───────────────────────────────────────────────────────
 
-    private JPanel buildRightPanel() {
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.setBackground(BG_PAGE);
-        panel.add(emptyState, BorderLayout.CENTER);
-        return panel;
-    }
-
     private JPanel buildEmptyState() {
         JPanel p = new JPanel(new GridBagLayout());
         p.setBackground(BG_PAGE);
-        JLabel lbl = new JLabel("← Chọn một lớp để bắt đầu điểm danh");
+        JLabel lbl = new JLabel("← Chọn một lớp để nhập điểm");
         lbl.setFont(new Font("Segoe UI", Font.PLAIN, 15));
         lbl.setForeground(TEXT_MUTED);
         p.add(lbl);
         return p;
     }
 
-    private JPanel buildAttendanceContent() {
+    private JPanel buildResultContent() {
         JPanel content = new JPanel(new BorderLayout(0, 0));
         content.setBackground(BG_PAGE);
         content.setBorder(new EmptyBorder(20, 24, 20, 24));
 
-        content.add(buildAttendanceHeader(), BorderLayout.NORTH);
-        content.add(buildTableCard(),        BorderLayout.CENTER);
-        content.add(buildActionBar(),        BorderLayout.SOUTH);
+        content.add(buildResultHeader(), BorderLayout.NORTH);
+        content.add(buildTableCard(),    BorderLayout.CENTER);
+        content.add(buildActionBar(),    BorderLayout.SOUTH);
         return content;
     }
 
-    private JPanel buildAttendanceHeader() {
-        JPanel header = new JPanel(new BorderLayout(0, 12));
+    private JPanel buildResultHeader() {
+        JPanel header = new JPanel(new BorderLayout(0, 8));
         header.setOpaque(false);
         header.setBorder(new EmptyBorder(0, 0, 16, 0));
 
-        // Class name + date picker row
         lblClassName.setFont(FONT_HEADER);
         lblClassName.setForeground(TEXT_MAIN);
+        header.add(lblClassName, BorderLayout.NORTH);
 
-        JPanel titleRow = new JPanel(new BorderLayout(12, 0));
-        titleRow.setOpaque(false);
-        titleRow.add(lblClassName, BorderLayout.WEST);
-
-        // Date picker group
-        JPanel dateGroup = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
-        dateGroup.setOpaque(false);
-        JLabel dateLbl = new JLabel("Ngày:");
-        dateLbl.setFont(FONT_SMALL);
-        dateLbl.setForeground(TEXT_MUTED);
-        dateGroup.add(dateLbl);
-        dateGroup.add(datePicker);
-        JButton loadBtn = createPrimaryButton("Tải danh sách");
-        loadBtn.addActionListener(e -> loadAttendanceSheet());
-        dateGroup.add(loadBtn);
-        titleRow.add(dateGroup, BorderLayout.EAST);
-        header.add(titleRow, BorderLayout.NORTH);
-
-        // Stats row
+        // Stats badges
         JPanel statsRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         statsRow.setOpaque(false);
-        statsRow.add(statPresent);
-        statsRow.add(statAbsent);
-        statsRow.add(statLate);
-        statsRow.add(Box.createHorizontalStrut(12));
+        statsRow.add(lblStats);
         statsRow.add(statusLabel);
         header.add(statsRow, BorderLayout.SOUTH);
 
@@ -322,14 +284,20 @@ public class AttendanceTeacherPanel extends JPanel {
 
         JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         left.setOpaque(false);
-        left.add(btnMarkAll);
+        left.add(btnClearAll);
 
-        JButton btnMarkAbsent = createSecondaryButton("❌ Đánh dấu tất cả Vắng");
-        btnMarkAbsent.addActionListener(e -> markAll("Absent"));
-        left.add(btnMarkAbsent);
+        // Legend
+        JLabel legendLbl = new JLabel(
+                "<html><span style='color:#22c55e;'>A+≥9.0</span> &nbsp;"
+                + "<span style='color:#3b82f6;'>A≥8.5</span> &nbsp;"
+                + "<span style='color:#f59e0b;'>B+≥7.0</span> &nbsp;"
+                + "<span style='color:#ef4444;'>D/F&lt;5.0</span></html>");
+        legendLbl.setFont(FONT_SMALL);
+        left.add(Box.createHorizontalStrut(12));
+        left.add(legendLbl);
 
-        bar.add(left,    BorderLayout.WEST);
-        bar.add(btnSave, BorderLayout.EAST);
+        bar.add(left,       BorderLayout.WEST);
+        bar.add(btnSaveAll, BorderLayout.EAST);
         return bar;
     }
 
@@ -337,9 +305,11 @@ public class AttendanceTeacherPanel extends JPanel {
 
     private DefaultTableModel buildTableModel() {
         return new DefaultTableModel(TABLE_COLS, 0) {
-            @Override public boolean isCellEditable(int r, int c) { return c == 2 || c == 3; }
+            @Override public boolean isCellEditable(int r, int c) {
+                return c == 2 || c == 4; // Điểm + Nhận xét
+            }
             @Override public java.lang.Class<?> getColumnClass(int c) {
-                return c == 0 ? java.lang.Integer.class : java.lang.String.class;
+                return String.class;
             }
         };
     }
@@ -349,44 +319,26 @@ public class AttendanceTeacherPanel extends JPanel {
             @Override
             public Component prepareRenderer(javax.swing.table.TableCellRenderer r, int row, int col) {
                 Component c = super.prepareRenderer(r, row, col);
-                boolean selected = isRowSelected(row);
-                c.setBackground(selected ? ROW_SELECT : (row % 2 == 0 ? ROW_EVEN : ROW_ODD));
+                boolean sel = isRowSelected(row);
+                c.setBackground(sel ? ROW_SELECT : (row % 2 == 0 ? ROW_EVEN : ROW_ODD));
                 c.setForeground(TEXT_MAIN);
+
+                // Tô màu cột Xếp loại
+                if (col == 3 && !sel && c instanceof JLabel lbl) {
+                    String grade = lbl.getText();
+                    lbl.setFont(FONT_BOLD);
+                    lbl.setHorizontalAlignment(SwingConstants.CENTER);
+                    lbl.setForeground(gradeColor(grade));
+                }
                 return c;
             }
         };
+
         t.setFont(FONT_MAIN);
         t.setRowHeight(40);
         t.setShowGrid(false);
         t.setIntercellSpacing(new Dimension(0, 0));
         t.setBackground(BG_CARD);
-
-        // Cột Trạng thái dùng JComboBox
-        JComboBox<String> statusCombo = new JComboBox<>(STATUS_OPTIONS);
-        statusCombo.setFont(FONT_MAIN);
-        t.getColumnModel().getColumn(2).setCellEditor(new DefaultCellEditor(statusCombo));
-
-        // Custom renderer cho cột trạng thái — tô màu
-        t.getColumnModel().getColumn(2).setCellRenderer(
-                new javax.swing.table.DefaultTableCellRenderer() {
-                    @Override
-                    public Component getTableCellRendererComponent(JTable tbl, Object val,
-                            boolean isSel, boolean hasFocus, int row, int col) {
-                        super.getTableCellRendererComponent(tbl, val, isSel, hasFocus, row, col);
-                        setHorizontalAlignment(CENTER);
-                        if (!isSel) {
-                            String s = val != null ? val.toString() : "";
-                            setForeground(switch (s) {
-                                case "Present" -> GREEN;
-                                case "Absent"  -> RED;
-                                case "Late"    -> AMBER;
-                                default        -> TEXT_MAIN;
-                            });
-                            setFont(FONT_BOLD);
-                        }
-                        return this;
-                    }
-                });
 
         JTableHeader header = t.getTableHeader();
         header.setFont(FONT_BOLD);
@@ -395,17 +347,38 @@ public class AttendanceTeacherPanel extends JPanel {
         header.setPreferredSize(new Dimension(0, 42));
         header.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, BORDER_COL));
 
-        // Column widths
-        t.getColumnModel().getColumn(0).setPreferredWidth(50);
-        t.getColumnModel().getColumn(0).setMaxWidth(60);
-        t.getColumnModel().getColumn(1).setPreferredWidth(220);
-        t.getColumnModel().getColumn(2).setPreferredWidth(120);
-        t.getColumnModel().getColumn(3).setPreferredWidth(200);
-
-        // Sync thay đổi status về currentSheet + cập nhật stats
-        tableModel.addTableModelListener(e -> {
-            if (e.getColumn() == 2) updateStats();
+        // Cột điểm — custom editor chỉ nhận số 0–10
+        t.getColumnModel().getColumn(2).setCellEditor(new DefaultCellEditor(new JTextField()) {
+            @Override
+            public boolean stopCellEditing() {
+                String val = ((JTextField) getComponent()).getText().trim();
+                if (!val.isEmpty()) {
+                    try {
+                        double d = Double.parseDouble(val);
+                        if (d < 0 || d > 10) {
+                            JOptionPane.showMessageDialog(table,
+                                    "Điểm phải từ 0 đến 10.", "Lỗi nhập liệu",
+                                    JOptionPane.WARNING_MESSAGE);
+                            return false;
+                        }
+                    } catch (NumberFormatException ex) {
+                        JOptionPane.showMessageDialog(table,
+                                "Vui lòng nhập số hợp lệ (vd: 8.5).", "Lỗi nhập liệu",
+                                JOptionPane.WARNING_MESSAGE);
+                        return false;
+                    }
+                }
+                return super.stopCellEditing();
+            }
         });
+
+
+        // Column widths
+        t.getColumnModel().getColumn(0).setPreferredWidth(50);  t.getColumnModel().getColumn(0).setMaxWidth(55);
+        t.getColumnModel().getColumn(1).setPreferredWidth(220);
+        t.getColumnModel().getColumn(2).setPreferredWidth(110); t.getColumnModel().getColumn(2).setMaxWidth(130);
+        t.getColumnModel().getColumn(3).setPreferredWidth(90);  t.getColumnModel().getColumn(3).setMaxWidth(100);
+        t.getColumnModel().getColumn(4).setPreferredWidth(260);
 
         return t;
     }
@@ -414,11 +387,9 @@ public class AttendanceTeacherPanel extends JPanel {
 
     private void loadClasses() {
         try {
-            if (currentTeacher != null) {
-                allClasses = classService.findByTeacherId(currentTeacher.getTeacherId());
-            } else {
-                allClasses = classService.findAll();
-            }
+            allClasses = (currentTeacher != null)
+                    ? classService.findByTeacherId(currentTeacher.getTeacherId())
+                    : classService.findAll();
             renderClassList(allClasses);
         } catch (Exception e) {
             showError("Không thể tải danh sách lớp: " + e.getMessage());
@@ -452,179 +423,153 @@ public class AttendanceTeacherPanel extends JPanel {
         selectedClass = c;
         lblClassName.setText("Lớp: " + c.getClassName());
 
-        // Rebuild right panel với attendance content
         rightPanel.removeAll();
-        rightPanel.add(buildAttendanceContent(), BorderLayout.CENTER);
+        rightPanel.add(buildResultContent(), BorderLayout.CENTER);
         rightPanel.revalidate();
         rightPanel.repaint();
 
-        loadAttendanceSheet();
+        loadResultSheet();
     }
 
-    private void loadAttendanceSheet() {
+    private void loadResultSheet() {
         if (selectedClass == null) return;
-
-        LocalDate date = getSpinnerDate(datePicker);
-        lblDateDisplay.setText(date.format(LABEL_FMT));
-
-        // ── Chặn điểm danh cho buổi tương lai ────────────────────────────
-        if (date.isAfter(LocalDate.now())) {
-            tableModel.setRowCount(0);
-            currentSheet.clear();
-            statusLabel.setText("⚠ Không thể điểm danh cho buổi học chưa diễn ra.");
-            // Disable nút lưu & đánh dấu — enable lại khi chọn ngày hợp lệ
-            btnSave.setEnabled(false);
-            btnMarkAll.setEnabled(false);
-            updateStats();
-            return;
-        }
-        // Ngày hợp lệ → enable lại
-        btnSave.setEnabled(true);
-        btnMarkAll.setEnabled(true);
-
         try {
-            // Dùng service query trong 1 transaction riêng — tránh lazy load trên detached entity
             List<Student> enrolled = classService.findEnrolledStudents(selectedClass.getClassId());
-
             if (enrolled.isEmpty()) {
                 tableModel.setRowCount(0);
                 statusLabel.setText("Lớp chưa có học viên đăng ký.");
-                updateStats();
                 return;
             }
 
-            // Chuẩn bị sheet: load existing hoặc tạo mới Present
-            currentSheet = attendanceService.prepareAttendanceSheet(selectedClass, date, enrolled);
+            currentSheet = resultService.prepareResultSheet(selectedClass, enrolled);
 
-            // Render vào table
+            // Rebuild table model listener after reload
+            rebuildTableModelListeners();
+
             tableModel.setRowCount(0);
             for (int i = 0; i < currentSheet.size(); i++) {
-                Attendance a = currentSheet.get(i);
-                tableModel.addRow(new Object[]{
-                        i + 1,
-                        a.getStudent().getFullName(),
-                        a.getStatus(),
-                        a.getNote() != null ? a.getNote() : ""
-                });
+                Result res = currentSheet.get(i);
+                String scoreStr = res.getScore() != null
+                        ? res.getScore().stripTrailingZeros().toPlainString() : "";
+                String grade    = res.getGrade()   != null ? res.getGrade()   : "";
+                String comment  = res.getComment() != null ? res.getComment() : "";
+                tableModel.addRow(new Object[]{i + 1,
+                        res.getStudent().getFullName(), scoreStr, grade, comment});
             }
 
-            statusLabel.setText("Ngày: " + date.format(DATE_FMT)
-                    + "  |  " + currentSheet.size() + " học viên");
+            statusLabel.setText(enrolled.size() + " học viên");
             updateStats();
 
         } catch (Exception e) {
-            showError("Không thể tải danh sách điểm danh: " + e.getMessage());
+            showError("Không thể tải danh sách: " + e.getMessage());
         }
     }
 
-
-    private void markAll(String status) {
-        if (currentSheet.isEmpty()) return;
-        // Commit editing đang dở
-        if (table.isEditing()) table.getCellEditor().stopCellEditing();
-        for (int i = 0; i < tableModel.getRowCount(); i++) {
-            tableModel.setValueAt(status, i, 2);
+    /**
+     * Rebuild table listener sau mỗi lần reload để tránh listener leak.
+     * Listener tự động cập nhật cột Xếp loại khi Điểm thay đổi.
+     */
+    private void rebuildTableModelListeners() {
+        // Remove all existing listeners
+        for (javax.swing.event.TableModelListener l : tableModel.getTableModelListeners()) {
+            tableModel.removeTableModelListener(l);
         }
-        updateStats();
+        // Re-add single listener
+        tableModel.addTableModelListener(e -> {
+            if (e.getColumn() == 2 && e.getFirstRow() >= 0) {
+                int row = e.getFirstRow();
+                String scoreStr = (String) tableModel.getValueAt(row, 2);
+                String grade = "";
+                if (scoreStr != null && !scoreStr.isBlank()) {
+                    try {
+                        double d = Double.parseDouble(scoreStr.trim());
+                        grade = ResultService.autoGrade(d);
+                    } catch (NumberFormatException ignored) {}
+                }
+                // Temporarily remove listener to avoid recursion
+                javax.swing.event.TableModelListener[] listeners = tableModel.getTableModelListeners();
+                for (javax.swing.event.TableModelListener l : listeners) {
+                    tableModel.removeTableModelListener(l);
+                }
+                tableModel.setValueAt(grade, row, 3);
+                rebuildTableModelListeners(); // restore
+                updateStats();
+            }
+        });
     }
 
-    private void saveAttendance() {
+    private void saveResults() {
         if (currentSheet.isEmpty()) {
-            showWarning("Không có dữ liệu để lưu. Hãy tải danh sách trước.");
+            showWarning("Không có dữ liệu để lưu. Hãy chọn lớp trước.");
             return;
         }
-        // Commit editing đang dở
         if (table.isEditing()) table.getCellEditor().stopCellEditing();
 
-        // Đồng bộ lại status + note từ table vào currentSheet
+        // Sync table → currentSheet
         for (int i = 0; i < currentSheet.size(); i++) {
-            Attendance a = currentSheet.get(i);
-            String status = (String) tableModel.getValueAt(i, 2);
-            String note   = (String) tableModel.getValueAt(i, 3);
-            a.setStatus(status != null ? status : "Present");
-            a.setNote(note != null && !note.isBlank() ? note : null);
+            Result res = currentSheet.get(i);
+            String scoreStr = (String) tableModel.getValueAt(i, 2);
+            String grade    = (String) tableModel.getValueAt(i, 3);
+            String comment  = (String) tableModel.getValueAt(i, 4);
+
+            if (scoreStr != null && !scoreStr.isBlank()) {
+                try {
+                    res.setScore(new BigDecimal(scoreStr.trim()));
+                } catch (NumberFormatException ignored) {}
+            } else {
+                res.setScore(null);
+            }
+            res.setGrade(grade != null && !grade.isBlank() ? grade : null);
+            res.setComment(comment != null && !comment.isBlank() ? comment : null);
         }
 
         try {
-            attendanceService.saveAll(currentSheet);
-            showSuccess("Đã lưu điểm danh thành công ("
-                    + currentSheet.size() + " học viên).");
-            // Reload để lấy ID mới từ DB (cho các record vừa insert)
-            loadAttendanceSheet();
+            resultService.saveAll(currentSheet);
+            showSuccess("Đã lưu điểm thành công (" + currentSheet.size() + " học viên).");
+            loadResultSheet(); // reload để lấy ID mới nếu vừa insert
         } catch (Exception e) {
             showError("Lỗi khi lưu: " + e.getMessage());
         }
     }
 
-    private void updateStats() {
-        long present = 0, absent = 0, late = 0;
+    private void clearAll() {
+        int ok = JOptionPane.showConfirmDialog(this,
+                "Xóa trắng toàn bộ điểm đang hiển thị?\n(Chưa lưu xuống DB)",
+                "Xác nhận", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+        if (ok != JOptionPane.YES_OPTION) return;
+        if (table.isEditing()) table.getCellEditor().stopCellEditing();
         for (int i = 0; i < tableModel.getRowCount(); i++) {
-            String s = (String) tableModel.getValueAt(i, 2);
-            if      ("Present".equals(s)) present++;
-            else if ("Absent" .equals(s)) absent++;
-            else if ("Late"   .equals(s)) late++;
+            tableModel.setValueAt("", i, 2);
+            tableModel.setValueAt("", i, 3);
         }
-        statPresent.setText("Có mặt: " + present);
-        statAbsent .setText("Vắng: "   + absent);
-        statLate   .setText("Trễ: "    + late);
+        updateStats();
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────
-
-    private JSpinner buildDateSpinner(LocalDate initial) {
-        SpinnerDateModel model = new SpinnerDateModel(
-                java.sql.Date.valueOf(initial), null, null, java.util.Calendar.DAY_OF_MONTH);
-        JSpinner sp = new JSpinner(model);
-        sp.setEditor(new JSpinner.DateEditor(sp, "dd/MM/yyyy"));
-        sp.setFont(FONT_MAIN);
-        sp.setPreferredSize(new Dimension(120, 32));
-        return sp;
+    private void updateStats() {
+        long entered = 0;
+        long total   = tableModel.getRowCount();
+        for (int i = 0; i < total; i++) {
+            String s = (String) tableModel.getValueAt(i, 2);
+            if (s != null && !s.isBlank()) entered++;
+        }
+        lblStats.setText(String.format("Đã nhập: %d / %d học viên", entered, total));
+        lblStats.setForeground(entered == total && total > 0 ? GREEN : TEXT_MUTED);
     }
 
-    private LocalDate getSpinnerDate(JSpinner sp) {
-        java.util.Date d = (java.util.Date) sp.getValue();
-        return d.toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate();
+    // ── Color helpers ─────────────────────────────────────────────────────
+
+    private Color gradeColor(String grade) {
+        if (grade == null) return TEXT_MUTED;
+        return switch (grade) {
+            case "A+", "A", "A-" -> GREEN;
+            case "B+", "B", "B-" -> BLUE;
+            case "C"              -> AMBER;
+            case "D", "F"         -> RED;
+            default               -> TEXT_MUTED;
+        };
     }
 
-    private JLabel statBadge(String text, Color color) {
-        JLabel lbl = new JLabel(text);
-        lbl.setFont(FONT_BOLD);
-        lbl.setForeground(Color.WHITE);
-        lbl.setBackground(color);
-        lbl.setOpaque(true);
-        lbl.setBorder(new EmptyBorder(3, 10, 3, 10));
-        return lbl;
-    }
-
-    private JButton createPrimaryButton(String text) {
-        JButton btn = new JButton(text);
-        btn.setFont(FONT_BOLD);
-        btn.setForeground(Color.WHITE);
-        btn.setBackground(PRIMARY);
-        btn.setBorder(new EmptyBorder(7, 16, 7, 16));
-        btn.setFocusPainted(false);
-        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        btn.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseEntered(java.awt.event.MouseEvent e) { btn.setBackground(PRIMARY_H); }
-            public void mouseExited (java.awt.event.MouseEvent e) { btn.setBackground(PRIMARY);   }
-        });
-        return btn;
-    }
-
-    private JButton createSecondaryButton(String text) {
-        JButton btn = new JButton(text);
-        btn.setFont(FONT_MAIN);
-        btn.setForeground(TEXT_MAIN);
-        btn.setBackground(BG_CARD);
-        btn.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(BORDER_COL),
-                new EmptyBorder(6, 14, 6, 14)));
-        btn.setFocusPainted(false);
-        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        return btn;
-    }
-
-    private static Color statusColor(String s) {
+    private Color statusColor(String s) {
         if (s == null) return TEXT_MUTED;
         return switch (s) {
             case "Open", "Ongoing" -> GREEN;
@@ -634,14 +579,40 @@ public class AttendanceTeacherPanel extends JPanel {
         };
     }
 
+    // ── Button factories ──────────────────────────────────────────────────
+
+    private JButton createPrimaryButton(String text) {
+        JButton btn = new JButton(text);
+        btn.setFont(FONT_BOLD); btn.setForeground(Color.WHITE); btn.setBackground(PRIMARY);
+        btn.setBorder(new EmptyBorder(7, 16, 7, 16));
+        btn.setFocusPainted(false); btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btn.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseEntered(java.awt.event.MouseEvent e) { btn.setBackground(PRIMARY_H); }
+            public void mouseExited (java.awt.event.MouseEvent e) { btn.setBackground(PRIMARY); }
+        });
+        return btn;
+    }
+
+    private JButton createSecondaryButton(String text) {
+        JButton btn = new JButton(text);
+        btn.setFont(FONT_MAIN); btn.setForeground(TEXT_MAIN); btn.setBackground(BG_CARD);
+        btn.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(BORDER_COL),
+                new EmptyBorder(6, 14, 6, 14)));
+        btn.setFocusPainted(false); btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        return btn;
+    }
+
+    // ── Notifications ─────────────────────────────────────────────────────
+
     private void showSuccess(String msg) {
-        JOptionPane.showMessageDialog(this, msg, "Thành công",  JOptionPane.INFORMATION_MESSAGE);
+        JOptionPane.showMessageDialog(this, msg, "Thành công", JOptionPane.INFORMATION_MESSAGE);
     }
     private void showWarning(String msg) {
-        JOptionPane.showMessageDialog(this, msg, "Cảnh báo",    JOptionPane.WARNING_MESSAGE);
+        JOptionPane.showMessageDialog(this, msg, "Cảnh báo",   JOptionPane.WARNING_MESSAGE);
     }
     private void showError(String msg) {
-        JOptionPane.showMessageDialog(this, msg, "Lỗi",         JOptionPane.ERROR_MESSAGE);
+        JOptionPane.showMessageDialog(this, msg, "Lỗi",        JOptionPane.ERROR_MESSAGE);
     }
 }
 

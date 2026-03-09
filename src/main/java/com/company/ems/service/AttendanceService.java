@@ -133,7 +133,7 @@ public class AttendanceService extends AbstractBaseService<Attendance, Long> {
             List<Student> enrolledStudents) {
 
         try {
-            return txManager.runInTransaction(em -> {
+            List<Attendance> sheet = txManager.runInTransaction(em -> {
                 List<Attendance> existing =
                         attendanceRepository.findByClassAndDate(em, clazz.getClassId(), date);
 
@@ -144,18 +144,21 @@ public class AttendanceService extends AbstractBaseService<Attendance, Long> {
                 }
 
                 // Với mỗi học viên: nếu đã có record thì dùng lại, chưa có thì tạo mới Present
-                return enrolledStudents.stream().map(s -> {
-                    if (existingMap.containsKey(s.getStudentId())) {
-                        return existingMap.get(s.getStudentId());
+                List<Attendance> result = new java.util.ArrayList<>();
+                for (Student s : enrolledStudents) {
+                    Attendance a = existingMap.get(s.getStudentId());
+                    if (a == null) {
+                        a = new Attendance();
+                        a.setStudent(s);
+                        a.setClazz(clazz);
+                        a.setAttendDate(date);
+                        a.setStatus("Present");
                     }
-                    Attendance a = new Attendance();
-                    a.setStudent(s);
-                    a.setClazz(clazz);
-                    a.setAttendDate(date);
-                    a.setStatus("Present");
-                    return a;
-                }).toList();
+                    result.add(a);
+                }
+                return result;
             });
+            return sheet;
         } catch (Exception e) {
             throw new RuntimeException("Lỗi khi chuẩn bị phiếu điểm danh: " + e.getMessage(), e);
         }

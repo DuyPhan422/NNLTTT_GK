@@ -206,6 +206,12 @@ public class CoursePanel extends JPanel {
 
         sorter = new TableRowSorter<>(tableModel);
         t.setRowSorter(sorter);
+
+        t.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override public void mouseClicked(java.awt.event.MouseEvent e) {
+                if (e.getClickCount() == 2 && t.getSelectedRow() >= 0) editSelected();
+            }
+        });
         return t;
     }
 
@@ -214,7 +220,7 @@ public class CoursePanel extends JPanel {
             List<Course> list = courseService.findAll();
             tableModel.setRowCount(0);
             int[] idx = {1};
-            list.forEach(c -> {
+            list.forEach((Course c) -> {
                 String code = c.getCourseId() != null
                         ? String.format("KH%04d", c.getCourseId())
                         : "";

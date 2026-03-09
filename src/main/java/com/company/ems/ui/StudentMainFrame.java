@@ -2,6 +2,7 @@ package com.company.ems.ui;
 
 import com.company.ems.model.Student;
 import com.company.ems.service.*;
+import com.company.ems.ui.panels.attendance.AttendanceStudentPanel;
 import com.company.ems.ui.panels.student.StudentClassPanel;
 import com.company.ems.ui.panels.student.StudentTuitionPanel;
 
@@ -14,41 +15,46 @@ public class StudentMainFrame extends JFrame {
     private CardLayout cardLayout;
     private JLabel headerTitle;
 
-    private final StudentService studentService;
-    private final InvoiceService invoiceService;
-    private final PaymentService paymentService;
-    private final EnrollmentService enrollmentService;
-    private final ClassService classService;
-    private final Long loggedInStudentId;
+    private final StudentService     studentService;
+    private final InvoiceService     invoiceService;
+    private final PaymentService     paymentService;
+    private final EnrollmentService  enrollmentService;
+    private final ClassService       classService;
+    private final AttendanceService  attendanceService;
+    private final Long               loggedInStudentId;
+    private final Runnable           onLogout;
 
-    // ✅ Giữ reference để gọi loadData() khi switch tab
-    private StudentClassPanel classPanel;
-    private StudentTuitionPanel tuitionPanel;
+    // ── Giữ reference để gọi loadData() khi switch tab ──────────────────
+    private StudentClassPanel      classPanel;
+    private StudentTuitionPanel    tuitionPanel;
+    private AttendanceStudentPanel attendancePanel;
 
-    public StudentMainFrame(StudentService studentService, 
-                            InvoiceService invoiceService, 
-                            PaymentService paymentService, 
-                            EnrollmentService enrollmentService, 
+    public StudentMainFrame(StudentService studentService,
+                            InvoiceService invoiceService,
+                            PaymentService paymentService,
+                            EnrollmentService enrollmentService,
                             ClassService classService,
-                            Long loggedInStudentId) {
-        this.studentService = studentService;
-        this.invoiceService = invoiceService;
-        this.paymentService = paymentService;
+                            AttendanceService attendanceService,
+                            Long loggedInStudentId,
+                            Runnable onLogout) {
+        this.studentService    = studentService;
+        this.invoiceService    = invoiceService;
+        this.paymentService    = paymentService;
         this.enrollmentService = enrollmentService;
-        this.classService = classService;
+        this.classService      = classService;
+        this.attendanceService = attendanceService;
         this.loggedInStudentId = loggedInStudentId;
+        this.onLogout          = onLogout;
 
-        // Cấu hình cửa sổ (Đồng bộ kích thước với Admin)
         setTitle("EMS - Cổng Học Viên");
         setSize(1280, 760);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
         setLayout(new BorderLayout());
 
-        // 2. Main Content (Khu vực nội dung bên phải)
+        // ── Right area ───────────────────────────────────────────────────
         JPanel mainArea = new JPanel(new BorderLayout());
-        
-        // Header
+
         JPanel headerPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 20, 20));
         headerPanel.setBackground(Color.WHITE);
         headerPanel.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(226, 232, 240)));
@@ -58,52 +64,66 @@ public class StudentMainFrame extends JFrame {
         headerPanel.add(headerTitle);
         mainArea.add(headerPanel, BorderLayout.NORTH);
 
-        // Content panel dùng CardLayout
-        cardLayout = new CardLayout();
+        cardLayout   = new CardLayout();
         contentPanel = new JPanel(cardLayout);
         contentPanel.setBackground(new Color(248, 250, 252));
 
-        // Tab Hồ sơ
-        contentPanel.add(buildProfilePanel(studentService.findById(loggedInStudentId)), "profile");
-        
-        // ✅ Tab Lớp học - gán vào field
+        // ── Khởi tạo & đăng ký các tab ──────────────────────────────────
+        Student currentStudent = studentService.findById(loggedInStudentId);
+
+        // Tab 1 — Hồ sơ
+        contentPanel.add(buildProfilePanel(currentStudent), "profile");
+
+        // Tab 2 — Lớp học
         classPanel = new StudentClassPanel(
                 enrollmentService, classService, studentService, invoiceService, loggedInStudentId);
         contentPanel.add(classPanel, "my_classes");
-        
-        // ✅ Tab Học phí - gán vào field
-        tuitionPanel = new StudentTuitionPanel(invoiceService, paymentService, enrollmentService, studentService, loggedInStudentId);
+
+        // Tab 3 — Học phí
+        tuitionPanel = new StudentTuitionPanel(
+                invoiceService, paymentService, enrollmentService, studentService, loggedInStudentId);
         contentPanel.add(tuitionPanel, "tuition");
 
-        // ✅ Kết nối cross-refresh: khi đăng ký/hủy lớp => refresh cả tab học phí và ngược lại
-        Runnable refreshStudentPanels = () -> {
+        // Tab 4 — Điểm danh ✅ (nhúng panel đã có sẵn)
+        attendancePanel = new AttendanceStudentPanel(attendanceService, currentStudent);
+        contentPanel.add(attendancePanel, "attendance");
+
+        // Tab 5, 6 — Placeholder (hoàn thiện sau)
+        contentPanel.add(buildPlaceholder("Thời khóa biểu",
+                "🚧 Đang phát triển tính năng lịch học cá nhân..."), "schedule");
+        contentPanel.add(buildPlaceholder("Bảng điểm",
+                "🚧 Đang phát triển tính năng xem kết quả học tập..."), "results");
+
+        // ── Cross-refresh callback ───────────────────────────────────────
+        Runnable refreshAll = () -> {
             classPanel.loadData();
             tuitionPanel.loadData();
+            attendancePanel.loadData();
         };
-        classPanel.setOnDataChanged(refreshStudentPanels);
-        tuitionPanel.setOnDataChanged(refreshStudentPanels);
+        classPanel.setOnDataChanged(refreshAll);
+        tuitionPanel.setOnDataChanged(refreshAll);
 
-        // Auto-refresh mỗi 30 giây — đảm bảo dữ liệu luôn cập nhật kể cả khi không thao tác
-        javax.swing.Timer autoRefresh = new javax.swing.Timer(30_000, e -> refreshStudentPanels.run());
+        // Auto-refresh mỗi 30 giây
+        javax.swing.Timer autoRefresh = new javax.swing.Timer(30_000, e -> refreshAll.run());
         autoRefresh.setCoalesce(true);
         autoRefresh.start();
-        
-        // Các tab đang phát triển
-        contentPanel.add(buildPlaceholder("Thời khóa biểu", "🚧 Đang phát triển tính năng lịch học cá nhân..."), "schedule");
-        contentPanel.add(buildPlaceholder("Bảng điểm", "🚧 Đang phát triển tính năng xem kết quả học tập..."), "results");
-        
+
         mainArea.add(contentPanel, BorderLayout.CENTER);
         add(mainArea, BorderLayout.CENTER);
 
-        // 1. Sidebar - gọi SAU khi classPanel và tuitionPanel đã được khởi tạo
+        // Sidebar gọi SAU khi tất cả panel đã sẵn sàng
         add(buildSidebar(), BorderLayout.WEST);
     }
+
+    // ══════════════════════════════════════════════════════════════════════
+    //  SIDEBAR
+    // ══════════════════════════════════════════════════════════════════════
 
     private JPanel buildSidebar() {
         JPanel sidebar = new JPanel();
         sidebar.setLayout(new BoxLayout(sidebar, BoxLayout.Y_AXIS));
         sidebar.setPreferredSize(new Dimension(240, 0));
-        sidebar.setBackground(new Color(15, 23, 42)); 
+        sidebar.setBackground(new Color(15, 23, 42));
         sidebar.setBorder(BorderFactory.createEmptyBorder(20, 10, 20, 10));
 
         JLabel lblLogo = new JLabel("EMS STUDENT");
@@ -113,12 +133,14 @@ public class StudentMainFrame extends JFrame {
         sidebar.add(lblLogo);
         sidebar.add(Box.createRigidArea(new Dimension(0, 30)));
 
+        // {label, cardKey, headerTitle}
         String[][] menus = {
-                {"👤  Hồ sơ Cá nhân", "profile", "Hồ sơ Cá nhân"},
-                {"📚  Lớp học của tôi", "my_classes", "Lớp học của tôi"},
-                {"💲  Học phí & Biên lai", "tuition", "Tra cứu Học phí"},
-                {"📅  Thời khóa biểu", "schedule", "Thời khóa biểu"},
-                {"⭐  Kết quả học tập", "results", "Bảng điểm"}
+            {"👤  Hồ sơ Cá nhân",    "profile",    "Hồ sơ Cá nhân"},
+            {"📚  Lớp học của tôi",   "my_classes", "Lớp học của tôi"},
+            {"💲  Học phí & Biên lai","tuition",    "Tra cứu Học phí"},
+            {"✅  Điểm danh",         "attendance", "Chuyên cần"},
+            {"📅  Thời khóa biểu",    "schedule",   "Thời khóa biểu"},
+            {"⭐  Kết quả học tập",   "results",    "Bảng điểm"},
         };
 
         ButtonGroup group = new ButtonGroup();
@@ -136,11 +158,14 @@ public class StudentMainFrame extends JFrame {
             btn.addActionListener(e -> {
                 cardLayout.show(contentPanel, m[1]);
                 headerTitle.setText(m[2]);
-                // ✅ Tự động refresh khi bấm vào tab Lớp học hoặc Học phí
-                if (m[1].equals("my_classes")) classPanel.loadData();
-                if (m[1].equals("tuition"))    tuitionPanel.loadData();
+                // Refresh đúng panel khi chuyển tab
+                switch (m[1]) {
+                    case "my_classes" -> classPanel.loadData();
+                    case "tuition"    -> tuitionPanel.loadData();
+                    case "attendance" -> attendancePanel.loadData();
+                }
             });
-            
+
             group.add(btn);
             sidebar.add(btn);
             sidebar.add(Box.createRigidArea(new Dimension(0, 5)));
@@ -155,14 +180,24 @@ public class StudentMainFrame extends JFrame {
         btnLogout.setForeground(Color.WHITE);
         btnLogout.setBackground(new Color(220, 38, 38));
         btnLogout.setFocusPainted(false);
+        btnLogout.setBorderPainted(false);
+        btnLogout.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnLogout.addActionListener(e -> {
-            JOptionPane.showMessageDialog(this, "Đã đăng xuất hệ thống!");
-            dispose();
+            int ok = JOptionPane.showConfirmDialog(this,
+                    "Bạn có chắc muốn đăng xuất?", "Xác nhận", JOptionPane.YES_NO_OPTION);
+            if (ok == JOptionPane.YES_OPTION) {
+                dispose();
+                if (onLogout != null) onLogout.run();
+            }
         });
         sidebar.add(btnLogout);
 
         return sidebar;
     }
+
+    // ══════════════════════════════════════════════════════════════════════
+    //  PROFILE PANEL
+    // ══════════════════════════════════════════════════════════════════════
 
     private JPanel buildProfilePanel(Student s) {
         JPanel pnl = new JPanel(new FlowLayout(FlowLayout.LEFT, 30, 30));
@@ -177,21 +212,20 @@ public class StudentMainFrame extends JFrame {
         card.setBackground(Color.WHITE);
         card.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(new Color(226, 232, 240)),
-                BorderFactory.createEmptyBorder(30, 40, 30, 40)
-        ));
+                BorderFactory.createEmptyBorder(30, 40, 30, 40)));
 
-        Font lblFont = new Font("Segoe UI", Font.BOLD, 14);
+        Font lblFont = new Font("Segoe UI", Font.BOLD,  14);
         Font valFont = new Font("Segoe UI", Font.PLAIN, 15);
-        Color muted = new Color(100, 116, 139);
+        Color muted  = new Color(100, 116, 139);
 
         String[][] data = {
-                {"Mã Học viên:", "HV" + String.format("%04d", s.getStudentId())},
-                {"Họ và tên:", s.getFullName()},
-                {"Ngày sinh:", s.getDateOfBirth() != null ? s.getDateOfBirth().toString() : "---"},
-                {"Giới tính:", s.getGender() != null ? s.getGender() : "---"},
-                {"Số điện thoại:", s.getPhone() != null ? s.getPhone() : "---"},
-                {"Email:", s.getEmail() != null ? s.getEmail() : "---"},
-                {"Trạng thái:", s.getStatus()}
+            {"Mã Học viên:",   "HV" + String.format("%04d", s.getStudentId())},
+            {"Họ và tên:",     s.getFullName()},
+            {"Ngày sinh:",     s.getDateOfBirth() != null ? s.getDateOfBirth().toString() : "---"},
+            {"Giới tính:",     s.getGender()      != null ? s.getGender()                : "---"},
+            {"Số điện thoại:", s.getPhone()        != null ? s.getPhone()                : "---"},
+            {"Email:",         s.getEmail()        != null ? s.getEmail()                : "---"},
+            {"Trạng thái:",    s.getStatus()},
         };
 
         for (String[] row : data) {
@@ -204,11 +238,19 @@ public class StudentMainFrame extends JFrame {
         return pnl;
     }
 
+    // ══════════════════════════════════════════════════════════════════════
+    //  PLACEHOLDER
+    // ══════════════════════════════════════════════════════════════════════
+
     private JPanel buildPlaceholder(String title, String message) {
         JPanel p = new JPanel(new GridBagLayout());
         p.setBackground(new Color(248, 250, 252));
-        JLabel lbl = new JLabel("<html><div style='text-align:center;'><h2 style='color:#3b82f6;'>" + title + "</h2><p style='color:#64748b; font-size:14px;'>" + message + "</p></div></html>");
+        JLabel lbl = new JLabel("<html><div style='text-align:center;'>" +
+                "<h2 style='color:#3b82f6;'>" + title + "</h2>" +
+                "<p style='color:#64748b; font-size:14px;'>" + message + "</p>" +
+                "</div></html>");
         p.add(lbl);
         return p;
     }
 }
+

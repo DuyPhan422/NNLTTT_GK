@@ -215,7 +215,7 @@ public class AttendanceStudentPanel extends JPanel {
 
     // ── Data ──────────────────────────────────────────────────────────────
 
-    private void loadData() {
+    public void loadData() {
         if (currentStudent == null) return;
         try {
             allAttendances = attendanceService.findByStudentId(currentStudent.getStudentId());

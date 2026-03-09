@@ -188,6 +188,13 @@ public class TeacherPanel extends JPanel {
 
         sorter = new TableRowSorter<>(tableModel);
         t.setRowSorter(sorter);
+
+        // Double-click → mở dialog sửa
+        t.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override public void mouseClicked(java.awt.event.MouseEvent e) {
+                if (e.getClickCount() == 2 && t.getSelectedRow() >= 0) editSelected();
+            }
+        });
         return t;
     }
 
@@ -196,7 +203,7 @@ public class TeacherPanel extends JPanel {
             List<Teacher> list = teacherService.findAll();
             tableModel.setRowCount(0);
             int[] idx = {1};
-            list.forEach(t -> {
+            list.forEach((Teacher t) -> {
                 String code = t.getTeacherId() != null
                         ? String.format("GV%04d", t.getTeacherId())
                         : "";
