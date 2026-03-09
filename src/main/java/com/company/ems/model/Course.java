@@ -2,14 +2,17 @@ package com.company.ems.model;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
@@ -55,11 +58,6 @@ public class Course {
     @OneToMany(mappedBy = "course", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Class> classes;
 
-    @Override
-    public String toString() {
-        return courseName != null ? courseName : ("Course#" + courseId);
-    }
-
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
@@ -70,5 +68,21 @@ public class Course {
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
     }
-}
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Course other)) return false;
+        return courseId != null && courseId.equals(other.courseId);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(courseId);
+    }
+
+    @Override
+    public String toString() {
+        return courseName != null ? courseName : ("Course#" + courseId);
+    }
+}

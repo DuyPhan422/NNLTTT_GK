@@ -2,13 +2,16 @@ package com.company.ems.model;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
@@ -55,5 +58,21 @@ public class Room {
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
     }
-}
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Room other)) return false;
+        return roomId != null && roomId.equals(other.roomId);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(roomId);
+    }
+
+    @Override
+    public String toString() {
+        return roomName != null ? roomName : ("Room#" + roomId);
+    }
+}

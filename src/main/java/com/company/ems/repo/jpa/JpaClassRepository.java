@@ -1,6 +1,7 @@
 package com.company.ems.repo.jpa;
 
 import com.company.ems.model.Class;
+import com.company.ems.model.Student;
 import com.company.ems.repo.ClassRepository;
 import jakarta.persistence.EntityManager;
 
@@ -11,6 +12,37 @@ public class JpaClassRepository extends JpaBaseRepository<Class, Long> implement
 
     public JpaClassRepository() {
         super(Class.class);
+    }
+
+    /**
+     * Override findAll để JOIN FETCH course, teacher, room
+     * tránh LazyInitializationException khi session đã đóng.
+     */
+    @Override
+    public List<Class> findAll(EntityManager em) {
+        return em.createQuery(
+                "SELECT c FROM Class c " +
+                "LEFT JOIN FETCH c.course " +
+                "LEFT JOIN FETCH c.teacher " +
+                "LEFT JOIN FETCH c.room " +
+                "ORDER BY c.startDate", Class.class)
+                .getResultList();
+    }
+
+    /**
+     * Override findById để JOIN FETCH đầy đủ associations.
+     */
+    @Override
+    public Class findById(EntityManager em, Long id) {
+        var list = em.createQuery(
+                "SELECT c FROM Class c " +
+                "LEFT JOIN FETCH c.course " +
+                "LEFT JOIN FETCH c.teacher " +
+                "LEFT JOIN FETCH c.room " +
+                "WHERE c.classId = :id", Class.class)
+                .setParameter("id", id)
+                .getResultList();
+        return list.isEmpty() ? null : list.get(0);
     }
 
     @Override
@@ -32,8 +64,25 @@ public class JpaClassRepository extends JpaBaseRepository<Class, Long> implement
     @Override
     public List<Class> findByTeacherId(EntityManager em, Long teacherId) {
         return em.createQuery(
-                        "SELECT c FROM Class c WHERE c.teacher.teacherId = :teacherId ORDER BY c.startDate", Class.class)
+                        "SELECT c FROM Class c " +
+                        "LEFT JOIN FETCH c.course " +
+                        "LEFT JOIN FETCH c.teacher " +
+                        "LEFT JOIN FETCH c.room " +
+                        "WHERE c.teacher.teacherId = :teacherId ORDER BY c.startDate", Class.class)
                 .setParameter("teacherId", teacherId)
+                .getResultList();
+    }
+
+    @Override
+    public List<Student> findEnrolledStudents(EntityManager em, Long classId) {
+        // SELECT trực tiếp e.student — Hibernate load đầy đủ Student entity trong 1 query
+        return em.createQuery(
+                "SELECT s FROM Enrollment e " +
+                "JOIN e.student s " +
+                "WHERE e.clazz.classId = :classId " +
+                "AND e.status = 'Enrolled' " +
+                "ORDER BY s.fullName", Student.class)
+                .setParameter("classId", classId)
                 .getResultList();
     }
 

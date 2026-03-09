@@ -1,25 +1,20 @@
 package com.company.ems.ui.panels;
 
-import com.company.ems.model.Teacher;
-import com.company.ems.service.TeacherService;
-import com.company.ems.ui.UI;
+import com.company.ems.model.Room;
+import com.company.ems.service.RoomService;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
 import javax.swing.table.TableRowSorter;
 import java.awt.*;
-import java.awt.event.KeyAdapter;
-import java.awt.event.KeyEvent;
 import java.util.List;
+import java.util.Objects;
 
 /**
- * Panel quản lý Giáo viên — áp dụng cùng kiến trúc và design với StudentPanel.
- * Tuân thủ SOLID bằng cách:
- * - Tách form nhập liệu ra TeacherFormDialog (SRP).
- * - Phụ thuộc vào abstraction TeacherService, không thao tác trực tiếp EntityManager (DIP).
+ * Panel quản lý Phòng học — CRUD đầy đủ.
  */
-public class TeacherPanel extends JPanel {
+public class RoomPanel extends JPanel {
 
     private static final Color BG_PAGE       = new Color(248, 250, 252);
     private static final Color BG_CARD       = Color.WHITE;
@@ -38,25 +33,24 @@ public class TeacherPanel extends JPanel {
     private static final Font FONT_SMALL = new Font("Segoe UI", Font.PLAIN, 12);
 
     private static final String[] COLUMNS = {
-            "ID", "STT", "Mã GV", "Họ và tên", "Điện thoại", "Email", "Chuyên môn", "Trạng thái"
+            "ID", "STT", "Mã phòng", "Tên phòng", "Sức chứa", "Vị trí", "Trạng thái"
     };
 
-    private final TeacherService teacherService;
+    private final RoomService roomService;
     private final DefaultTableModel tableModel;
     private final JTable table;
     private final JLabel statusLabel;
     private final JTextField searchField;
+    private final JComboBox<String> filterStatus;
     private TableRowSorter<DefaultTableModel> sorter;
-    private Runnable onDataChanged;
 
-    public void setOnDataChanged(Runnable r) { this.onDataChanged = r; }
-
-    public TeacherPanel(TeacherService teacherService) {
-        this.teacherService = teacherService;
-        this.tableModel     = buildTableModel();
-        this.table          = buildTable();
-        this.statusLabel    = new JLabel();
-        this.searchField    = new JTextField();
+    public RoomPanel(RoomService roomService) {
+        this.roomService = roomService;
+        this.tableModel  = buildTableModel();
+        this.table       = buildTable();
+        this.statusLabel = new JLabel();
+        this.searchField = new JTextField();
+        this.filterStatus = new JComboBox<>(new String[]{"Tất cả", "Active", "Inactive"});
 
         setLayout(new BorderLayout());
         setBackground(BG_PAGE);
@@ -69,26 +63,36 @@ public class TeacherPanel extends JPanel {
         loadData();
     }
 
+    // ── Build UI ──────────────────────────────────────────────────────────
+
     private JPanel buildToolbar() {
         JPanel toolbar = new JPanel(new BorderLayout(12, 0));
         toolbar.setOpaque(false);
         toolbar.setBorder(BorderFactory.createEmptyBorder(0, 0, 16, 0));
 
-        searchField.setPreferredSize(new Dimension(300, 38));
+        searchField.setPreferredSize(new Dimension(260, 38));
         searchField.setFont(FONT_MAIN);
         searchField.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(BORDER_COLOR),
                 BorderFactory.createEmptyBorder(4, 10, 4, 10)));
-        searchField.putClientProperty("JTextField.placeholderText", "Tìm theo tên, chuyên môn, số điện thoại...");
-        searchField.addKeyListener(new KeyAdapter() {
-            @Override public void keyReleased(KeyEvent e) { filterTable(searchField.getText().trim()); }
+        searchField.putClientProperty("JTextField.placeholderText", "Tìm theo tên phòng hoặc vị trí...");
+        searchField.addKeyListener(new java.awt.event.KeyAdapter() {
+            @Override public void keyReleased(java.awt.event.KeyEvent e) { applyFilters(); }
         });
+
+        filterStatus.setFont(FONT_MAIN);
+        filterStatus.addActionListener(e -> applyFilters());
+
+        JPanel filters = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        filters.setOpaque(false);
+        filters.add(searchField);
+        filters.add(filterStatus);
 
         JButton addBtn = createPrimaryButton("+ Thêm mới");
         addBtn.addActionListener(e -> openDialog(null));
 
-        toolbar.add(searchField, BorderLayout.WEST);
-        toolbar.add(addBtn,      BorderLayout.EAST);
+        toolbar.add(filters, BorderLayout.WEST);
+        toolbar.add(addBtn,  BorderLayout.EAST);
         return toolbar;
     }
 
@@ -126,10 +130,11 @@ public class TeacherPanel extends JPanel {
     private DefaultTableModel buildTableModel() {
         return new DefaultTableModel(COLUMNS, 0) {
             @Override public boolean isCellEditable(int r, int c) { return false; }
-            @Override public Class<?> getColumnClass(int c) {
+            @Override public java.lang.Class<?> getColumnClass(int c) {
                 return switch (c) {
-                    case 0 -> Long.class;    // hidden ID
-                    case 1 -> Integer.class; // STT
+                    case 0 -> Long.class;
+                    case 1 -> Integer.class;
+                    case 4 -> Integer.class;
                     default -> String.class;
                 };
             }
@@ -150,7 +155,6 @@ public class TeacherPanel extends JPanel {
         t.setFont(FONT_MAIN);
         t.setRowHeight(40);
         t.setShowGrid(false);
-        t.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
         t.setIntercellSpacing(new Dimension(0, 0));
         t.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         t.setBackground(BG_CARD);
@@ -162,34 +166,20 @@ public class TeacherPanel extends JPanel {
         header.setPreferredSize(new Dimension(0, 44));
         header.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, BORDER_COLOR));
         var baseRenderer = header.getDefaultRenderer();
-        header.setDefaultRenderer((tbl, value, isSelected, hasFocus, row, col) -> {
-            Component comp = baseRenderer.getTableCellRendererComponent(tbl, value, isSelected, hasFocus, row, col);
-            if (comp instanceof JLabel lbl) {
-                lbl.setHorizontalAlignment(SwingConstants.LEFT);
-            }
+        header.setDefaultRenderer((tbl, value, isSel, hasFocus, row, col) -> {
+            Component comp = baseRenderer.getTableCellRendererComponent(tbl, value, isSel, hasFocus, row, col);
+            if (comp instanceof JLabel lbl) lbl.setHorizontalAlignment(SwingConstants.LEFT);
             return comp;
         });
 
-        // Ẩn cột ID kỹ thuật
+        // Ẩn cột ID
         t.getColumnModel().getColumn(0).setMinWidth(0);
         t.getColumnModel().getColumn(0).setMaxWidth(0);
         t.getColumnModel().getColumn(0).setWidth(0);
-        UI.alignColumn(t, 1, SwingConstants.LEFT);
-
-        // ── Độ rộng cột ────────────────────────────────
-        var cm = t.getColumnModel();
-        cm.getColumn(1).setMinWidth(40);  cm.getColumn(1).setMaxWidth(55);   cm.getColumn(1).setPreferredWidth(50);  // STT
-        cm.getColumn(2).setMinWidth(70);  cm.getColumn(2).setMaxWidth(100);  cm.getColumn(2).setPreferredWidth(88);  // Mã GV
-        cm.getColumn(3).setPreferredWidth(180);                                                                        // Họ và tên
-        cm.getColumn(4).setMinWidth(90);  cm.getColumn(4).setMaxWidth(140);  cm.getColumn(4).setPreferredWidth(115); // Điện thoại
-        cm.getColumn(5).setPreferredWidth(170);                                                                        // Email
-        cm.getColumn(6).setPreferredWidth(150);                                                                        // Chuyên môn
-        cm.getColumn(7).setMinWidth(90);  cm.getColumn(7).setMaxWidth(130);  cm.getColumn(7).setPreferredWidth(110); // Trạng thái
 
         sorter = new TableRowSorter<>(tableModel);
         t.setRowSorter(sorter);
 
-        // Double-click → mở dialog sửa
         t.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override public void mouseClicked(java.awt.event.MouseEvent e) {
                 if (e.getClickCount() == 2 && t.getSelectedRow() >= 0) editSelected();
@@ -198,97 +188,103 @@ public class TeacherPanel extends JPanel {
         return t;
     }
 
-    public void loadData() {
+    // ── Data ──────────────────────────────────────────────────────────────
+
+    private void loadData() {
         try {
-            List<Teacher> list = teacherService.findAll();
+            List<Room> list = roomService.findAll();
             tableModel.setRowCount(0);
-            int[] idx = {1};
-            list.forEach((Teacher t) -> {
-                String code = t.getTeacherId() != null
-                        ? String.format("GV%04d", t.getTeacherId())
-                        : "";
-                tableModel.addRow(new Object[]{
-                        t.getTeacherId(),
-                        idx[0]++,
-                        code,
-                        t.getFullName(),
-                        t.getPhone()     != null ? t.getPhone()     : "",
-                        t.getEmail()     != null ? t.getEmail()     : "",
-                        t.getSpecialty() != null ? t.getSpecialty() : "",
-                        t.getStatus()
-                });
-            });
-            statusLabel.setText("Tổng: " + list.size() + " giáo viên");
-            SwingUtilities.invokeLater(() -> UI.autoResizeColumns(table));
+
+            var index = new java.util.concurrent.atomic.AtomicInteger(1);
+            list.stream()
+                .map(r -> new Object[]{
+                        r.getRoomId(),
+                        index.getAndIncrement(),
+                        r.getRoomId() != null ? String.format("P%03d", r.getRoomId()) : "",
+                        r.getRoomName(),
+                        r.getCapacity() != null ? r.getCapacity() : 0,
+                        r.getLocation() != null ? r.getLocation() : "",
+                        r.getStatus()
+                })
+                .forEach(tableModel::addRow);
+
+            statusLabel.setText("Tổng: " + list.size() + " phòng học");
+            applyFilters();
         } catch (Exception e) {
             showError("Không thể tải dữ liệu: " + e.getMessage());
         }
     }
 
-    private void filterTable(String keyword) {
-        sorter.setRowFilter(keyword.isEmpty() ? null
-                : RowFilter.regexFilter("(?i)" + keyword, 3, 4, 5, 6));
-        statusLabel.setText("Hiển thị: " + table.getRowCount() + " bản ghi");
+    private void applyFilters() {
+        String keyword = searchField.getText().trim().toLowerCase();
+        String status  = (String) filterStatus.getSelectedItem();
+
+        sorter.setRowFilter(new RowFilter<>() {
+            @Override
+            public boolean include(Entry<? extends DefaultTableModel, ? extends Integer> entry) {
+                String name      = entry.getStringValue(3).toLowerCase();
+                String location  = entry.getStringValue(5).toLowerCase();
+                String statusVal = entry.getStringValue(6);
+
+                boolean matchKw     = keyword.isEmpty() || name.contains(keyword) || location.contains(keyword);
+                boolean matchStatus = "Tất cả".equals(status) || statusVal.equals(status);
+                return matchKw && matchStatus;
+            }
+        });
+        statusLabel.setText("Hiển thị: " + table.getRowCount() + " phòng học");
     }
 
     private void editSelected() {
         int viewRow = table.getSelectedRow();
-        if (viewRow < 0) {
-            showWarning("Vui lòng chọn một giáo viên để sửa.");
-            return;
-        }
+        if (viewRow < 0) { showWarning("Vui lòng chọn một phòng để sửa."); return; }
         int modelRow = table.convertRowIndexToModel(viewRow);
         Long id = (Long) tableModel.getValueAt(modelRow, 0);
-        openDialog(teacherService.findById(id));
+        openDialog(roomService.findById(id));
     }
 
     private void deleteSelected() {
         int viewRow = table.getSelectedRow();
-        if (viewRow < 0) {
-            showWarning("Vui lòng chọn một giáo viên để xóa.");
-            return;
-        }
+        if (viewRow < 0) { showWarning("Vui lòng chọn một phòng để xóa."); return; }
         int modelRow = table.convertRowIndexToModel(viewRow);
-        String name = (String) tableModel.getValueAt(modelRow, 1);
         Long   id   = (Long)   tableModel.getValueAt(modelRow, 0);
+        String name = (String) tableModel.getValueAt(modelRow, 3);
 
         int ok = JOptionPane.showConfirmDialog(this,
-                "Bạn có chắc muốn xóa giáo viên \"" + name + "\"?",
+                "Bạn có chắc muốn xóa phòng \"" + name + "\"?\n" +
+                "Lưu ý: chỉ xóa được nếu phòng chưa có lịch học liên kết.",
                 "Xác nhận xóa", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
         if (ok != JOptionPane.YES_OPTION) return;
 
         try {
-            teacherService.delete(id);
-            showSuccess("Đã xóa giáo viên \"" + name + "\" thành công.");
-            notifyDataChanged();
+            roomService.delete(id);
+            loadData();
+            showSuccess("Đã xóa phòng \"" + name + "\" thành công.");
         } catch (Exception e) {
             showError("Không thể xóa: " + e.getMessage());
         }
     }
 
-    private void openDialog(Teacher existing) {
+    private void openDialog(Room existing) {
         Frame owner = (Frame) SwingUtilities.getWindowAncestor(this);
-        TeacherFormDialog dlg = new TeacherFormDialog(owner, existing);
+        RoomFormDialog dlg = new RoomFormDialog(owner, existing);
         dlg.setVisible(true);
         if (!dlg.isSaved()) return;
 
         try {
             if (existing != null) {
-                teacherService.update(dlg.getTeacher());
-                showSuccess("Cập nhật giáo viên thành công.");
+                roomService.update(dlg.getRoom());
+                showSuccess("Cập nhật phòng học thành công.");
             } else {
-                teacherService.save(dlg.getTeacher());
-                showSuccess("Thêm giáo viên mới thành công.");
+                roomService.save(dlg.getRoom());
+                showSuccess("Thêm phòng học mới thành công.");
             }
-            notifyDataChanged();
+            loadData();
         } catch (Exception e) {
             showError("Lỗi: " + e.getMessage());
         }
     }
 
-    private void notifyDataChanged() {
-        if (onDataChanged != null) onDataChanged.run(); else loadData();
-    }
+    // ── Button helpers ────────────────────────────────────────────────────
 
     private JButton createPrimaryButton(String text) {
         JButton btn = new JButton(text);

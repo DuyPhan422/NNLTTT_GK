@@ -27,8 +27,8 @@
       <property name="jakarta.persistence.jdbc.url"
                 value="jdbc:mysql://localhost:3306/mis_language_center?useSSL=false&amp;allowPublicKeyRetrieval=true&amp;serverTimezone=Asia/Ho_Chi_Minh"/>
       
-      <property name="jakarta.persistence.jdbc.user" value="duyphan42"/>
-      <property name="jakarta.persistence.jdbc.password" value="40938813dD#"/>
+      <property name="jakarta.persistence.jdbc.user" value="root"/>
+      <property name="jakarta.persistence.jdbc.password" value="root"/>
 
       <property name="hibernate.dialect" value="org.hibernate.dialect.MySQLDialect"/>
       <property name="hibernate.show_sql" value="true"/>

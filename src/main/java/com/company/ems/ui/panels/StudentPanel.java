@@ -209,6 +209,13 @@ public class StudentPanel extends JPanel {
 
         sorter = new TableRowSorter<>(tableModel);
         t.setRowSorter(sorter);
+
+        // Double-click → mở dialog sửa
+        t.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override public void mouseClicked(java.awt.event.MouseEvent e) {
+                if (e.getClickCount() == 2 && t.getSelectedRow() >= 0) editSelected();
+            }
+        });
         return t;
     }
 
@@ -221,7 +228,7 @@ public class StudentPanel extends JPanel {
             List<Student> list = studentService.findAll();
             tableModel.setRowCount(0);
             int[] idx = {1};
-            list.forEach(s -> {
+            list.forEach((Student s) -> {
                 String code = s.getStudentId() != null
                         ? String.format("HV%04d", s.getStudentId())
                         : "";

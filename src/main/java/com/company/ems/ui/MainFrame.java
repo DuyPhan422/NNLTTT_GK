@@ -3,7 +3,8 @@ package com.company.ems.ui;
 import com.company.ems.service.*;
 import com.company.ems.ui.components.HeaderPanel;
 import com.company.ems.ui.components.SidebarPanel;
-import com.company.ems.ui.panels.*; // Import các panel từ package panels
+import com.company.ems.ui.panels.*;
+import com.company.ems.ui.panels.attendance.AttendanceAdminPanel;
 
 import javax.swing.*;
 import java.awt.*;
@@ -17,12 +18,13 @@ public class MainFrame extends JFrame {
     private final CardLayout cardLayout;
 
     // ── Tham chiếu đến các panel để có thể refresh ──
-    private StudentPanel    studentPanel;
-    private TeacherPanel    teacherPanel;
-    private CoursePanel     coursePanel;
-    private ClassPanel      classPanel;
-    private EnrollmentPanel enrollmentPanel;
-    private TuitionPanel    tuitionPanel;
+    private final StudentPanel    studentPanel;
+    private final TeacherPanel    teacherPanel;
+    private final CoursePanel     coursePanel;
+    private final ClassPanel      classPanel;
+    private final EnrollmentPanel enrollmentPanel;
+    private final TuitionPanel    tuitionPanel;
+    private final StaffPanel      staffPanel;
 
     private static final Map<String, String[]> PAGE_META = new HashMap<>();
     static {
@@ -45,8 +47,11 @@ public class MainFrame extends JFrame {
                      StaffService staffService,
                      ClassService classService,
                      EnrollmentService enrollmentService,
-                     InvoiceService invoiceService, // Thêm để tự động tạo hóa đơn
-                     PaymentService paymentService) { // Thêm để quản lý thanh toán
+                     InvoiceService invoiceService,
+                     PaymentService paymentService,
+                     ScheduleService scheduleService,
+                     AttendanceService attendanceService,
+                     Runnable onLogout) {
 
         setTitle("Language Center Management System - ADMIN");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -55,11 +60,14 @@ public class MainFrame extends JFrame {
         setLocationRelativeTo(null);
         setLayout(new BorderLayout());
 
-        // Sidebar điều hướng
-        SidebarPanel sidebar = new SidebarPanel(this::navigateTo);
+        // Sidebar — truyền onLogout để nút Đăng xuất hoạt động
+        SidebarPanel sidebar = new SidebarPanel(this::navigateTo, () -> {
+            dispose();
+            if (onLogout != null) onLogout.run();
+        });
         add(sidebar, BorderLayout.WEST);
 
-        // Vùng nội dung bên phải
+        // Vùng bên phải = Header + Content
         JPanel rightPanel = new JPanel(new BorderLayout());
         rightPanel.setBackground(new Color(248, 250, 252));
 
@@ -73,26 +81,29 @@ public class MainFrame extends JFrame {
         // ============================================
         // ĐĂNG KÝ CÁC PANEL CHÍNH
         // ============================================
-        
-        // 1. Quản lý cơ bản
+
+        // 1. Khởi tạo và GÁN vào biến thành viên để có thể gọi loadData() & setOnDataChanged()
         studentPanel    = new StudentPanel(studentService);
         teacherPanel    = new TeacherPanel(teacherService);
         coursePanel     = new CoursePanel(courseService);
         classPanel      = new ClassPanel(classService, courseService, teacherService, roomService, enrollmentService, invoiceService);
-        contentPanel.add(studentPanel, "students");
-        contentPanel.add(teacherPanel, "teachers");
-        contentPanel.add(coursePanel,  "courses");
-        contentPanel.add(classPanel,   "classes");
-        
-        // 2. ✨ Ghi danh học viên (Tự động sync Invoice)
         enrollmentPanel = new EnrollmentPanel(enrollmentService, studentService, classService, invoiceService);
-        contentPanel.add(enrollmentPanel, "enrollments");
-        
-        // 3. ✨ Thu học phí & In biên lai
-        tuitionPanel = new TuitionPanel(enrollmentService, invoiceService, paymentService, studentService, true, null);
-        contentPanel.add(tuitionPanel, "payments");
+        tuitionPanel    = new TuitionPanel(enrollmentService, invoiceService, paymentService, studentService, true, null);
+        staffPanel      = new StaffPanel(staffService);
 
-        // 4. Kết nối callback refresh toàn bộ sau khi tạo xong tất cả panel
+        // 2. Đăng ký vào CardLayout
+        contentPanel.add(studentPanel,    "students");
+        contentPanel.add(teacherPanel,    "teachers");
+        contentPanel.add(coursePanel,     "courses");
+        contentPanel.add(classPanel,      "classes");
+        contentPanel.add(enrollmentPanel, "enrollments");
+        contentPanel.add(tuitionPanel,    "payments");
+        contentPanel.add(new RoomPanel(roomService), "rooms");
+        contentPanel.add(new ScheduleManagerPanel(classService, scheduleService, roomService), "schedules");
+        contentPanel.add(staffPanel, "staffs");
+        contentPanel.add(new AttendanceAdminPanel(attendanceService, classService, studentService), "attendances");
+
+        // 3. Kết nối callback refresh toàn bộ sau khi tạo xong tất cả panel
         Runnable refreshAll = this::refreshAllPanels;
         studentPanel.setOnDataChanged(refreshAll);
         teacherPanel.setOnDataChanged(refreshAll);
@@ -100,14 +111,19 @@ public class MainFrame extends JFrame {
         classPanel.setOnDataChanged(refreshAll);
         enrollmentPanel.setOnDataChanged(refreshAll);
         tuitionPanel.setOnDataChanged(refreshAll);
+        staffPanel.setOnDataChanged(refreshAll);
 
-        // 5. Auto-refresh mỗi 30 giây — đảm bảo dữ liệu luôn mới kể cả khi không thao tác
+        // 4. Auto-refresh mỗi 30 giây — đảm bảo dữ liệu luôn mới kể cả khi không thao tác
         javax.swing.Timer autoRefresh = new javax.swing.Timer(30_000, e -> refreshAllPanels());
         autoRefresh.setCoalesce(true);
         autoRefresh.start();
 
-        // 4. Placeholder cho các chức năng còn lại
-        java.util.Set<String> handled = java.util.Set.of("students", "teachers", "courses", "classes", "enrollments", "payments");
+        // 5. Placeholder cho các chức năng chưa có panel thật
+        java.util.Set<String> handled = java.util.Set.of(
+                "students", "teachers", "courses", "classes",
+                "enrollments", "payments", "rooms", "schedules",
+                "staffs", "attendances"
+        );
         PAGE_META.forEach((key, meta) -> {
             if (!handled.contains(key)) contentPanel.add(buildPlaceholder(meta[0]), key);
         });
@@ -126,12 +142,13 @@ public class MainFrame extends JFrame {
 
     /** Refresh dữ liệu tất cả panel — được gọi mỗi khi có thay đổi ở bất kỳ panel nào. */
     private void refreshAllPanels() {
-        if (studentPanel    != null) studentPanel.loadData();
-        if (teacherPanel    != null) teacherPanel.loadData();
-        if (coursePanel     != null) coursePanel.loadData();
-        if (classPanel      != null) classPanel.loadData();
-        if (enrollmentPanel != null) enrollmentPanel.loadData();
-        if (tuitionPanel    != null) tuitionPanel.loadData();
+        studentPanel.loadData();
+        teacherPanel.loadData();
+        coursePanel.loadData();
+        classPanel.loadData();
+        enrollmentPanel.loadData();
+        tuitionPanel.loadData();
+        staffPanel.loadData();
     }
 
     private JPanel buildPlaceholder(String title) {

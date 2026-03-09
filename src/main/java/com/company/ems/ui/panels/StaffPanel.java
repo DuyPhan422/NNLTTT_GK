@@ -1,7 +1,7 @@
 package com.company.ems.ui.panels;
 
-import com.company.ems.model.Teacher;
-import com.company.ems.service.TeacherService;
+import com.company.ems.model.Staff;
+import com.company.ems.service.StaffService;
 import com.company.ems.ui.UI;
 
 import javax.swing.*;
@@ -14,13 +14,15 @@ import java.awt.event.KeyEvent;
 import java.util.List;
 
 /**
- * Panel quản lý Giáo viên — áp dụng cùng kiến trúc và design với StudentPanel.
- * Tuân thủ SOLID bằng cách:
- * - Tách form nhập liệu ra TeacherFormDialog (SRP).
- * - Phụ thuộc vào abstraction TeacherService, không thao tác trực tiếp EntityManager (DIP).
+ * Panel quản lý Nhân viên — CRUD đầy đủ, áp dụng cùng kiến trúc với TeacherPanel/StudentPanel.
+ * Tuân thủ SOLID:
+ *  - SRP: form nhập liệu tách riêng ở StaffFormDialog.
+ *  - DIP: phụ thuộc vào abstraction StaffService.
+ *  - OCP: mở rộng qua callback onDataChanged mà không sửa class.
  */
-public class TeacherPanel extends JPanel {
+public class StaffPanel extends JPanel {
 
+    // ── Design tokens ─────────────────────────────────────────────────────
     private static final Color BG_PAGE       = new Color(248, 250, 252);
     private static final Color BG_CARD       = Color.WHITE;
     private static final Color BORDER_COLOR  = new Color(226, 232, 240);
@@ -34,29 +36,37 @@ public class TeacherPanel extends JPanel {
     private static final Color ROW_SELECT    = new Color(219, 234, 254);
 
     private static final Font FONT_MAIN  = new Font("Segoe UI", Font.PLAIN, 13);
-    private static final Font FONT_BOLD  = new Font("Segoe UI", Font.BOLD, 13);
+    private static final Font FONT_BOLD  = new Font("Segoe UI", Font.BOLD,  13);
     private static final Font FONT_SMALL = new Font("Segoe UI", Font.PLAIN, 12);
 
     private static final String[] COLUMNS = {
-            "ID", "STT", "Mã GV", "Họ và tên", "Điện thoại", "Email", "Chuyên môn", "Trạng thái"
+        "ID", "STT", "Mã NV", "Họ và tên", "Vai trò", "Điện thoại", "Email", "Trạng thái"
     };
 
-    private final TeacherService teacherService;
-    private final DefaultTableModel tableModel;
-    private final JTable table;
-    private final JLabel statusLabel;
-    private final JTextField searchField;
-    private TableRowSorter<DefaultTableModel> sorter;
-    private Runnable onDataChanged;
+    // ── Dependencies ──────────────────────────────────────────────────────
+    private final StaffService staffService;
+
+    // ── UI ────────────────────────────────────────────────────────────────
+    private final DefaultTableModel            tableModel;
+    private final JTable                       table;
+    private final JLabel                       statusLabel;
+    private final JTextField                   searchField;
+    private final JComboBox<String>            filterRole;
+    private       TableRowSorter<DefaultTableModel> sorter;
+    private       Runnable                     onDataChanged;
 
     public void setOnDataChanged(Runnable r) { this.onDataChanged = r; }
 
-    public TeacherPanel(TeacherService teacherService) {
-        this.teacherService = teacherService;
-        this.tableModel     = buildTableModel();
-        this.table          = buildTable();
-        this.statusLabel    = new JLabel();
-        this.searchField    = new JTextField();
+    // ── Constructor ───────────────────────────────────────────────────────
+    public StaffPanel(StaffService staffService) {
+        this.staffService = staffService;
+        this.tableModel   = buildTableModel();
+        this.table        = buildTable();
+        this.statusLabel  = new JLabel();
+        this.searchField  = new JTextField();
+        this.filterRole   = new JComboBox<>(new String[]{
+            "Tất cả", "Consultant", "Accountant", "Manager", "Other"
+        });
 
         setLayout(new BorderLayout());
         setBackground(BG_PAGE);
@@ -69,26 +79,37 @@ public class TeacherPanel extends JPanel {
         loadData();
     }
 
+    // ── Build UI ──────────────────────────────────────────────────────────
+
     private JPanel buildToolbar() {
         JPanel toolbar = new JPanel(new BorderLayout(12, 0));
         toolbar.setOpaque(false);
         toolbar.setBorder(BorderFactory.createEmptyBorder(0, 0, 16, 0));
 
-        searchField.setPreferredSize(new Dimension(300, 38));
+        searchField.setPreferredSize(new Dimension(280, 38));
         searchField.setFont(FONT_MAIN);
         searchField.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(BORDER_COLOR),
                 BorderFactory.createEmptyBorder(4, 10, 4, 10)));
-        searchField.putClientProperty("JTextField.placeholderText", "Tìm theo tên, chuyên môn, số điện thoại...");
+        searchField.putClientProperty("JTextField.placeholderText",
+                "Tìm theo tên, vai trò, số điện thoại...");
         searchField.addKeyListener(new KeyAdapter() {
-            @Override public void keyReleased(KeyEvent e) { filterTable(searchField.getText().trim()); }
+            @Override public void keyReleased(KeyEvent e) { applyFilters(); }
         });
+
+        filterRole.setFont(FONT_MAIN);
+        filterRole.addActionListener(e -> applyFilters());
+
+        JPanel filters = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        filters.setOpaque(false);
+        filters.add(searchField);
+        filters.add(filterRole);
 
         JButton addBtn = createPrimaryButton("+ Thêm mới");
         addBtn.addActionListener(e -> openDialog(null));
 
-        toolbar.add(searchField, BorderLayout.WEST);
-        toolbar.add(addBtn,      BorderLayout.EAST);
+        toolbar.add(filters, BorderLayout.WEST);
+        toolbar.add(addBtn,  BorderLayout.EAST);
         return toolbar;
     }
 
@@ -123,6 +144,8 @@ public class TeacherPanel extends JPanel {
         return bar;
     }
 
+    // ── Table ─────────────────────────────────────────────────────────────
+
     private DefaultTableModel buildTableModel() {
         return new DefaultTableModel(COLUMNS, 0) {
             @Override public boolean isCellEditable(int r, int c) { return false; }
@@ -141,7 +164,8 @@ public class TeacherPanel extends JPanel {
             @Override
             public Component prepareRenderer(javax.swing.table.TableCellRenderer r, int row, int col) {
                 Component c = super.prepareRenderer(r, row, col);
-                c.setBackground(isRowSelected(row) ? ROW_SELECT : (row % 2 == 0 ? ROW_EVEN : ROW_ODD));
+                c.setBackground(isRowSelected(row) ? ROW_SELECT
+                        : (row % 2 == 0 ? ROW_EVEN : ROW_ODD));
                 c.setForeground(TEXT_MAIN);
                 return c;
             }
@@ -163,10 +187,9 @@ public class TeacherPanel extends JPanel {
         header.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, BORDER_COLOR));
         var baseRenderer = header.getDefaultRenderer();
         header.setDefaultRenderer((tbl, value, isSelected, hasFocus, row, col) -> {
-            Component comp = baseRenderer.getTableCellRendererComponent(tbl, value, isSelected, hasFocus, row, col);
-            if (comp instanceof JLabel lbl) {
-                lbl.setHorizontalAlignment(SwingConstants.LEFT);
-            }
+            Component comp = baseRenderer.getTableCellRendererComponent(
+                    tbl, value, isSelected, hasFocus, row, col);
+            if (comp instanceof JLabel lbl) lbl.setHorizontalAlignment(SwingConstants.LEFT);
             return comp;
         });
 
@@ -176,15 +199,15 @@ public class TeacherPanel extends JPanel {
         t.getColumnModel().getColumn(0).setWidth(0);
         UI.alignColumn(t, 1, SwingConstants.LEFT);
 
-        // ── Độ rộng cột ────────────────────────────────
+        // ── Độ rộng cột ───────────────────────────────────
         var cm = t.getColumnModel();
-        cm.getColumn(1).setMinWidth(40);  cm.getColumn(1).setMaxWidth(55);   cm.getColumn(1).setPreferredWidth(50);  // STT
-        cm.getColumn(2).setMinWidth(70);  cm.getColumn(2).setMaxWidth(100);  cm.getColumn(2).setPreferredWidth(88);  // Mã GV
-        cm.getColumn(3).setPreferredWidth(180);                                                                        // Họ và tên
-        cm.getColumn(4).setMinWidth(90);  cm.getColumn(4).setMaxWidth(140);  cm.getColumn(4).setPreferredWidth(115); // Điện thoại
-        cm.getColumn(5).setPreferredWidth(170);                                                                        // Email
-        cm.getColumn(6).setPreferredWidth(150);                                                                        // Chuyên môn
-        cm.getColumn(7).setMinWidth(90);  cm.getColumn(7).setMaxWidth(130);  cm.getColumn(7).setPreferredWidth(110); // Trạng thái
+        cm.getColumn(1).setMinWidth(40);  cm.getColumn(1).setMaxWidth(55);   cm.getColumn(1).setPreferredWidth(50);   // STT
+        cm.getColumn(2).setMinWidth(70);  cm.getColumn(2).setMaxWidth(100);  cm.getColumn(2).setPreferredWidth(88);   // Mã NV
+        cm.getColumn(3).setPreferredWidth(180);                                                                         // Họ và tên
+        cm.getColumn(4).setMinWidth(80);  cm.getColumn(4).setMaxWidth(130);  cm.getColumn(4).setPreferredWidth(110);  // Vai trò
+        cm.getColumn(5).setMinWidth(90);  cm.getColumn(5).setMaxWidth(140);  cm.getColumn(5).setPreferredWidth(115);  // Điện thoại
+        cm.getColumn(6).setPreferredWidth(170);                                                                         // Email
+        cm.getColumn(7).setMinWidth(90);  cm.getColumn(7).setMaxWidth(130);  cm.getColumn(7).setPreferredWidth(110);  // Trạng thái
 
         sorter = new TableRowSorter<>(tableModel);
         t.setRowSorter(sorter);
@@ -198,87 +221,104 @@ public class TeacherPanel extends JPanel {
         return t;
     }
 
+    // ── Data ──────────────────────────────────────────────────────────────
+
     public void loadData() {
         try {
-            List<Teacher> list = teacherService.findAll();
+            List<Staff> list = staffService.findAll();
             tableModel.setRowCount(0);
+
+            // Stream API: map entity → table row
             int[] idx = {1};
-            list.forEach((Teacher t) -> {
-                String code = t.getTeacherId() != null
-                        ? String.format("GV%04d", t.getTeacherId())
-                        : "";
-                tableModel.addRow(new Object[]{
-                        t.getTeacherId(),
-                        idx[0]++,
-                        code,
-                        t.getFullName(),
-                        t.getPhone()     != null ? t.getPhone()     : "",
-                        t.getEmail()     != null ? t.getEmail()     : "",
-                        t.getSpecialty() != null ? t.getSpecialty() : "",
-                        t.getStatus()
-                });
-            });
-            statusLabel.setText("Tổng: " + list.size() + " giáo viên");
+            list.stream()
+                .map(s -> new Object[]{
+                    s.getStaffId(),
+                    idx[0]++,
+                    s.getStaffId() != null ? String.format("NV%04d", s.getStaffId()) : "",
+                    s.getFullName(),
+                    s.getRole()   != null ? s.getRole()   : "",
+                    s.getPhone()  != null ? s.getPhone()  : "",
+                    s.getEmail()  != null ? s.getEmail()  : "",
+                    s.getStatus() != null ? s.getStatus() : ""
+                })
+                .forEach(tableModel::addRow);
+
+            statusLabel.setText("Tổng: " + list.size() + " nhân viên");
+            applyFilters();
             SwingUtilities.invokeLater(() -> UI.autoResizeColumns(table));
         } catch (Exception e) {
             showError("Không thể tải dữ liệu: " + e.getMessage());
         }
     }
 
-    private void filterTable(String keyword) {
-        sorter.setRowFilter(keyword.isEmpty() ? null
-                : RowFilter.regexFilter("(?i)" + keyword, 3, 4, 5, 6));
-        statusLabel.setText("Hiển thị: " + table.getRowCount() + " bản ghi");
+    private void applyFilters() {
+        String kw   = searchField.getText().trim();
+        String role = (String) filterRole.getSelectedItem();
+
+        RowFilter<DefaultTableModel, Object> textFilter = kw.isEmpty()
+                ? null : RowFilter.regexFilter("(?i)" + kw, 3, 4, 5, 6);
+
+        RowFilter<DefaultTableModel, Object> roleFilter =
+                (role == null || "Tất cả".equals(role))
+                ? null : RowFilter.regexFilter("(?i)^" + role + "$", 4);
+
+        if (textFilter == null && roleFilter == null) {
+            sorter.setRowFilter(null);
+        } else if (textFilter == null) {
+            sorter.setRowFilter(roleFilter);
+        } else if (roleFilter == null) {
+            sorter.setRowFilter(textFilter);
+        } else {
+            sorter.setRowFilter(RowFilter.andFilter(java.util.List.of(textFilter, roleFilter)));
+        }
+
+        statusLabel.setText("Hiển thị: " + table.getRowCount() + " nhân viên");
     }
+
+    // ── CRUD ──────────────────────────────────────────────────────────────
 
     private void editSelected() {
         int viewRow = table.getSelectedRow();
-        if (viewRow < 0) {
-            showWarning("Vui lòng chọn một giáo viên để sửa.");
-            return;
-        }
-        int modelRow = table.convertRowIndexToModel(viewRow);
-        Long id = (Long) tableModel.getValueAt(modelRow, 0);
-        openDialog(teacherService.findById(id));
+        if (viewRow < 0) { showWarning("Vui lòng chọn một nhân viên để sửa."); return; }
+        int  modelRow = table.convertRowIndexToModel(viewRow);
+        Long id       = (Long) tableModel.getValueAt(modelRow, 0);
+        openDialog(staffService.findById(id));
     }
 
     private void deleteSelected() {
         int viewRow = table.getSelectedRow();
-        if (viewRow < 0) {
-            showWarning("Vui lòng chọn một giáo viên để xóa.");
-            return;
-        }
-        int modelRow = table.convertRowIndexToModel(viewRow);
-        String name = (String) tableModel.getValueAt(modelRow, 1);
-        Long   id   = (Long)   tableModel.getValueAt(modelRow, 0);
+        if (viewRow < 0) { showWarning("Vui lòng chọn một nhân viên để xóa."); return; }
+        int    modelRow = table.convertRowIndexToModel(viewRow);
+        String name     = (String) tableModel.getValueAt(modelRow, 3);
+        Long   id       = (Long)   tableModel.getValueAt(modelRow, 0);
 
         int ok = JOptionPane.showConfirmDialog(this,
-                "Bạn có chắc muốn xóa giáo viên \"" + name + "\"?",
+                "Bạn có chắc muốn xóa nhân viên \"" + name + "\"?",
                 "Xác nhận xóa", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
         if (ok != JOptionPane.YES_OPTION) return;
 
         try {
-            teacherService.delete(id);
-            showSuccess("Đã xóa giáo viên \"" + name + "\" thành công.");
+            staffService.delete(id);
+            showSuccess("Đã xóa nhân viên \"" + name + "\" thành công.");
             notifyDataChanged();
         } catch (Exception e) {
             showError("Không thể xóa: " + e.getMessage());
         }
     }
 
-    private void openDialog(Teacher existing) {
+    private void openDialog(Staff existing) {
         Frame owner = (Frame) SwingUtilities.getWindowAncestor(this);
-        TeacherFormDialog dlg = new TeacherFormDialog(owner, existing);
+        StaffFormDialog dlg = new StaffFormDialog(owner, existing);
         dlg.setVisible(true);
         if (!dlg.isSaved()) return;
 
         try {
             if (existing != null) {
-                teacherService.update(dlg.getTeacher());
-                showSuccess("Cập nhật giáo viên thành công.");
+                staffService.update(dlg.getStaff());
+                showSuccess("Cập nhật nhân viên thành công.");
             } else {
-                teacherService.save(dlg.getTeacher());
-                showSuccess("Thêm giáo viên mới thành công.");
+                staffService.save(dlg.getStaff());
+                showSuccess("Thêm nhân viên mới thành công.");
             }
             notifyDataChanged();
         } catch (Exception e) {
@@ -289,6 +329,8 @@ public class TeacherPanel extends JPanel {
     private void notifyDataChanged() {
         if (onDataChanged != null) onDataChanged.run(); else loadData();
     }
+
+    // ── Button factories ──────────────────────────────────────────────────
 
     private JButton createPrimaryButton(String text) {
         JButton btn = new JButton(text);
@@ -329,6 +371,8 @@ public class TeacherPanel extends JPanel {
         });
         return btn;
     }
+
+    // ── Notifications ─────────────────────────────────────────────────────
 
     private void showSuccess(String msg) {
         JOptionPane.showMessageDialog(this, msg, "Thành công", JOptionPane.INFORMATION_MESSAGE);

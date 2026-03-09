@@ -2,14 +2,17 @@ package com.company.ems.model;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.Objects;
 
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
@@ -45,5 +48,22 @@ public class Schedule {
     protected void onCreate() {
         createdAt = LocalDateTime.now();
     }
-}
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Schedule other)) return false;
+        return scheduleId != null && scheduleId.equals(other.scheduleId);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(scheduleId);
+    }
+
+    @Override
+    public String toString() {
+        return "Schedule#" + scheduleId
+                + (studyDate != null ? " [" + studyDate + "]" : "");
+    }
+}

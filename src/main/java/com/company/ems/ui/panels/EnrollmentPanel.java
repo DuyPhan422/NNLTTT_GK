@@ -237,8 +237,8 @@ public class EnrollmentPanel extends JPanel {
 
             // Group by student using lambdas
             Map<Long, List<Enrollment>> grouped = enrollmentService.findAll().stream()
-                    .filter(e -> e.getStudent() != null)
-                    .collect(Collectors.groupingBy(e -> e.getStudent().getStudentId()));
+                    .filter((Enrollment e) -> e.getStudent() != null)
+                    .collect(Collectors.groupingBy((Enrollment e) -> e.getStudent().getStudentId()));
 
             // Sort by most recent enrollment date descending
             List<Map.Entry<Long, List<Enrollment>>> entries = grouped.entrySet().stream()
