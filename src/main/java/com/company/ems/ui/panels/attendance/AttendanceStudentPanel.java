@@ -242,9 +242,9 @@ public class AttendanceStudentPanel extends JPanel {
 
     private void updateKpiAll() {
         long total   = allAttendances.size();
-        long present = allAttendances.stream().filter(a -> "Present".equals(a.getStatus())).count();
-        long absent  = allAttendances.stream().filter(a -> "Absent" .equals(a.getStatus())).count();
-        long late    = allAttendances.stream().filter(a -> "Late"   .equals(a.getStatus())).count();
+        long present = allAttendances.stream().filter(a -> "Có mặt".equals(a.getStatus())).count();
+        long absent  = allAttendances.stream().filter(a -> "Vắng"  .equals(a.getStatus())).count();
+        long late    = allAttendances.stream().filter(a -> "Đi trễ".equals(a.getStatus())).count();
         double rate  = total > 0 ? (present * 100.0 / total) : 0.0;
 
         kpiTotal  .setText(String.valueOf(total));
@@ -265,7 +265,7 @@ public class AttendanceStudentPanel extends JPanel {
         } else {
             byClass.forEach((classId, records) -> {
                 String className = records.get(0).getClazz().getClassName();
-                long present = records.stream().filter(a -> "Present".equals(a.getStatus())).count();
+                long present = records.stream().filter(a -> "Có mặt".equals(a.getStatus())).count();
                 double rate  = records.isEmpty() ? 0 : (present * 100.0 / records.size());
                 classSidebarList.add(buildClassSidebarItem(classId, className, records.size(), rate));
             });
@@ -330,9 +330,9 @@ public class AttendanceStudentPanel extends JPanel {
 
         // KPI cho lớp này
         long total   = records.size();
-        long present = records.stream().filter(a -> "Present".equals(a.getStatus())).count();
-        long absent  = records.stream().filter(a -> "Absent" .equals(a.getStatus())).count();
-        long late    = records.stream().filter(a -> "Late"   .equals(a.getStatus())).count();
+        long present = records.stream().filter(a -> "Có mặt".equals(a.getStatus())).count();
+        long absent  = records.stream().filter(a -> "Vắng"  .equals(a.getStatus())).count();
+        long late    = records.stream().filter(a -> "Đi trễ".equals(a.getStatus())).count();
         double rate  = total > 0 ? (present * 100.0 / total) : 0.0;
 
         kpiTotal  .setText(String.valueOf(total));
@@ -403,9 +403,9 @@ public class AttendanceStudentPanel extends JPanel {
                     lbl.setHorizontalAlignment(SwingConstants.CENTER);
                     lbl.setFont(FONT_BOLD);
                     lbl.setForeground(switch (s) {
-                        case "Present" -> GREEN;
-                        case "Absent"  -> RED;
-                        case "Late"    -> AMBER;
+                        case "Có mặt" -> GREEN;
+                        case "Vắng"   -> RED;
+                        case "Đi trễ" -> AMBER;
                         default        -> TEXT_MAIN;
                     });
                 }

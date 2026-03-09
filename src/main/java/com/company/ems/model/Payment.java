@@ -39,13 +39,13 @@ public class Payment {
     @Column(name = "payment_date", nullable = false)
     private LocalDateTime paymentDate;
 
-    // "Cash" | "Bank" | "Momo" | "ZaloPay" | "Card" | "Other"
+    // "Tiền mặt" | "Chuyển khoản" | "Momo" | "ZaloPay" | "Thẻ ngân hàng" | "Khác"   →  PaymentMethod enum
     @Column(name = "payment_method", nullable = false, length = 20)
-    private String paymentMethod = "Cash";
+    private String paymentMethod = com.company.ems.model.enums.PaymentMethod.TIEN_MAT.getValue();
 
-    // "Pending" | "Completed" | "Failed" | "Refunded"
+    // "Chờ xử lý" | "Hoàn thành" | "Thất bại" | "Đã hoàn tiền"   →  PaymentStatus enum
     @Column(name = "status", nullable = false, length = 20)
-    private String status = "Completed";
+    private String status = com.company.ems.model.enums.PaymentStatus.HOAN_THANH.getValue();
 
     @Column(name = "reference_code", length = 100)
     private String referenceCode;
@@ -59,4 +59,3 @@ public class Payment {
         if (paymentDate == null) paymentDate = LocalDateTime.now();
     }
 }
-

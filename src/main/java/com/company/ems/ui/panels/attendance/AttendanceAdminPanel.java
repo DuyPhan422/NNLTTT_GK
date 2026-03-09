@@ -308,7 +308,7 @@ public class AttendanceAdminPanel extends JPanel {
         try {
             // ── KPI: tổng lớp + học viên
             int totalClasses  = classService.findAll().size();
-            int totalStudents = studentService.findByStatus("Active").size();
+            int totalStudents = studentService.findByStatus("Hoạt động").size();
             kpiTotalClasses .setText(String.valueOf(totalClasses));
             kpiTotalStudents.setText(String.valueOf(totalStudents));
 

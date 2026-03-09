@@ -48,9 +48,9 @@ public class Class {
     @JoinColumn(name = "room_id")
     private Room room;
 
-    // "Planned" | "Open" | "Ongoing" | "Completed" | "Cancelled"
+    // "Lên kế hoạch" | "Mở lớp" | "Đang diễn ra" | "Hoàn thành" | "Hủy lớp"   →  ClassStatus enum
     @Column(name = "status", nullable = false, length = 20)
-    private String status = "Planned";
+    private String status = com.company.ems.model.enums.ClassStatus.LEN_KE_HOACH.getValue();
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

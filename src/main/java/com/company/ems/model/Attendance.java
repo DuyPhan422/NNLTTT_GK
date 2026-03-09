@@ -31,9 +31,9 @@ public class Attendance {
     @Column(name = "attend_date", nullable = false)
     private LocalDate attendDate;
 
-    // "Present" | "Absent" | "Late"
+    // "Có mặt" | "Vắng" | "Đi trễ"   →  AttendanceStatus enum
     @Column(name = "status", nullable = false, length = 20)
-    private String status = "Present";
+    private String status = com.company.ems.model.enums.AttendanceStatus.CO_MAT.getValue();
 
     @Column(name = "note", length = 255)
     private String note;
@@ -46,4 +46,3 @@ public class Attendance {
         createdAt = LocalDateTime.now();
     }
 }
-

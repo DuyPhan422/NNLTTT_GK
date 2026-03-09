@@ -32,7 +32,6 @@ public class TeacherPanel extends JPanel {
     private static final Color ROW_EVEN      = Color.WHITE;
     private static final Color ROW_ODD       = new Color(248, 250, 252);
     private static final Color ROW_SELECT    = new Color(219, 234, 254);
-
     private static final Font FONT_MAIN  = new Font("Segoe UI", Font.PLAIN, 13);
     private static final Font FONT_BOLD  = new Font("Segoe UI", Font.BOLD, 13);
     private static final Font FONT_SMALL = new Font("Segoe UI", Font.PLAIN, 12);

@@ -30,7 +30,7 @@ public class Student {
     @Column(name = "date_of_birth")
     private LocalDate dateOfBirth;
 
-    // "Male" | "Female" | "Other"
+    // "Nam" | "Nữ" | "Khác"   →  Gender enum
     @Column(name = "gender", length = 10)
     private String gender;
 
@@ -46,9 +46,9 @@ public class Student {
     @Column(name = "registration_date", nullable = false)
     private LocalDate registrationDate;
 
-    // "Active" | "Inactive"
+    // "Hoạt động" | "Không hoạt động"   →  ActiveStatus enum
     @Column(name = "status", nullable = false, length = 20)
-    private String status = "Active";
+    private String status = com.company.ems.model.enums.ActiveStatus.HOAT_DONG.getValue();
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

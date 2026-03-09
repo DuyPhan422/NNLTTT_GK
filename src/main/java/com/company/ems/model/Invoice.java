@@ -32,9 +32,9 @@ public class Invoice {
     @Column(name = "issue_date", nullable = false)
     private LocalDate issueDate;
 
-    // "Draft" | "Issued" | "Paid" | "Cancelled"
+    // "Bản nháp" | "Chờ thanh toán" | "Đã thanh toán" | "Đã hủy"   →  InvoiceStatus enum
     @Column(name = "status", nullable = false, length = 20)
-    private String status = "Issued";
+    private String status = com.company.ems.model.enums.InvoiceStatus.CHO_THANH_TOAN.getValue();
 
     @Column(name = "note", length = 255)
     private String note;
@@ -60,4 +60,3 @@ public class Invoice {
         updatedAt = LocalDateTime.now();
     }
 }
-

@@ -36,13 +36,13 @@ public class Enrollment {
     @Column(name = "enrollment_date", nullable = false)
     private LocalDate enrollmentDate;
 
-    // "Enrolled" | "Dropped" | "Completed"
+    // "Đã đăng ký" | "Đã hủy" | "Đã thanh toán"   →  EnrollmentStatus enum
     @Column(name = "status", nullable = false, length = 20)
-    private String status = "Enrolled";
+    private String status = com.company.ems.model.enums.EnrollmentStatus.DA_DANG_KY.getValue();
 
-    // "Pass" | "Fail" | "NA"
+    // "Đạt" | "Không đạt" | "Chưa có"   →  EnrollmentResult enum
     @Column(name = "result", nullable = false, length = 10)
-    private String result = "NA";
+    private String result = com.company.ems.model.enums.EnrollmentResult.CHUA_CO.getValue();
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

@@ -1,6 +1,7 @@
 package com.company.ems.ui.panels;
 
 import com.company.ems.model.Room;
+import com.company.ems.model.enums.ActiveStatus;
 
 import javax.swing.*;
 import java.awt.*;
@@ -23,7 +24,7 @@ public class RoomFormDialog extends JDialog {
     private final JTextField      tfName;
     private final JTextField      tfCapacity;
     private final JTextField      tfLocation;
-    private final JComboBox<String> cbStatus;
+    private final JComboBox<ActiveStatus> cbStatus;
 
     private boolean saved = false;
     private final Room room;
@@ -37,9 +38,9 @@ public class RoomFormDialog extends JDialog {
         tfCapacity = createField(isEdit && existing.getCapacity() != null ? String.valueOf(existing.getCapacity()) : "");
         tfLocation = createField(isEdit && existing.getLocation() != null ? existing.getLocation() : "");
 
-        cbStatus = new JComboBox<>(new String[]{"Active", "Inactive"});
+        cbStatus = new JComboBox<>(ActiveStatus.values());
         cbStatus.setFont(FONT_MAIN);
-        if (isEdit && existing.getStatus() != null) cbStatus.setSelectedItem(existing.getStatus());
+        if (isEdit && existing.getStatus() != null) cbStatus.setSelectedItem(ActiveStatus.fromValue(existing.getStatus()));
 
         buildUI();
         pack();
@@ -110,7 +111,7 @@ public class RoomFormDialog extends JDialog {
         room.setRoomName(name);
         room.setCapacity(capacity);
         room.setLocation(tfLocation.getText().trim().isEmpty() ? null : tfLocation.getText().trim());
-        room.setStatus((String) cbStatus.getSelectedItem());
+        room.setStatus(((ActiveStatus) cbStatus.getSelectedItem()).getValue());
 
         saved = true;
         dispose();
@@ -172,4 +173,3 @@ public class RoomFormDialog extends JDialog {
         JOptionPane.showMessageDialog(this, msg, "Cảnh báo", JOptionPane.WARNING_MESSAGE);
     }
 }
-

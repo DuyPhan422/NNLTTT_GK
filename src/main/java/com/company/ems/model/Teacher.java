@@ -39,9 +39,9 @@ public class Teacher {
     @Column(name = "hire_date")
     private LocalDate hireDate;
 
-    // "Active" | "Inactive"
+    // "Hoạt động" | "Không hoạt động"   →  ActiveStatus enum
     @Column(name = "status", nullable = false, length = 20)
-    private String status = "Active";
+    private String status = com.company.ems.model.enums.ActiveStatus.HOAT_DONG.getValue();
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

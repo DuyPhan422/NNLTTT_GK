@@ -1,6 +1,7 @@
 package com.company.ems.ui.panels;
 
 import com.company.ems.model.Teacher;
+import com.company.ems.model.enums.ActiveStatus;
 
 import javax.swing.*;
 import java.awt.*;
@@ -36,7 +37,7 @@ public class TeacherFormDialog extends JDialog {
     private final JTextField tfEmail;
     private final JTextField tfSpecialty;
     private final JTextField tfHireDate;
-    private final JComboBox<String> cbStatus;
+    private final JComboBox<ActiveStatus> cbStatus;
 
     // Output
     private boolean saved = false;
@@ -55,10 +56,10 @@ public class TeacherFormDialog extends JDialog {
         tfHireDate  = createField(isEdit && existing.getHireDate() != null
                 ? existing.getHireDate().format(DATE_FMT) : "");
 
-        cbStatus = new JComboBox<>(new String[]{"Hoạt động", "Không hoạt động"});
+        cbStatus = new JComboBox<>(ActiveStatus.values());
         cbStatus.setFont(FONT_MAIN);
         if (isEdit && existing.getStatus() != null) {
-            cbStatus.setSelectedItem(existing.getStatus());
+            cbStatus.setSelectedItem(ActiveStatus.fromValue(existing.getStatus()));
         }
 
         buildUI();
@@ -132,7 +133,7 @@ public class TeacherFormDialog extends JDialog {
         teacher.setEmail(tfEmail.getText().trim().isEmpty() ? null : tfEmail.getText().trim());
         teacher.setSpecialty(tfSpecialty.getText().trim().isEmpty() ? null : tfSpecialty.getText().trim());
         teacher.setHireDate(hireDate);
-        teacher.setStatus((String) cbStatus.getSelectedItem());
+        teacher.setStatus(((ActiveStatus) cbStatus.getSelectedItem()).getValue());
 
         saved = true;
         dispose();
@@ -202,4 +203,3 @@ public class TeacherFormDialog extends JDialog {
         JOptionPane.showMessageDialog(this, msg, "Cảnh báo", JOptionPane.WARNING_MESSAGE);
     }
 }
-

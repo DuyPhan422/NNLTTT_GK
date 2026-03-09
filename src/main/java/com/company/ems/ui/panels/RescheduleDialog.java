@@ -192,7 +192,7 @@ public class RescheduleDialog extends JDialog {
 
         try {
             // Lấy tất cả phòng Active
-            List<Room> allRooms = roomService.findByStatus("Active");
+            List<Room> allRooms = roomService.findByStatus(com.company.ems.model.enums.ActiveStatus.HOAT_DONG.getValue());
 
             // Lọc phòng không có conflict — Stream API
             List<Room> availableRooms = allRooms.stream()

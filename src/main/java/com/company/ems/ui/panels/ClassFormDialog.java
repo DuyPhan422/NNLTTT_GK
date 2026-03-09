@@ -4,6 +4,7 @@ import com.company.ems.model.Class;
 import com.company.ems.model.Course;
 import com.company.ems.model.Room;
 import com.company.ems.model.Teacher;
+import com.company.ems.model.enums.ClassStatus;
 
 import javax.swing.*;
 import java.awt.*;
@@ -43,7 +44,7 @@ public class ClassFormDialog extends JDialog {
     private final JTextField tfEndDate;
 
     private final JTextField    tfMaxStudent;
-    private final JComboBox<String> cbStatus;
+    private final JComboBox<ClassStatus> cbStatus;
     // Hint label shown when endDate is auto-computed
     private final JLabel        lblEndHint;
 
@@ -119,9 +120,11 @@ public class ClassFormDialog extends JDialog {
         tfMaxStudent = createField(isEdit && existing.getMaxStudent() != null
                 ? String.valueOf(existing.getMaxStudent()) : "");
 
-        cbStatus = new JComboBox<>(new String[]{"Lên kế hoạch", "Mở lớp", "Đang diễn ra", "Hoàn thành", "Hủy lớp"});
+        cbStatus = new JComboBox<>(ClassStatus.values());
         cbStatus.setFont(FONT_MAIN);
-        if (isEdit && existing.getStatus() != null) cbStatus.setSelectedItem(existing.getStatus());
+        if (isEdit && existing.getStatus() != null) {
+             cbStatus.setSelectedItem(ClassStatus.fromValue(existing.getStatus()));
+        }
 
         // ── Wire listeners ─────────────────────────────────────────────────
         // Spinner → sync text field
@@ -348,8 +351,8 @@ public class ClassFormDialog extends JDialog {
         clazz.setRoom((Room) cbRoom.getSelectedItem());
         clazz.setStartDate(startDate);
         clazz.setEndDate(endDate);
-        clazz.setMaxStudent(maxStudent != null ? maxStudent : 0);
-        clazz.setStatus((String) cbStatus.getSelectedItem());
+        clazz.setMaxStudent(maxStudent);
+        clazz.setStatus(((ClassStatus) cbStatus.getSelectedItem()).getValue());
 
         saved = true;
         dispose();

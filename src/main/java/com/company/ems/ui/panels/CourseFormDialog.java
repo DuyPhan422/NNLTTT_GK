@@ -1,6 +1,9 @@
 package com.company.ems.ui.panels;
 
 import com.company.ems.model.Course;
+import com.company.ems.model.enums.ActiveStatus;
+import com.company.ems.model.enums.CourseLevel;
+import com.company.ems.model.enums.DurationUnit;
 
 import javax.swing.*;
 import java.awt.*;
@@ -23,11 +26,11 @@ public class CourseFormDialog extends JDialog {
 
     private final JTextField tfName;
     private final JTextArea  taDescription;
-    private final JComboBox<String> cbLevel;
+    private final JComboBox<CourseLevel> cbLevel;
     private final JTextField tfDuration;
-    private final JComboBox<String> cbDurationUnit;
+    private final JComboBox<DurationUnit> cbDurationUnit;
     private final JTextField tfFee;
-    private final JComboBox<String> cbStatus;
+    private final JComboBox<ActiveStatus> cbStatus;
 
     private boolean saved = false;
     private final Course course;
@@ -49,28 +52,28 @@ public class CourseFormDialog extends JDialog {
                 BorderFactory.createEmptyBorder(4, 10, 4, 10)
         ));
 
-        cbLevel = new JComboBox<>(new String[]{"Cơ bản", "Trung cấp", "Nâng cao"});
+        cbLevel = new JComboBox<>(CourseLevel.values());
         cbLevel.setFont(FONT_MAIN);
         if (isEdit && existing.getLevel() != null) {
-            cbLevel.setSelectedItem(existing.getLevel());
+            cbLevel.setSelectedItem(CourseLevel.fromValue(existing.getLevel()));
         }
 
         tfDuration = createField(isEdit && existing.getDuration() != null
                 ? String.valueOf(existing.getDuration()) : "");
 
-        cbDurationUnit = new JComboBox<>(new String[]{"Giờ","Tuần", "Tháng"});
+        cbDurationUnit = new JComboBox<>(DurationUnit.values());
         cbDurationUnit.setFont(FONT_MAIN);
         if (isEdit && existing.getDurationUnit() != null) {
-            cbDurationUnit.setSelectedItem(existing.getDurationUnit());
+            cbDurationUnit.setSelectedItem(DurationUnit.fromValue(existing.getDurationUnit()));
         }
 
         tfFee = createField(isEdit && existing.getFee() != null
                 ? existing.getFee().toPlainString() : "");
 
-        cbStatus = new JComboBox<>(new String[]{"Hoạt động", "Không hoạt động"});
+        cbStatus = new JComboBox<>(ActiveStatus.values());
         cbStatus.setFont(FONT_MAIN);
         if (isEdit && existing.getStatus() != null) {
-            cbStatus.setSelectedItem(existing.getStatus());
+            cbStatus.setSelectedItem(ActiveStatus.fromValue(existing.getStatus()));
         }
 
         buildUI();
@@ -177,11 +180,11 @@ public class CourseFormDialog extends JDialog {
 
         course.setCourseName(name);
         course.setDescription(taDescription.getText().trim().isEmpty() ? null : taDescription.getText().trim());
-        course.setLevel((String) cbLevel.getSelectedItem());
+        course.setLevel(((CourseLevel) cbLevel.getSelectedItem()).getValue());
         course.setDuration(duration);
-        course.setDurationUnit((String) cbDurationUnit.getSelectedItem());
+        course.setDurationUnit(((DurationUnit) cbDurationUnit.getSelectedItem()).getValue());
         course.setFee(fee);
-        course.setStatus((String) cbStatus.getSelectedItem());
+        course.setStatus(((ActiveStatus) cbStatus.getSelectedItem()).getValue());
 
         saved = true;
         dispose();
