@@ -1,6 +1,8 @@
 package com.company.ems.ui.panels;
 
 import com.company.ems.model.Staff;
+import com.company.ems.model.enums.ActiveStatus;
+import com.company.ems.model.enums.StaffRole;
 
 import javax.swing.*;
 import java.awt.*;
@@ -29,8 +31,8 @@ public class StaffFormDialog extends JDialog {
     private final JTextField    tfName;
     private final JTextField    tfPhone;
     private final JTextField    tfEmail;
-    private final JComboBox<String> cbRole;
-    private final JComboBox<String> cbStatus;
+    private final JComboBox<StaffRole> cbRole;
+    private final JComboBox<ActiveStatus> cbStatus;
     private final JLabel        lblError;
 
     // ── Output ───────────────────────────────────────────────────────────
@@ -45,14 +47,14 @@ public class StaffFormDialog extends JDialog {
         tfPhone = createField(existing != null && existing.getPhone()    != null ? existing.getPhone()    : "");
         tfEmail = createField(existing != null && existing.getEmail()    != null ? existing.getEmail()    : "");
 
-        cbRole   = new JComboBox<>(new String[]{"Admin", "Consultant", "Accountant", "Manager", "Other"});
-        cbStatus = new JComboBox<>(new String[]{"Active", "Inactive"});
+        cbRole   = new JComboBox<>(StaffRole.values());
+        cbStatus = new JComboBox<>(ActiveStatus.values());
         cbRole.setFont(FONT_MAIN);
         cbStatus.setFont(FONT_MAIN);
 
         if (existing != null) {
-            if (existing.getRole()   != null) cbRole.setSelectedItem(existing.getRole());
-            if (existing.getStatus() != null) cbStatus.setSelectedItem(existing.getStatus());
+            if (existing.getRole()   != null) cbRole.setSelectedItem(StaffRole.fromValue(existing.getRole()));
+            if (existing.getStatus() != null) cbStatus.setSelectedItem(ActiveStatus.fromValue(existing.getStatus()));
         }
 
         lblError = new JLabel(" ");
@@ -158,8 +160,8 @@ public class StaffFormDialog extends JDialog {
         staff.setFullName(name);
         staff.setPhone(tfPhone.getText().trim().isEmpty() ? null : tfPhone.getText().trim());
         staff.setEmail(tfEmail.getText().trim().isEmpty() ? null : tfEmail.getText().trim());
-        staff.setRole((String) cbRole.getSelectedItem());
-        staff.setStatus((String) cbStatus.getSelectedItem());
+        staff.setRole(((StaffRole) cbRole.getSelectedItem()).getValue());
+        staff.setStatus(((ActiveStatus) cbStatus.getSelectedItem()).getValue());
 
         saved = true;
         dispose();
@@ -186,4 +188,3 @@ public class StaffFormDialog extends JDialog {
         return lbl;
     }
 }
-

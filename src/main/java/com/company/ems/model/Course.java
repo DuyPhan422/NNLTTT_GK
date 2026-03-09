@@ -30,24 +30,23 @@ public class Course {
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
-    // "Beginner" | "Intermediate" | "Advanced"
+    // "Cơ bản" | "Trung cấp" | "Nâng cao"   →  CourseLevel enum
     @Column(name = "level", length = 30)
     private String level;
 
-    // Số giờ hoặc số tuần (tuỳ durationUnit)
     @Column(name = "duration")
     private Integer duration;
 
-    // "Hour" | "Week"
+    // "Giờ" | "Tuần" | "Tháng"   →  DurationUnit enum
     @Column(name = "duration_unit", length = 10)
-    private String durationUnit = "Week";
+    private String durationUnit = com.company.ems.model.enums.DurationUnit.TUAN.getValue();
 
     @Column(name = "fee", nullable = false, precision = 15, scale = 2)
     private BigDecimal fee = BigDecimal.ZERO;
 
-    // "Active" | "Inactive"
+    // "Hoạt động" | "Không hoạt động"   →  ActiveStatus enum
     @Column(name = "status", nullable = false, length = 20)
-    private String status = "Active";
+    private String status = com.company.ems.model.enums.ActiveStatus.HOAT_DONG.getValue();
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

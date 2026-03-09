@@ -25,9 +25,9 @@ public class Staff {
     @Column(name = "full_name", nullable = false, length = 150)
     private String fullName;
 
-    // "Admin" | "Consultant" | "Accountant" | "Manager" | "Other"
+    // "Quản trị" | "Tư vấn" | "Kế toán" | "Quản lý" | "Khác"   →  StaffRole enum
     @Column(name = "role", nullable = false, length = 30)
-    private String role = "Other";
+    private String role = com.company.ems.model.enums.StaffRole.KHAC.getValue();
 
     @Column(name = "phone", length = 20, unique = true)
     private String phone;
@@ -35,9 +35,9 @@ public class Staff {
     @Column(name = "email", length = 150, unique = true)
     private String email;
 
-    // "Active" | "Inactive"
+    // "Hoạt động" | "Không hoạt động"   →  ActiveStatus enum
     @Column(name = "status", nullable = false, length = 20)
-    private String status = "Active";
+    private String status = com.company.ems.model.enums.ActiveStatus.HOAT_DONG.getValue();
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

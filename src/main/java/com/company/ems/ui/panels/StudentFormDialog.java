@@ -1,6 +1,8 @@
 package com.company.ems.ui.panels;
 
 import com.company.ems.model.Student;
+import com.company.ems.model.enums.ActiveStatus;
+import com.company.ems.model.enums.Gender;
 
 import javax.swing.*;
 import java.awt.*;
@@ -33,11 +35,11 @@ public class StudentFormDialog extends JDialog {
     // ── Form fields ───────────────────────────────────
     private final JTextField      tfName;
     private final JTextField      tfDob;
-    private final JComboBox<String> cbGender;
+    private final JComboBox<Gender> cbGender;
     private final JTextField      tfPhone;
     private final JTextField      tfEmail;
     private final JTextField      tfAddress;
-    private final JComboBox<String> cbStatus;
+    private final JComboBox<ActiveStatus> cbStatus;
 
     // ── Output ────────────────────────────────────────
     private boolean saved = false;
@@ -57,14 +59,14 @@ public class StudentFormDialog extends JDialog {
         tfEmail   = createField(isEdit && existing.getEmail()   != null ? existing.getEmail()   : "");
         tfAddress = createField(isEdit && existing.getAddress() != null ? existing.getAddress() : "");
 
-        cbGender = new JComboBox<>(new String[]{"Nam", "Nữ", "Khác"});
-        
-        cbGender.setFont(FONT_MAIN);
-        if (isEdit && existing.getGender() != null) cbGender.setSelectedItem(existing.getGender());
+        cbGender = new JComboBox<>(Gender.values());
 
-        cbStatus = new JComboBox<>(new String[]{"Hoạt động", "Không hoạt động"});
+        cbGender.setFont(FONT_MAIN);
+        if (isEdit && existing.getGender() != null) cbGender.setSelectedItem(Gender.fromValue(existing.getGender()));
+
+        cbStatus = new JComboBox<>(ActiveStatus.values());
         cbStatus.setFont(FONT_MAIN);
-        if (isEdit) cbStatus.setSelectedItem(existing.getStatus());
+        if (isEdit) cbStatus.setSelectedItem(ActiveStatus.fromValue(existing.getStatus()));
 
         setSize(480, 500);
         setResizable(false);
@@ -144,11 +146,11 @@ public class StudentFormDialog extends JDialog {
         // ── Gán vào entity ────────────────────────────
         student.setFullName(name);
         student.setDateOfBirth(dob);
-        student.setGender((String) cbGender.getSelectedItem());
+        student.setGender(((Gender) cbGender.getSelectedItem()).getValue());
         student.setPhone(tfPhone.getText().trim().isEmpty()   ? null : tfPhone.getText().trim());
         student.setEmail(tfEmail.getText().trim().isEmpty()   ? null : tfEmail.getText().trim());
         student.setAddress(tfAddress.getText().trim().isEmpty() ? null : tfAddress.getText().trim());
-        student.setStatus((String) cbStatus.getSelectedItem());
+        student.setStatus(((ActiveStatus) cbStatus.getSelectedItem()).getValue());
 
         saved = true;
         dispose();
@@ -225,4 +227,3 @@ public class StudentFormDialog extends JDialog {
         JOptionPane.showMessageDialog(this, msg, "Cảnh báo", JOptionPane.WARNING_MESSAGE);
     }
 }
-

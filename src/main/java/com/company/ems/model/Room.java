@@ -32,9 +32,9 @@ public class Room {
     @Column(name = "location", length = 150)
     private String location;
 
-    // "Active" | "Inactive"
+    // "Hoạt động" | "Không hoạt động"   →  ActiveStatus enum
     @Column(name = "status", nullable = false, length = 20)
-    private String status = "Active";
+    private String status = com.company.ems.model.enums.ActiveStatus.HOAT_DONG.getValue();
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

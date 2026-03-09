@@ -110,11 +110,11 @@ public class AttendanceService extends AbstractBaseService<Attendance, Long> {
     public double getAttendanceRate(Long studentId, Long classId) {
         try {
             return txManager.runInTransaction(em -> {
-                long total   = attendanceRepository.countByStudentClassStatus(em, studentId, classId, "Present")
-                             + attendanceRepository.countByStudentClassStatus(em, studentId, classId, "Absent")
-                             + attendanceRepository.countByStudentClassStatus(em, studentId, classId, "Late");
+                long total   = attendanceRepository.countByStudentClassStatus(em, studentId, classId, "Có mặt")
+                             + attendanceRepository.countByStudentClassStatus(em, studentId, classId, "Vắng")
+                             + attendanceRepository.countByStudentClassStatus(em, studentId, classId, "Đi trễ");
                 if (total == 0) return 0.0;
-                long present = attendanceRepository.countByStudentClassStatus(em, studentId, classId, "Present");
+                long present = attendanceRepository.countByStudentClassStatus(em, studentId, classId, "Có mặt");
                 return (present * 100.0) / total;
             });
         } catch (Exception e) {
@@ -152,7 +152,7 @@ public class AttendanceService extends AbstractBaseService<Attendance, Long> {
                         a.setStudent(s);
                         a.setClazz(clazz);
                         a.setAttendDate(date);
-                        a.setStatus("Present");
+                        a.setStatus(com.company.ems.model.enums.AttendanceStatus.CO_MAT.getValue());
                     }
                     result.add(a);
                 }

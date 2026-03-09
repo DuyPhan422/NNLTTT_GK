@@ -314,7 +314,7 @@ public class LoginFrame extends JFrame {
 
         switch (account.getRole()) {
 
-            case "Admin", "Staff" -> {
+            case "Quản trị", "Nhân viên" -> {
                 Runnable onLogout = () -> {
                     LoginFrame newLogin = new LoginFrame(
                             userAccountService, studentService, teacherService, courseService,
@@ -334,7 +334,7 @@ public class LoginFrame extends JFrame {
                 frame.setVisible(true);
             }
 
-            case "Teacher" -> {
+            case "Giáo viên" -> {
                 if (account.getTeacher() == null) {
                     showFatalError("Tài khoản giáo viên không liên kết với hồ sơ giảng viên.");
                     return;
@@ -357,7 +357,7 @@ public class LoginFrame extends JFrame {
                 frame.setVisible(true);
             }
 
-            case "Student" -> {
+            case "Học viên" -> {
                 if (account.getStudent() == null) {
                     showFatalError("Tài khoản học viên không liên kết với hồ sơ học viên.");
                     return;

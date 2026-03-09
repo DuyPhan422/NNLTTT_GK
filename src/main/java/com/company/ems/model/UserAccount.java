@@ -25,7 +25,7 @@ public class UserAccount {
     @Column(name = "password_hash", nullable = false, length = 255)
     private String passwordHash;
 
-    // "Admin" | "Teacher" | "Student" | "Staff"
+    // "Quản trị" | "Giáo viên" | "Học viên" | "Nhân viên"   →  UserRole enum
     @Column(name = "role", nullable = false, length = 20)
     private String role;
 
@@ -62,4 +62,3 @@ public class UserAccount {
         updatedAt = LocalDateTime.now();
     }
 }
-

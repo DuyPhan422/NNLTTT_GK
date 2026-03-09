@@ -3,6 +3,8 @@ package com.company.ems.ui.panels;
 import com.company.ems.model.Class;
 import com.company.ems.model.Enrollment;
 import com.company.ems.model.Student;
+import com.company.ems.model.enums.EnrollmentResult;
+import com.company.ems.model.enums.EnrollmentStatus;
 import com.company.ems.service.StudentService;
 
 import javax.swing.*;
@@ -37,8 +39,8 @@ public class EnrollmentFormDialog extends JDialog {
     private final JLabel lblStudentName;
     private final JComboBox<Class> cbClass;
     private final JTextField tfEnrollmentDate;
-    private final JComboBox<String> cbStatus;
-    private final JComboBox<String> cbResult;
+    private final JComboBox<EnrollmentStatus> cbStatus;
+    private final JComboBox<EnrollmentResult> cbResult;
 
     private boolean saved = false;
     private final boolean isEdit;
@@ -142,13 +144,13 @@ public class EnrollmentFormDialog extends JDialog {
         tfEnrollmentDate = createField(isEdit && existing.getEnrollmentDate() != null
                 ? existing.getEnrollmentDate().format(DATE_FMT) : LocalDate.now().format(DATE_FMT));
 
-        cbStatus = new JComboBox<>(new String[]{"Đã đăng ký", "Đã hủy", "Hoàn thành"});
+        cbStatus = new JComboBox<>(EnrollmentStatus.values());
         cbStatus.setFont(FONT_MAIN);
-        if (isEdit && existing.getStatus() != null) cbStatus.setSelectedItem(existing.getStatus());
+        if (isEdit && existing.getStatus() != null) cbStatus.setSelectedItem(EnrollmentStatus.fromValue(existing.getStatus()));
 
-        cbResult = new JComboBox<>(new String[]{"Chưa có", "Đạt", "Không đạt"});
+        cbResult = new JComboBox<>(EnrollmentResult.values());
         cbResult.setFont(FONT_MAIN);
-        if (isEdit && existing.getResult() != null) cbResult.setSelectedItem(existing.getResult());
+        if (isEdit && existing.getResult() != null) cbResult.setSelectedItem(EnrollmentResult.fromValue(existing.getResult()));
 
         buildUI();
         pack();
@@ -324,13 +326,13 @@ public class EnrollmentFormDialog extends JDialog {
                     "X\u00e1c nh\u1eadn", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
             if (confirm != JOptionPane.YES_OPTION) return;
             enrollment.setEnrollmentDate(enDate);
-            enrollment.setStatus((String) cbStatus.getSelectedItem());
-            enrollment.setResult((String) cbResult.getSelectedItem());
+            enrollment.setStatus(((EnrollmentStatus) cbStatus.getSelectedItem()).getValue());
+            enrollment.setResult(((EnrollmentResult) cbResult.getSelectedItem()).getValue());
         } else {
             // Add mode: validate student, class, date, no duplicate
             if (!studentLocked) checkStudentCode();
             if (currentStudent == null) {
-                showWarning("Vui l\u00f2ng nh\u1eadp m\u00e3 H\u1ecdc vi\u00ean h\u1ee3p l\u1ec7 v\u00e0 ki\u1ec3m tra.");
+                showWarning("Vui l\u00f2ng nh\u1eadp m\u00e3 H\u1ecDc vi\u00ean h\u1ee3p l\u1ec7 v\u00e0 ki\u1ec3m tra.");
                 tfStudentCode.requestFocus();
                 return;
             }
@@ -373,8 +375,8 @@ public class EnrollmentFormDialog extends JDialog {
             enrollment.setStudent(currentStudent);
             enrollment.setClazz(clazz);
             enrollment.setEnrollmentDate(enDate);
-            enrollment.setStatus("\u0110\u00e3 \u0111\u0103ng k\u00fd");
-            enrollment.setResult("Ch\u01b0a c\u00f3");
+            enrollment.setStatus(EnrollmentStatus.DA_DANG_KY.getValue());
+            enrollment.setResult(EnrollmentResult.CHUA_CO.getValue());
         }
         saved = true;
         dispose();

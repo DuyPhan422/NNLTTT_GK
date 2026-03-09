@@ -15,12 +15,12 @@ CREATE TABLE students (
   student_id        BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
   full_name         VARCHAR(150) NOT NULL,
   date_of_birth     DATE NULL,
-  gender            ENUM('Male','Female','Other') NULL,
+  gender            ENUM('Nam','Nữ','Khác') NULL,
   phone             VARCHAR(20) NULL,
   email             VARCHAR(150) NULL,
   address           VARCHAR(255) NULL,
   registration_date DATE NOT NULL DEFAULT (CURRENT_DATE),
-  status            ENUM('Active','Inactive') NOT NULL DEFAULT 'Active',
+  status            ENUM('Hoạt động','Không hoạt động') NOT NULL DEFAULT 'Hoạt động',
   created_at        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT uq_students_email UNIQUE (email),
@@ -37,7 +37,7 @@ CREATE TABLE teachers (
   email        VARCHAR(150) NULL,
   specialty    VARCHAR(100) NULL, -- IELTS, TOEIC, GiaoTiep...
   hire_date    DATE NULL,
-  status       ENUM('Active','Inactive') NOT NULL DEFAULT 'Active',
+  status       ENUM('Hoạt động','Không hoạt động') NOT NULL DEFAULT 'Hoạt động',
   created_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT uq_teachers_email UNIQUE (email),
@@ -51,11 +51,11 @@ CREATE TABLE courses (
   course_id    BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
   course_name  VARCHAR(200) NOT NULL,
   description  TEXT NULL,
-  level        ENUM('Beginner','Intermediate','Advanced') NULL,
+  level        ENUM('Cơ bản','Trung cấp','Nâng cao') NULL,
   duration     INT NULL,            -- so gio / so tuan (tuy quy uoc)
-  duration_unit ENUM('Hour','Week') NULL DEFAULT 'Week',
+  duration_unit ENUM('Giờ','Tuần','Tháng') NULL DEFAULT 'Tuần',
   fee          DECIMAL(15,2) NOT NULL DEFAULT 0.00,
-  status       ENUM('Active','Inactive') NOT NULL DEFAULT 'Active',
+  status       ENUM('Hoạt động','Không hoạt động') NOT NULL DEFAULT 'Hoạt động',
   created_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
@@ -68,7 +68,7 @@ CREATE TABLE rooms (
   room_name  VARCHAR(100) NOT NULL,
   capacity   INT NOT NULL DEFAULT 0,
   location   VARCHAR(150) NULL,
-  status     ENUM('Active','Inactive') NOT NULL DEFAULT 'Active',
+  status     ENUM('Hoạt động','Không hoạt động') NOT NULL DEFAULT 'Hoạt động',
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT uq_rooms_name UNIQUE (room_name)
@@ -86,7 +86,7 @@ CREATE TABLE classes (
   end_date      DATE NULL,
   max_student   INT NOT NULL DEFAULT 0,
   room_id       BIGINT UNSIGNED NULL,
-  status        ENUM('Planned','Open','Ongoing','Completed','Cancelled') NOT NULL DEFAULT 'Planned',
+  status        ENUM('Lên kế hoạch','Mở lớp','Đang diễn ra','Hoàn thành','Hủy lớp') NOT NULL DEFAULT 'Lên kế hoạch',
   created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
@@ -116,8 +116,8 @@ CREATE TABLE enrollments (
   student_id      BIGINT UNSIGNED NOT NULL,
   class_id        BIGINT UNSIGNED NOT NULL,
   enrollment_date DATE NOT NULL DEFAULT (CURRENT_DATE),
-  status          ENUM('Enrolled','Dropped','Completed') NOT NULL DEFAULT 'Enrolled',
-  result          ENUM('Pass','Fail','NA') NOT NULL DEFAULT 'NA',
+  status          ENUM('Đã đăng ký','Đã hủy','Đã thanh toán') NOT NULL DEFAULT 'Đã đăng ký',
+  result          ENUM('Đạt','Không đạt','Chưa có') NOT NULL DEFAULT 'Chưa có',
   created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
@@ -143,7 +143,7 @@ CREATE TABLE invoices (
   student_id     BIGINT UNSIGNED NOT NULL,
   total_amount   DECIMAL(15,2) NOT NULL DEFAULT 0.00,
   issue_date     DATE NOT NULL DEFAULT (CURRENT_DATE),
-  status         ENUM('Draft','Issued','Paid','Cancelled') NOT NULL DEFAULT 'Issued',
+  status         ENUM('Bản nháp','Chờ thanh toán','Đã thanh toán','Đã hủy') NOT NULL DEFAULT 'Chờ thanh toán',
   note           VARCHAR(255) NULL,
   created_at     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -167,8 +167,8 @@ CREATE TABLE payments (
   invoice_id      BIGINT UNSIGNED NULL,
   amount          DECIMAL(15,2) NOT NULL,
   payment_date    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  payment_method  ENUM('Cash','Bank','Momo','ZaloPay','Card','Other') NOT NULL DEFAULT 'Cash',
-  status          ENUM('Pending','Completed','Failed','Refunded') NOT NULL DEFAULT 'Completed',
+  payment_method  ENUM('Tiền mặt','Chuyển khoản','Momo','ZaloPay','Thẻ ngân hàng','Khác') NOT NULL DEFAULT 'Tiền mặt',
+  status          ENUM('Chờ xử lý','Hoàn thành','Thất bại','Đã hoàn tiền') NOT NULL DEFAULT 'Hoàn thành',
   reference_code  VARCHAR(100) NULL,
   created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
@@ -224,7 +224,7 @@ CREATE TABLE attendances (
   student_id    BIGINT UNSIGNED NOT NULL,
   class_id      BIGINT UNSIGNED NOT NULL,
   attend_date   DATE NOT NULL,
-  status        ENUM('Present','Absent','Late') NOT NULL DEFAULT 'Present',
+  status        ENUM('Có mặt','Vắng','Đi trễ') NOT NULL DEFAULT 'Có mặt',
   note          VARCHAR(255) NULL,
   created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
@@ -248,10 +248,10 @@ CREATE INDEX idx_attendances_student_date ON attendances(student_id, attend_date
 CREATE TABLE staffs (
   staff_id   BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
   full_name  VARCHAR(150) NOT NULL,
-  role       ENUM('Admin','Consultant','Accountant','Manager','Other') NOT NULL DEFAULT 'Other',
+  role       ENUM('Quản trị','Tư vấn','Kế toán','Quản lý','Khác') NOT NULL DEFAULT 'Khác',
   phone      VARCHAR(20) NULL,
   email      VARCHAR(150) NULL,
-  status     ENUM('Active','Inactive') NOT NULL DEFAULT 'Active',
+  status     ENUM('Hoạt động','Không hoạt động') NOT NULL DEFAULT 'Hoạt động',
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT uq_staffs_email UNIQUE (email),
@@ -270,7 +270,7 @@ CREATE TABLE user_accounts (
   user_id        BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
   username       VARCHAR(80) NOT NULL,
   password_hash  VARCHAR(255) NOT NULL,
-  role           ENUM('Admin','Teacher','Student','Staff') NOT NULL,
+  role           ENUM('Quản trị','Giáo viên','Học viên','Nhân viên') NOT NULL,
   teacher_id     BIGINT UNSIGNED NULL,
   student_id     BIGINT UNSIGNED NULL,
   staff_id       BIGINT UNSIGNED NULL,
@@ -294,10 +294,10 @@ CREATE TABLE user_accounts (
   -- Ràng buộc CHECK này giờ đã an toàn và hợp lệ
   CONSTRAINT chk_user_accounts_related
     CHECK (
-      (role='Teacher' AND teacher_id IS NOT NULL AND student_id IS NULL AND staff_id IS NULL) OR
-      (role='Student' AND student_id IS NOT NULL AND teacher_id IS NULL AND staff_id IS NULL) OR
-      (role='Staff'   AND staff_id   IS NOT NULL AND teacher_id IS NULL AND student_id IS NULL) OR
-      (role='Admin'   AND teacher_id IS NULL AND student_id IS NULL AND staff_id IS NULL)
+      (role='Giáo viên' AND teacher_id IS NOT NULL AND student_id IS NULL AND staff_id IS NULL) OR
+      (role='Học viên' AND student_id IS NOT NULL AND teacher_id IS NULL AND staff_id IS NULL) OR
+      (role='Nhân viên'   AND staff_id   IS NOT NULL AND teacher_id IS NULL AND student_id IS NULL) OR
+      (role='Quản trị'   AND teacher_id IS NULL AND student_id IS NULL AND staff_id IS NULL)
     )
 );
 
@@ -338,7 +338,7 @@ CREATE TABLE branches (
   branch_name VARCHAR(150) NOT NULL,
   address     VARCHAR(255) NULL,
   phone       VARCHAR(20) NULL,
-  status      ENUM('Active','Inactive') NOT NULL DEFAULT 'Active',
+  status      ENUM('Hoạt động','Không hoạt động') NOT NULL DEFAULT 'Hoạt động',
   created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT uq_branches_name UNIQUE (branch_name)
 );
