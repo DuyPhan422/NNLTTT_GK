@@ -16,6 +16,7 @@ public class HeaderPanel extends JPanel {
 
     private final JLabel titleLabel;
     private final JLabel subtitleLabel;
+    private final JLabel userLabel;
 
     public HeaderPanel(String title, String subtitle) {
         setLayout(new BorderLayout());
@@ -46,7 +47,7 @@ public class HeaderPanel extends JPanel {
         JPanel userPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         userPanel.setOpaque(false);
 
-        JLabel userLabel = new JLabel("Admin");
+        userLabel = new JLabel("");
         userLabel.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         userLabel.setForeground(SUB_COLOR);
 
@@ -62,6 +63,11 @@ public class HeaderPanel extends JPanel {
     public void setTitle(String title, String subtitle) {
         titleLabel.setText(title);
         subtitleLabel.setText(subtitle);
+    }
+
+    /** Cập nhật tên / role người dùng hiển thị góc phải */
+    public void setUserInfo(String displayName) {
+        userLabel.setText(displayName);
     }
 }
 

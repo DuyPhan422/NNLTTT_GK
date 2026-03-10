@@ -24,6 +24,7 @@ public class Main {
         PaymentService    paymentService    = new PaymentService(new JpaPaymentRepository());
         ScheduleService   scheduleService   = new ScheduleService(new JpaScheduleRepository());
         AttendanceService attendanceService = new AttendanceService(new JpaAttendanceRepository());
+        ResultService     resultService     = new ResultService(new JpaResultRepository());
         UserAccountService userAccountService = new UserAccountService(new JpaUserAccountRepository());
 
         // ── [TẠM THỜI] In BCrypt hash để update vào DB ──────────────────
@@ -44,7 +45,7 @@ public class Main {
                     studentService, teacherService, courseService,
                     roomService, staffService, classService,
                     enrollmentService, invoiceService, paymentService,
-                    scheduleService, attendanceService
+                    scheduleService, attendanceService, resultService
             );
             login.setVisible(true);
         });

@@ -21,15 +21,15 @@ public class SidebarPanel extends JPanel {
     private static final Color DANGER        = new Color(220, 38,  38);
     private static final Color DANGER_HOVER  = new Color(185, 28,  28);
 
-    private String activeItem = "students";
+    private String activeItem;
     private final Consumer<String> onNavigate;
-    private final Runnable         onLogout;
+    private final String[][]       menuItems;
 
-    // Nhân viên đã chuyển lên ngay dưới Giáo viên (cùng nhóm đối tượng)
-    private static final String[][] MENU_ITEMS = {
+    // Menu đầy đủ (dành cho Admin) — dùng làm mặc định
+    public static final String[][] DEFAULT_MENU_ITEMS = {
         {"👥",  "Học viên",   "students"},
-        {"👨\u200d🏫", "Giáo viên",  "teachers"},
-        {"🧑\u200d💼", "Nhân viên",  "staffs"},
+        {"👨", "Giáo viên",  "teachers"},
+        {"🧑", "Nhân viên",  "staffs"},
         {"📚",  "Khóa học",   "courses"},
         {"🏫",  "Lớp học",    "classes"},
         {"📋",  "Đăng ký",    "enrollments"},
@@ -39,9 +39,17 @@ public class SidebarPanel extends JPanel {
         {"🚪",  "Phòng học",  "rooms"},
     };
 
+    /** Constructor dùng menu mặc định (backward-compatible). */
     public SidebarPanel(Consumer<String> onNavigate, Runnable onLogout) {
+        this(DEFAULT_MENU_ITEMS, onNavigate, onLogout);
+    }
+
+    /** Constructor nhận menu tùy chỉnh — dùng cho Staff / các role khác. */
+    public SidebarPanel(String[][] menuItems, Consumer<String> onNavigate, Runnable onLogout) {
+        this.menuItems  = menuItems;
         this.onNavigate = onNavigate;
-        this.onLogout   = onLogout;
+        // Khởi tạo activeItem từ mục đầu tiên trong menu để highlight đúng ngay khi mở
+        this.activeItem = (menuItems != null && menuItems.length > 0) ? menuItems[0][2] : "students";
         setLayout(new BorderLayout());
         setBackground(BG_COLOR);
         setPreferredSize(new Dimension(220, 0));
@@ -64,7 +72,7 @@ public class SidebarPanel extends JPanel {
         menuPanel.setLayout(new BoxLayout(menuPanel, BoxLayout.Y_AXIS));
         menuPanel.setBackground(BG_COLOR);
         menuPanel.setBorder(BorderFactory.createEmptyBorder(8, 0, 8, 0));
-        for (String[] item : MENU_ITEMS) {
+        for (String[] item : this.menuItems) {
             menuPanel.add(createMenuItem(item[0], item[1], item[2]));
         }
         menuPanel.add(Box.createVerticalGlue());
@@ -88,7 +96,8 @@ public class SidebarPanel extends JPanel {
             public void mouseExited (MouseEvent e) { btnLogout.setBackground(DANGER); }
         });
         btnLogout.addActionListener(e -> {
-            int ok = JOptionPane.showConfirmDialog(SidebarPanel.this,
+            int ok = JOptionPane.showConfirmDialog(
+                    SwingUtilities.getWindowAncestor(SidebarPanel.this),
                     "Bạn có chắc muốn đăng xuất?", "Xác nhận", JOptionPane.YES_NO_OPTION);
             if (ok == JOptionPane.YES_OPTION && onLogout != null) onLogout.run();
         });
@@ -151,7 +160,7 @@ public class SidebarPanel extends JPanel {
         Component menuPanel = ((BorderLayout) getLayout()).getLayoutComponent(BorderLayout.CENTER);
         if (menuPanel instanceof JPanel mp) {
             mp.removeAll();
-            for (String[] item : MENU_ITEMS) mp.add(createMenuItem(item[0], item[1], item[2]));
+            for (String[] item : this.menuItems) mp.add(createMenuItem(item[0], item[1], item[2]));
             mp.add(Box.createVerticalGlue());
             mp.revalidate();
             mp.repaint();

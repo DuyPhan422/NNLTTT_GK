@@ -267,7 +267,7 @@ public class ClassFormDialog extends JDialog {
     private JPanel buildDateRow(JSpinner spinner, JTextField tf) {
         JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
         row.setOpaque(false);
-        spinner.setPreferredSize(new Dimension(46, 34));
+        spinner.setPreferredSize(new Dimension(64, 34));
         // Show calendar icon label as hint
         JLabel calIcon = new JLabel("📅");
         calIcon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 14));

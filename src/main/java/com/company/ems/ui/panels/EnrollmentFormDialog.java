@@ -1,6 +1,7 @@
 package com.company.ems.ui.panels;
 
 import com.company.ems.model.Class;
+import com.company.ems.model.Course;
 import com.company.ems.model.Enrollment;
 import com.company.ems.model.Student;
 import com.company.ems.model.enums.EnrollmentResult;
@@ -37,8 +38,12 @@ public class EnrollmentFormDialog extends JDialog {
 
     private final JTextField tfStudentCode;
     private final JLabel lblStudentName;
-    private final JComboBox<Class> cbClass;
+    private JComboBox<Class> cbClass;
+    private JComboBox<Course> cbCourse;
+    private List<Class> availableClasses;
+    private List<Class> allClasses;
     private final JTextField tfEnrollmentDate;
+    private Runnable onStudentChanged;
     private final JComboBox<EnrollmentStatus> cbStatus;
     private final JComboBox<EnrollmentResult> cbResult;
 
@@ -100,46 +105,26 @@ public class EnrollmentFormDialog extends JDialog {
             });
         }
 
-        // Combo Môn học — filter already-enrolled and full classes when student is locked (add mode)
-        List<Class> availableClasses = classes;
+        // Lưu danh sách lớp khả dụng để dùng trong buildAddUI()
+        this.allClasses = classes;     // toàn bộ, dùng cho edit mode
+        this.availableClasses = classes;
         if (studentLocked && lockedStudent != null) {
-            Set<Long> enrolledClassIds = allEnrollments.stream()
+            Set<Long> enrolledCourseIds = allEnrollments.stream()
                     .filter(e -> e.getStudent() != null
-                              && e.getStudent().getStudentId().equals(lockedStudent.getStudentId()))
-                    .map(e -> e.getClazz().getClassId())
+                              && e.getStudent().getStudentId().equals(lockedStudent.getStudentId())
+                              && e.getClazz() != null && e.getClazz().getCourse() != null)
+                    .map(e -> e.getClazz().getCourse().getCourseId())
                     .collect(Collectors.toSet());
-            // Count active enrollments per class to detect full classes
             Map<Long, Long> countPerClass = allEnrollments.stream()
                     .filter(e -> e.getClazz() != null)
                     .collect(Collectors.groupingBy(e -> e.getClazz().getClassId(), Collectors.counting()));
-            availableClasses = classes.stream()
-                    .filter(c -> !enrolledClassIds.contains(c.getClassId()))
+            this.availableClasses = classes.stream()
+                    .filter(c -> !enrolledCourseIds.contains(c.getCourse().getCourseId()))
                     .filter(c -> c.getMaxStudent() == null || c.getMaxStudent() <= 0
                               || countPerClass.getOrDefault(c.getClassId(), 0L) < c.getMaxStudent())
                     .collect(Collectors.toList());
         }
-        final Map<Long, Long> classCounts = allEnrollments.stream()
-                .filter(e -> e.getClazz() != null)
-                .collect(Collectors.groupingBy(e -> e.getClazz().getClassId(), Collectors.counting()));
-        cbClass = new JComboBox<>(availableClasses.toArray(new Class[0]));
-        cbClass.setFont(FONT_MAIN);
-        cbClass.setRenderer(new DefaultListCellRenderer() {
-            @Override
-            public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
-                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
-                if (value instanceof com.company.ems.model.Class) {
-                    com.company.ems.model.Class c = (com.company.ems.model.Class) value;
-                    String course = (c.getCourse() != null) ? c.getCourse().getCourseName() : c.getClassName();
-                    long cur = classCounts.getOrDefault(c.getClassId(), 0L);
-                    String slot = (c.getMaxStudent() != null && c.getMaxStudent() > 0)
-                            ? cur + "/" + c.getMaxStudent() + " HV"
-                            : cur + " HV";
-                    setText(course + "  (\u2022 L\u1EDBp " + c.getClassName() + "  |  " + slot + ")");
-                }
-                return this;
-            }
-        });
-        if (isEdit && existing.getClazz() != null) cbClass.setSelectedItem(existing.getClazz());
+        // cbClass & cbCourse được khởi tạo trong buildAddUI() khi add mode
 
         tfEnrollmentDate = createField(isEdit && existing.getEnrollmentDate() != null
                 ? existing.getEnrollmentDate().format(DATE_FMT) : LocalDate.now().format(DATE_FMT));
@@ -182,6 +167,7 @@ public class EnrollmentFormDialog extends JDialog {
                 lblStudentName.setText("✅ " + s.getFullName());
                 lblStudentName.setForeground(new Color(22, 163, 74)); // Xanh lá
                 currentStudent = s;
+                if (onStudentChanged != null) onStudentChanged.run();
             } else {
                 lblStudentName.setText("❌ Không tìm thấy Học viên trong hệ thống!");
                 lblStudentName.setForeground(DANGER);
@@ -199,7 +185,9 @@ public class EnrollmentFormDialog extends JDialog {
     }
 
     private void buildEditUI() {
-        // ── Navy header: student name + class info ────────────────────
+        boolean canChangeClass = "Đã đăng ký".equals(enrollment.getStatus());
+
+        // ── Navy header ───────────────────────────────────────────────
         JPanel header = new JPanel(new BorderLayout(0, 4));
         header.setBackground(new Color(15, 23, 42));
         header.setBorder(BorderFactory.createEmptyBorder(16, 22, 16, 22));
@@ -211,43 +199,136 @@ public class EnrollmentFormDialog extends JDialog {
         nameLbl.setFont(new Font("Segoe UI", Font.BOLD, 14));
         nameLbl.setForeground(Color.WHITE);
 
-        String classInfo = "";
-        if (enrollment.getClazz() != null) {
-            String course = enrollment.getClazz().getCourse() != null
-                    ? enrollment.getClazz().getCourse().getCourseName()
-                    : enrollment.getClazz().getClassName();
-            classInfo = course + "  \u2022  " + enrollment.getClazz().getClassName();
-        }
-        JLabel classLbl = new JLabel(classInfo.isEmpty() ? " " : classInfo);
-        classLbl.setFont(FONT_SMALL);
-        classLbl.setForeground(new Color(148, 163, 184));
-
         JPanel headerText = new JPanel();
         headerText.setLayout(new BoxLayout(headerText, BoxLayout.Y_AXIS));
         headerText.setOpaque(false);
         headerText.add(nameLbl);
-        headerText.add(Box.createVerticalStrut(5));
-        headerText.add(classLbl);
         header.add(headerText, BorderLayout.CENTER);
 
-        // ── Form: only the 3 editable fields ─────────────────────────
+        // ── Form ──────────────────────────────────────────────────────
         JPanel body = new JPanel(new GridBagLayout());
         body.setBackground(BG_CARD);
         body.setBorder(BorderFactory.createEmptyBorder(22, 24, 8, 24));
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.fill    = GridBagConstraints.HORIZONTAL;
         gbc.weightx = 1.0;
-        addRow(body, gbc, 0, "Ng\u00e0y ghi danh (dd/MM/yyyy) *", tfEnrollmentDate);
-        addRow(body, gbc, 1, "Tr\u1ea1ng th\u00e1i", cbStatus);
-        addRow(body, gbc, 2, "K\u1ebft qu\u1ea3", cbResult);
+
+        int row = 0;
+        if (canChangeClass) {
+            // Cascade khóa → lớp (bao gồm lớp hiện tại kể cả nếu đã đầy/đóng)
+            final Map<Long, Long> classCounts = allEnrollments.stream()
+                    .filter(e -> e.getClazz() != null)
+                    .collect(Collectors.groupingBy(e -> e.getClazz().getClassId(), Collectors.counting()));
+
+            final Long currentClassId = enrollment.getClazz() != null
+                    ? enrollment.getClazz().getClassId() : null;
+            List<Class> editableClasses = allClasses.stream()
+                    .filter(c -> "Mở lớp".equals(c.getStatus())
+                              || (currentClassId != null && c.getClassId().equals(currentClassId)))
+                    .filter(c -> {
+                        if (currentClassId != null && c.getClassId().equals(currentClassId)) return true;
+                        return c.getMaxStudent() == null || c.getMaxStudent() <= 0
+                            || classCounts.getOrDefault(c.getClassId(), 0L) < c.getMaxStudent();
+                    })
+                    .collect(Collectors.toList());
+
+            final Map<Long, List<Class>> courseClassMap = editableClasses.stream()
+                    .collect(Collectors.groupingBy(
+                            c -> c.getCourse().getCourseId(),
+                            java.util.LinkedHashMap::new,
+                            Collectors.toList()));
+            final Map<Long, Course> courseById = editableClasses.stream()
+                    .collect(Collectors.toMap(
+                            c -> c.getCourse().getCourseId(),
+                            Class::getCourse, (a, b) -> a,
+                            java.util.LinkedHashMap::new));
+            List<Course> courseList = new java.util.ArrayList<>(courseById.values());
+
+            cbCourse = new JComboBox<>(courseList.toArray(new Course[0]));
+            cbCourse.setFont(FONT_MAIN);
+            cbCourse.setRenderer(new DefaultListCellRenderer() {
+                @Override public Component getListCellRendererComponent(
+                        JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
+                    super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                    if (value instanceof Course c) {
+                        int cnt = courseClassMap.getOrDefault(c.getCourseId(), java.util.Collections.emptyList()).size();
+                        setText(c.getCourseName() + "  (" + cnt + " lớp)");
+                    }
+                    return this;
+                }
+            });
+
+            cbClass = new JComboBox<>();
+            cbClass.setFont(FONT_MAIN);
+            cbClass.setRenderer(new DefaultListCellRenderer() {
+                @Override public Component getListCellRendererComponent(
+                        JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
+                    super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                    if (value instanceof Class c) {
+                        long cur = classCounts.getOrDefault(c.getClassId(), 0L);
+                        String slot = (c.getMaxStudent() != null && c.getMaxStudent() > 0)
+                                ? cur + "/" + c.getMaxStudent() + " HV" : cur + " HV";
+                        String date = c.getStartDate() != null
+                                ? "  |  KG: " + c.getStartDate().format(DATE_FMT) : "";
+                        setText(c.getClassName() + "  |  " + slot + date);
+                    }
+                    return this;
+                }
+            });
+
+            Runnable refreshClasses = () -> {
+                Course sel = (Course) cbCourse.getSelectedItem();
+                cbClass.removeAllItems();
+                if (sel != null)
+                    courseClassMap.getOrDefault(sel.getCourseId(), java.util.Collections.emptyList())
+                            .forEach(cbClass::addItem);
+            };
+            cbCourse.addActionListener(e -> refreshClasses.run());
+
+            // Pre-select khóa và lớp hiện tại
+            if (enrollment.getClazz() != null && enrollment.getClazz().getCourse() != null) {
+                Long preId = enrollment.getClazz().getCourse().getCourseId();
+                for (int i = 0; i < courseList.size(); i++) {
+                    if (courseList.get(i).getCourseId().equals(preId)) {
+                        cbCourse.setSelectedIndex(i); break;
+                    }
+                }
+            }
+            refreshClasses.run();
+            if (enrollment.getClazz() != null) {
+                for (int i = 0; i < cbClass.getItemCount(); i++) {
+                    if (cbClass.getItemAt(i).getClassId().equals(enrollment.getClazz().getClassId())) {
+                        cbClass.setSelectedIndex(i); break;
+                    }
+                }
+            }
+
+            addRow(body, gbc, row++, "Khóa học", cbCourse);
+            addRow(body, gbc, row++, "Lớp học", cbClass);
+        } else {
+            // Readonly nếu không phải "Đã đăng ký"
+            String courseInfo = enrollment.getClazz() != null && enrollment.getClazz().getCourse() != null
+                    ? enrollment.getClazz().getCourse().getCourseName() : "";
+            String classInfo2 = enrollment.getClazz() != null ? enrollment.getClazz().getClassName() : "";
+            JTextField tfCourseLock = createField(courseInfo);
+            tfCourseLock.setEditable(false); tfCourseLock.setBackground(new Color(241, 245, 249));
+            JTextField tfClassLock = createField(classInfo2);
+            tfClassLock.setEditable(false); tfClassLock.setBackground(new Color(241, 245, 249));
+            addRow(body, gbc, row++, "Khóa học", tfCourseLock);
+            addRow(body, gbc, row++, "Lớp học", tfClassLock);
+        }
+
+        addRow(body, gbc, row++, "Ngày ghi danh (dd/MM/yyyy) *", tfEnrollmentDate);
+        addRow(body, gbc, row++, "Trạng thái", cbStatus);
+        addRow(body, gbc, row++, "Kết quả", cbResult);
 
         // ── Button bar ────────────────────────────────────────────────
         JPanel btnBar = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         btnBar.setBackground(BG_CARD);
         btnBar.setBorder(BorderFactory.createEmptyBorder(12, 24, 16, 24));
-        JButton cancelBtn = createSecondaryButton("H\u1ee7y");
+        JButton cancelBtn = createSecondaryButton("Hủy");
         cancelBtn.addActionListener(e -> dispose());
-        JButton saveBtn = createPrimaryButton("L\u01b0u thay \u0111\u1ed5i");
+        JButton saveBtn = createPrimaryButton("Lưu thay đổi");
         saveBtn.addActionListener(e -> onSave());
         btnBar.add(cancelBtn);
         btnBar.add(saveBtn);
@@ -280,17 +361,139 @@ public class EnrollmentFormDialog extends JDialog {
             pnlStudent.add(btnCheck, BorderLayout.EAST);
         }
 
+        // ── Nhóm lớp theo khóa học (dùng mapRef để có thể rebuild khi student cư thay đổi) ──
+        final Map<Long, Long> classCounts = allEnrollments.stream()
+                .filter(e -> e.getClazz() != null)
+                .collect(Collectors.groupingBy(e -> e.getClazz().getClassId(), Collectors.counting()));
+
+        @SuppressWarnings("unchecked")
+        final Map<Long, List<Class>>[] mapRef = new Map[]{new java.util.LinkedHashMap<>()};
+
+        cbCourse = new JComboBox<>();
+        cbCourse.setFont(FONT_MAIN);
+        cbCourse.setRenderer(new DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
+                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                if (value instanceof Course c) {
+                    int cnt = mapRef[0].getOrDefault(c.getCourseId(), java.util.Collections.emptyList()).size();
+                    setText(c.getCourseName() + "  (" + cnt + " l\u1edbp tr\u1ed1ng)");
+                }
+                return this;
+            }
+        });
+
+        cbClass = new JComboBox<>();
+        cbClass.setFont(FONT_MAIN);
+        cbClass.setRenderer(new DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
+                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                if (value instanceof Class c) {
+                    long cur = classCounts.getOrDefault(c.getClassId(), 0L);
+                    String slot = (c.getMaxStudent() != null && c.getMaxStudent() > 0)
+                            ? cur + "/" + c.getMaxStudent() + " HV" : cur + " HV";
+                    String date = c.getStartDate() != null
+                            ? "  |  KG: " + c.getStartDate().format(DATE_FMT) : "";
+                    setText(c.getClassName() + "  |  " + slot + date);
+                }
+                return this;
+            }
+        });
+
+        // Cascade: chọn khóa → cập nhật danh sách lớp
+        Runnable refreshClasses = () -> {
+            Course sel = (Course) cbCourse.getSelectedItem();
+            cbClass.removeAllItems();
+            if (sel != null)
+                mapRef[0].getOrDefault(sel.getCourseId(), java.util.Collections.emptyList())
+                        .forEach(cbClass::addItem);
+        };
+        cbCourse.addActionListener(e -> refreshClasses.run());
+
+        // Khai báo trước lambda để lambda có thể capture bằng tên
+        final JLabel[] lblAllEnrolled = {null};
+        final JButton[] saveBtnRef    = {null};
+
+        // Rebuild toàn bộ cascade khi student thay đổi (hoặc lần đầu)
+        Runnable rebuildCourseList = () -> {
+            // Khóa mà student này đã đăng ký rồi
+            Set<Long> enrolledCourseIds = currentStudent == null
+                    ? java.util.Collections.emptySet()
+                    : allEnrollments.stream()
+                            .filter(e -> e.getStudent() != null
+                                      && e.getStudent().getStudentId().equals(currentStudent.getStudentId())
+                                      && e.getClazz() != null && e.getClazz().getCourse() != null)
+                            .map(e -> e.getClazz().getCourse().getCourseId())
+                            .collect(Collectors.toSet());
+
+            List<Class> filtered = availableClasses.stream()
+                    .filter(c -> !enrolledCourseIds.contains(c.getCourse().getCourseId()))
+                    .collect(Collectors.toList());
+
+            Map<Long, List<Class>> newMap = filtered.stream()
+                    .collect(Collectors.groupingBy(
+                            c -> c.getCourse().getCourseId(),
+                            java.util.LinkedHashMap::new,
+                            Collectors.toList()));
+            Map<Long, Course> newCourseById = filtered.stream()
+                    .collect(Collectors.toMap(
+                            c -> c.getCourse().getCourseId(),
+                            Class::getCourse, (a, b) -> a,
+                            java.util.LinkedHashMap::new));
+            mapRef[0] = newMap;
+
+            Course prevSel = (Course) cbCourse.getSelectedItem();
+            cbCourse.removeAllItems();
+            newCourseById.values().forEach(cbCourse::addItem);
+            // Giữ lại lựa chọn khóa nếu vẫn còn khả dụng
+            if (prevSel != null) {
+                for (int i = 0; i < cbCourse.getItemCount(); i++) {
+                    if (cbCourse.getItemAt(i).getCourseId().equals(prevSel.getCourseId())) {
+                        cbCourse.setSelectedIndex(i); break;
+                    }
+                }
+            }
+            refreshClasses.run();
+
+            // Cập nhật trạng thái cảnh báo & nút save
+            boolean allEnrolled = cbCourse.getItemCount() == 0 && currentStudent != null;
+            if (lblAllEnrolled[0] != null) lblAllEnrolled[0].setVisible(allEnrolled);
+            cbCourse.setEnabled(!allEnrolled);
+            cbClass.setEnabled(!allEnrolled);
+            if (saveBtnRef[0] != null) saveBtnRef[0].setEnabled(!allEnrolled);
+        };
+
+        // Label cảnh báo (ẩn mặc định)
+        JLabel lblWarn = new JLabel("\u26a0\ufe0f  Học viên này đã đăng ký tất cả các khóa học!");
+        lblWarn.setFont(FONT_SMALL);
+        lblWarn.setForeground(new Color(220, 38, 38));
+        lblWarn.setVisible(false);
+        lblAllEnrolled[0] = lblWarn;  // gán vào mảng đã khai báo trước lambda
+
+        rebuildCourseList.run(); // khởi tạo
+
+        // Khi không khóa student: đăng ký callback để rebuild sau khi xác nhận student
+        if (!studentLocked) {
+            onStudentChanged = rebuildCourseList;
+        }
+
         addRowWithLabel(form, gbc, 0, "M\u00e3 H\u1ecdc vi\u00ean *", pnlStudent, lblStudentName);
-        addRow(form, gbc, 1, "M\u00f4n h\u1ecdc *", cbClass);
-        addRow(form, gbc, 2, "Ng\u00e0y ghi danh (dd/MM/yyyy) *", tfEnrollmentDate);
+        addRow(form, gbc, 1, "Kh\u00f3a h\u1ecdc *", cbCourse);
+        addRow(form, gbc, 2, "L\u1edbp h\u1ecdc *", cbClass);
+        addRow(form, gbc, 3, "Ng\u00e0y ghi danh (dd/MM/yyyy) *", tfEnrollmentDate);
+
+        gbc.gridy  = 12;
+        gbc.insets = new Insets(6, 0, 0, 0);
+        form.add(lblWarn, gbc);
 
         JLabel infoNote = new JLabel(
             "\u2139\ufe0f Tr\u1ea1ng th\u00e1i: \u0110\u00e3 \u0111\u0103ng k\u00fd  \u00b7  "
             + "H\u00f3a \u0111\u01a1n h\u1ecdc ph\u00ed s\u1ebd \u0111\u01b0\u1ee3c t\u1ea1o t\u1ef1 \u0111\u1ed9ng.");
         infoNote.setFont(FONT_SMALL);
         infoNote.setForeground(new Color(37, 99, 235));
-        gbc.gridy  = 9;
-        gbc.insets = new Insets(14, 0, 0, 0);
+        gbc.gridy  = 13;
+        gbc.insets = new Insets(6, 0, 0, 0);
         form.add(infoNote, gbc);
 
         content.add(form, BorderLayout.CENTER);
@@ -301,6 +504,7 @@ public class EnrollmentFormDialog extends JDialog {
         JButton cancelBtn = createSecondaryButton("H\u1ee7y");
         cancelBtn.addActionListener(e -> dispose());
         JButton saveBtn = createPrimaryButton("Th\u00eam m\u1edbi");
+        saveBtnRef[0] = saveBtn;
         saveBtn.addActionListener(e -> onSave());
         btnPanel.add(cancelBtn);
         btnPanel.add(saveBtn);
@@ -311,7 +515,6 @@ public class EnrollmentFormDialog extends JDialog {
 
     private void onSave() {
         if (isEdit) {
-            // Edit mode: student & class are fixed, only validate date
             LocalDate enDate;
             try {
                 enDate = LocalDate.parse(tfEnrollmentDate.getText().trim(), DATE_FMT);
@@ -319,6 +522,39 @@ public class EnrollmentFormDialog extends JDialog {
                 showWarning("Ng\u00e0y ghi danh kh\u00f4ng h\u1ee3p l\u1ec7 (dd/MM/yyyy).");
                 tfEnrollmentDate.requestFocus();
                 return;
+            }
+            // N\u1ebfu \u0111ang ch\u1ec9nh l\u1edbp, ki\u1ec3m tra l\u1edbp \u0111\u01b0\u1ee3c ch\u1ecdn
+            if (cbClass != null && "\u0110\u00e3 \u0111\u0103ng k\u00fd".equals(enrollment.getStatus())) {
+                Class newClass = (Class) cbClass.getSelectedItem();
+                if (newClass == null) {
+                    showWarning("Vui l\u00f2ng ch\u1ecdn l\u1edbp h\u1ecdc.");
+                    return;
+                }
+                // N\u1ebfu đ\u1ed5i sang l\u1edbp kh\u00e1c: ki\u1ec3m tra tr\u00f9ng v\u00e0 s\u0129 s\u1ed1
+                if (enrollment.getClazz() == null
+                        || !newClass.getClassId().equals(enrollment.getClazz().getClassId())) {
+                    long curCount = allEnrollments.stream()
+                            .filter(e -> e.getClazz() != null
+                                      && e.getClazz().getClassId().equals(newClass.getClassId())
+                                      && !e.getEnrollmentId().equals(enrollment.getEnrollmentId()))
+                            .count();
+                    if (newClass.getMaxStudent() != null && newClass.getMaxStudent() > 0
+                            && curCount >= newClass.getMaxStudent()) {
+                        showWarning("L\u1EDBp " + newClass.getClassName() + " \u0111\u00e3 \u0111\u1ea7y ("
+                            + curCount + "/" + newClass.getMaxStudent() + " h\u1ecdc vi\u00ean).");
+                        return;
+                    }
+                    boolean dup = allEnrollments.stream()
+                            .anyMatch(e -> e.getStudent() != null && e.getClazz() != null
+                                       && e.getStudent().getStudentId().equals(enrollment.getStudent().getStudentId())
+                                       && e.getClazz().getClassId().equals(newClass.getClassId())
+                                       && !e.getEnrollmentId().equals(enrollment.getEnrollmentId()));
+                    if (dup) {
+                        showWarning("H\u1ecdc vi\u00ean \u0111\u00e3 c\u00f3 trong l\u1edbp " + newClass.getClassName() + " r\u1ed3i!");
+                        return;
+                    }
+                    enrollment.setClazz(newClass);
+                }
             }
             int confirm = JOptionPane.showConfirmDialog(this,
                     "L\u01b0u thay \u0111\u1ed5i cho h\u1ecdc vi\u00ean \u201c"
