@@ -1,6 +1,7 @@
 package com.company.ems.ui.panels.student;
 
 import com.company.ems.model.Class;
+import com.company.ems.model.Course;
 import com.company.ems.model.Enrollment;
 import com.company.ems.model.Invoice;
 import com.company.ems.model.Student;
@@ -191,11 +192,12 @@ public class StudentClassPanel extends JPanel {
                     "Tài khoản không hoạt động", JOptionPane.WARNING_MESSAGE);
             return;
         }
+
         List<Long> myClassIds = enrollmentService.findAll().stream()
-                .filter(e -> e.getStudent() != null && e.getStudent().getStudentId().equals(currentStudent.getStudentId()))
+                .filter(e -> e.getStudent() != null
+                          && e.getStudent().getStudentId().equals(currentStudent.getStudentId()))
                 .map(e -> e.getClazz().getClassId()).toList();
 
-        // Count active enrollments per class
         java.util.Map<Long, Long> enrollCounts = enrollmentService.findAll().stream()
                 .filter(e -> e.getClazz() != null)
                 .collect(java.util.stream.Collectors.groupingBy(
@@ -209,129 +211,195 @@ public class StudentClassPanel extends JPanel {
                 .toList();
 
         if (availableClasses.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Không có lớp mới nào đang mở!");
+            JOptionPane.showMessageDialog(this, "Không có lớp nào đang mở để đăng ký!");
             return;
         }
 
-        // ── Custom dialog ────────────────────────────────────────────────────
+        // Nhóm các lớp theo khóa học
+        java.util.Map<Course, List<Class>> courseMap = availableClasses.stream()
+                .collect(java.util.stream.Collectors.groupingBy(
+                        Class::getCourse,
+                        java.util.LinkedHashMap::new,
+                        java.util.stream.Collectors.toList()));
+        List<Course> courseList = new java.util.ArrayList<>(courseMap.keySet());
+
+        // ── Dialog ────────────────────────────────────────────────────────────
         Window owner = SwingUtilities.getWindowAncestor(this);
-        JDialog dialog = new JDialog(owner, "Đăng ký lớp học mới", Dialog.ModalityType.APPLICATION_MODAL);
+        JDialog dialog = new JDialog(owner, "Đăng ký Khóa học", Dialog.ModalityType.APPLICATION_MODAL);
         dialog.setLayout(new BorderLayout());
         dialog.getContentPane().setBackground(Color.WHITE);
 
-        // ── Header ───────────────────────────────────────────────────────────
-        JPanel header = new JPanel(new BorderLayout());
-        header.setBackground(new Color(37, 99, 235));
-        header.setBorder(BorderFactory.createEmptyBorder(16, 22, 16, 22));
-        JLabel lblTitle = new JLabel("Chọn lớp muốn đăng ký");
+        // ── Header ────────────────────────────────────────────────────────────
+        JPanel headerBar = new JPanel(new BorderLayout());
+        headerBar.setBackground(new Color(37, 99, 235));
+        headerBar.setBorder(BorderFactory.createEmptyBorder(14, 22, 14, 22));
+        JLabel lblTitle = new JLabel("Chọn Khóa học  →  Chọn Lớp học");
         lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 16));
         lblTitle.setForeground(Color.WHITE);
-        JLabel lblSub = new JLabel(availableClasses.size() + " lớp đang mở");
+        JLabel lblSub = new JLabel(courseList.size() + " khóa học  ·  " + availableClasses.size() + " lớp trống");
         lblSub.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         lblSub.setForeground(new Color(191, 219, 254));
-        header.add(lblTitle, BorderLayout.WEST);
-        header.add(lblSub, BorderLayout.EAST);
-        dialog.add(header, BorderLayout.NORTH);
+        headerBar.add(lblTitle, BorderLayout.WEST);
+        headerBar.add(lblSub, BorderLayout.EAST);
+        dialog.add(headerBar, BorderLayout.NORTH);
 
-        // ── Table ─────────────────────────────────────────────────────────────
-        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-        String[] cols = {"_id", "Tên Lớp", "Khóa học", "Cấp độ", "Học phí (VND)", "Ngày khai giảng", "Sĩ số"};
-        DefaultTableModel mdl = new DefaultTableModel(cols, 0) {
+        // ── LEFT: Bảng khóa học ───────────────────────────────────────────────
+        String[] courseCols = {"_id", "Tên Khóa học", "Cấp độ", "Học phí (VND)", "Số lớp trống"};
+        DefaultTableModel courseModel = new DefaultTableModel(courseCols, 0) {
             @Override public boolean isCellEditable(int r, int c) { return false; }
         };
-        availableClasses.forEach(c -> {
-            long cur = enrollCounts.getOrDefault(c.getClassId(), 0L);
-            String slot = (c.getMaxStudent() != null && c.getMaxStudent() > 0)
-                    ? cur + "/" + c.getMaxStudent()
-                    : cur + "/∞";
-            mdl.addRow(new Object[]{
-                c.getClassId(),
-                c.getClassName(),
-                c.getCourse().getCourseName(),
-                c.getCourse().getLevel() != null ? c.getCourse().getLevel() : "—",
-                String.format("%,.0f", c.getCourse().getFee()),
-                c.getStartDate() != null ? c.getStartDate().format(fmt) : "—",
-                slot
+        courseList.forEach(c -> courseModel.addRow(new Object[]{
+                c.getCourseId(),
+                c.getCourseName(),
+                c.getLevel() != null ? c.getLevel() : "—",
+                String.format("%,.0f", c.getFee()),
+                courseMap.get(c).size() + " lớp"
+        }));
+        JTable courseTbl = new JTable(courseModel);
+        courseTbl.setRowHeight(42);
+        courseTbl.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        courseTbl.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        courseTbl.setSelectionBackground(new Color(219, 234, 254));
+        courseTbl.setSelectionForeground(new Color(15, 23, 42));
+        courseTbl.setGridColor(new Color(226, 232, 240));
+        courseTbl.setShowVerticalLines(false);
+        courseTbl.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
+        courseTbl.getColumnModel().getColumn(0).setMinWidth(0);
+        courseTbl.getColumnModel().getColumn(0).setMaxWidth(0);
+        styleTblHeader(courseTbl);
+
+        JPanel leftHeader = new JPanel(new BorderLayout());
+        leftHeader.setBackground(new Color(241, 245, 249));
+        leftHeader.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 0, 1, 1, new Color(226, 232, 240)),
+                BorderFactory.createEmptyBorder(8, 16, 8, 16)));
+        JLabel lblLeft = new JLabel("📚  Khóa học");
+        lblLeft.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        lblLeft.setForeground(new Color(30, 41, 59));
+        leftHeader.add(lblLeft);
+
+        JScrollPane courseScroll = new JScrollPane(courseTbl);
+        courseScroll.setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, new Color(226, 232, 240)));
+        courseScroll.getViewport().setBackground(Color.WHITE);
+
+        JPanel leftPanel = new JPanel(new BorderLayout());
+        leftPanel.add(leftHeader, BorderLayout.NORTH);
+        leftPanel.add(courseScroll, BorderLayout.CENTER);
+
+        // ── RIGHT: Bảng lớp học (hiện sau khi chọn khóa) ─────────────────────
+        String[] classCols = {"_id", "Tên Lớp", "Ngày khai giảng", "Ngày kết thúc", "Phòng", "Sĩ số"};
+        DefaultTableModel classModel = new DefaultTableModel(classCols, 0) {
+            @Override public boolean isCellEditable(int r, int c) { return false; }
+        };
+        JTable classTbl = new JTable(classModel);
+        classTbl.setRowHeight(42);
+        classTbl.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        classTbl.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        classTbl.setSelectionBackground(new Color(209, 250, 229));
+        classTbl.setSelectionForeground(new Color(15, 23, 42));
+        classTbl.setGridColor(new Color(226, 232, 240));
+        classTbl.setShowVerticalLines(false);
+        classTbl.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
+        classTbl.getColumnModel().getColumn(0).setMinWidth(0);
+        classTbl.getColumnModel().getColumn(0).setMaxWidth(0);
+        styleTblHeader(classTbl);
+
+        // Placeholder khi chưa chọn khóa
+        JPanel rightCards = new JPanel(new CardLayout());
+        JPanel placeholder = new JPanel(new GridBagLayout());
+        placeholder.setBackground(new Color(248, 250, 252));
+        JLabel lblPh = new JLabel("← Chọn một khóa học bên trái để xem danh sách lớp");
+        lblPh.setFont(new Font("Segoe UI", Font.ITALIC, 14));
+        lblPh.setForeground(new Color(100, 116, 139));
+        placeholder.add(lblPh);
+        JScrollPane classScroll = new JScrollPane(classTbl);
+        classScroll.setBorder(BorderFactory.createEmptyBorder());
+        classScroll.getViewport().setBackground(Color.WHITE);
+        rightCards.add(placeholder, "placeholder");
+        rightCards.add(classScroll, "table");
+        ((CardLayout) rightCards.getLayout()).show(rightCards, "placeholder");
+
+        JPanel rightHeader = new JPanel(new BorderLayout());
+        rightHeader.setBackground(new Color(241, 245, 249));
+        rightHeader.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(226, 232, 240)),
+                BorderFactory.createEmptyBorder(8, 16, 8, 16)));
+        JLabel lblRight = new JLabel("🏫  Lớp học");
+        lblRight.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        lblRight.setForeground(new Color(30, 41, 59));
+        rightHeader.add(lblRight);
+
+        JPanel rightPanel = new JPanel(new BorderLayout());
+        rightPanel.add(rightHeader, BorderLayout.NORTH);
+        rightPanel.add(rightCards, BorderLayout.CENTER);
+
+        // ── Split pane ────────────────────────────────────────────────────────
+        JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, leftPanel, rightPanel);
+        split.setDividerLocation(380);
+        split.setDividerSize(4);
+        split.setBorder(BorderFactory.createEmptyBorder());
+        dialog.add(split, BorderLayout.CENTER);
+
+        // Tham chiếu lớp hiện tại để nút Đăng ký truy cập
+        @SuppressWarnings("unchecked")
+        final List<Class>[] currentClasses = new List[]{java.util.Collections.emptyList()};
+
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
+        // Click khóa học → cập nhật bảng lớp bên phải
+        courseTbl.getSelectionModel().addListSelectionListener(ev -> {
+            if (ev.getValueIsAdjusting()) return;
+            int sel = courseTbl.getSelectedRow();
+            if (sel < 0) return;
+            Course selectedCourse = courseList.get(sel);
+            List<Class> classes = courseMap.get(selectedCourse);
+            currentClasses[0] = classes;
+            classModel.setRowCount(0);
+            classes.forEach(c -> {
+                long cur = enrollCounts.getOrDefault(c.getClassId(), 0L);
+                String slot = (c.getMaxStudent() != null && c.getMaxStudent() > 0)
+                        ? cur + "/" + c.getMaxStudent() : cur + "/∞";
+                classModel.addRow(new Object[]{
+                        c.getClassId(),
+                        c.getClassName(),
+                        c.getStartDate() != null ? c.getStartDate().format(fmt) : "—",
+                        c.getEndDate()   != null ? c.getEndDate().format(fmt)   : "—",
+                        c.getRoom() != null ? c.getRoom().getRoomName() : "—",
+                        slot
+                });
             });
+            ((CardLayout) rightCards.getLayout()).show(rightCards, "table");
+            SwingUtilities.invokeLater(() -> UI.autoResizeColumns(classTbl, 80, 260));
+            // Cập nhật header bên phải
+            lblRight.setText("🏫  Lớp học  —  " + selectedCourse.getCourseName());
         });
 
-        JTable tbl = new JTable(mdl);
-        tbl.setRowHeight(44);
-        tbl.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        tbl.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        tbl.setSelectionBackground(new Color(219, 234, 254));
-        tbl.setSelectionForeground(new Color(30, 41, 59));
-        tbl.setGridColor(new Color(226, 232, 240));
-        tbl.setShowVerticalLines(false);
-        tbl.setIntercellSpacing(new Dimension(12, 1));
-        tbl.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
-
-        // Ẩn cột ID
-        tbl.getColumnModel().getColumn(0).setMinWidth(0);
-        tbl.getColumnModel().getColumn(0).setMaxWidth(0);
-
-        // Header: in đậm, căn giữa
-        tbl.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 13));
-        tbl.getTableHeader().setBackground(new Color(248, 250, 252));
-        tbl.getTableHeader().setForeground(new Color(71, 85, 105));
-        tbl.getTableHeader().setPreferredSize(new Dimension(0, 42));
-        tbl.getTableHeader().setReorderingAllowed(false);
-        ((javax.swing.table.DefaultTableCellRenderer) tbl.getTableHeader().getDefaultRenderer())
-                .setHorizontalAlignment(SwingConstants.LEFT);
-
-        // Tất cả cell căn trái
-        javax.swing.table.DefaultTableCellRenderer rightR = new javax.swing.table.DefaultTableCellRenderer();
-        rightR.setHorizontalAlignment(SwingConstants.LEFT);
-        java.util.stream.IntStream.range(1, tbl.getColumnCount())
-                .forEach(i -> tbl.getColumnModel().getColumn(i).setCellRenderer(rightR));
-
-        // Double-click để chọn ngay
-        tbl.addMouseListener(new java.awt.event.MouseAdapter() {
-            private int lastSelectedRow = -1;
-
-            @Override public void mousePressed(java.awt.event.MouseEvent e) {
-                int row = tbl.rowAtPoint(e.getPoint());
-                // Nếu bấm lại đúng hàng đang chọn → deselect sau khi table xử lý
-                if (row >= 0 && row == lastSelectedRow) {
-                    SwingUtilities.invokeLater(tbl::clearSelection);
-                    lastSelectedRow = -1;
-                } else {
-                    lastSelectedRow = row;
-                }
-            }
-
+        // Double-click lớp → đăng ký ngay
+        classTbl.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override public void mouseClicked(java.awt.event.MouseEvent e) {
-                if (e.getClickCount() == 2 && tbl.getSelectedRow() >= 0) {
+                if (e.getClickCount() == 2 && classTbl.getSelectedRow() >= 0) {
+                    int row = classTbl.getSelectedRow();
                     dialog.dispose();
-                    doEnroll(availableClasses.get(tbl.getSelectedRow()));
+                    doEnroll(currentClasses[0].get(row));
                 }
             }
         });
-        tbl.clearSelection();
 
-        JScrollPane scroll = new JScrollPane(tbl);
-        scroll.setBorder(BorderFactory.createEmptyBorder(12, 16, 4, 16));
-        scroll.getViewport().setBackground(Color.WHITE);
-        dialog.add(scroll, BorderLayout.CENTER);
-
-        // ── Preview panel ─────────────────────────────────────────────────────
-        JPanel preview = new JPanel(new BorderLayout(0, 4));
-        preview.setBackground(new Color(241, 245, 249));
-        preview.setBorder(BorderFactory.createEmptyBorder(12, 22, 12, 22));
-        JLabel lblHint = new JLabel("Nhấp đúp hoặc chọn rồi bấm Đăng ký");
+        // ── Footer ────────────────────────────────────────────────────────────
+        JPanel hintBar = new JPanel(new FlowLayout(FlowLayout.LEFT, 16, 8));
+        hintBar.setBackground(new Color(241, 245, 249));
+        JLabel lblHint = new JLabel("💡  Nhấp đúp vào lớp học để đăng ký ngay, hoặc chọn rồi bấm Đăng ký");
         lblHint.setFont(new Font("Segoe UI", Font.ITALIC, 12));
         lblHint.setForeground(new Color(100, 116, 139));
-        preview.add(lblHint, BorderLayout.WEST);
+        hintBar.add(lblHint);
 
-        // ── Footer buttons ────────────────────────────────────────────────────
-        JPanel footer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
-        footer.setBackground(Color.WHITE);
-        footer.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(226, 232, 240)));
+        JPanel btnBar = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 8));
+        btnBar.setBackground(Color.WHITE);
 
-        JButton btnCancel = new JButton("Hủy");
-        btnCancel.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        btnCancel.setFocusPainted(false);
-        btnCancel.addActionListener(e -> dialog.dispose());
+        JButton btnClose = new JButton("Đóng");
+        btnClose.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        btnClose.setFocusPainted(false);
+        btnClose.addActionListener(e -> dialog.dispose());
 
         JButton btnOk = new JButton("  Đăng ký  ");
         btnOk.setFont(new Font("Segoe UI", Font.BOLD, 13));
@@ -340,25 +408,36 @@ public class StudentClassPanel extends JPanel {
         btnOk.setFocusPainted(false);
         btnOk.setBorder(BorderFactory.createEmptyBorder(8, 20, 8, 20));
         btnOk.addActionListener(e -> {
-            int row = tbl.getSelectedRow();
-            if (row < 0) { JOptionPane.showMessageDialog(dialog, "Vui lòng chọn một lớp!"); return; }
+            int row = classTbl.getSelectedRow();
+            if (row < 0) {
+                JOptionPane.showMessageDialog(dialog,
+                        "Vui lòng chọn một khóa học rồi chọn một lớp học!");
+                return;
+            }
             dialog.dispose();
-            doEnroll(availableClasses.get(row));
+            doEnroll(currentClasses[0].get(row));
         });
+        btnBar.add(btnClose);
+        btnBar.add(btnOk);
 
-        footer.add(btnCancel);
-        footer.add(btnOk);
+        JPanel footerWrap = new JPanel(new BorderLayout());
+        footerWrap.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(226, 232, 240)));
+        footerWrap.add(hintBar, BorderLayout.WEST);
+        footerWrap.add(btnBar,  BorderLayout.EAST);
+        dialog.add(footerWrap, BorderLayout.SOUTH);
 
-        // ── South = hint bar + button bar ─────────────────────────────────────
-        JPanel southWrap = new JPanel(new BorderLayout());
-        southWrap.add(preview, BorderLayout.NORTH);
-        southWrap.add(footer, BorderLayout.SOUTH);
-        dialog.add(southWrap, BorderLayout.SOUTH);
-
-        dialog.setSize(980, 500);
-        dialog.setMinimumSize(new Dimension(800, 400));
+        dialog.setSize(1040, 560);
+        dialog.setMinimumSize(new Dimension(820, 450));
         dialog.setLocationRelativeTo(this);
         dialog.setVisible(true);
+    }
+
+    private void styleTblHeader(JTable tbl) {
+        tbl.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 13));
+        tbl.getTableHeader().setBackground(new Color(248, 250, 252));
+        tbl.getTableHeader().setForeground(new Color(71, 85, 105));
+        tbl.getTableHeader().setPreferredSize(new Dimension(0, 40));
+        tbl.getTableHeader().setReorderingAllowed(false);
     }
 
     /** Thực hiện ghi danh sau khi user xác nhận. */

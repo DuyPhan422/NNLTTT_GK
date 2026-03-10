@@ -13,6 +13,18 @@ public class JpaResultRepository extends JpaBaseRepository<Result, Long>
         super(Result.class);
     }
 
+    /** Override để JOIN FETCH student, clazz và course — tránh LazyInitializationException. */
+    @Override
+    public List<Result> findAll(EntityManager em) {
+        return em.createQuery(
+                "SELECT r FROM Result r " +
+                "JOIN FETCH r.student s " +
+                "LEFT JOIN FETCH r.clazz c " +
+                "LEFT JOIN FETCH c.course " +
+                "ORDER BY s.fullName", Result.class)
+                .getResultList();
+    }
+
     @Override
     public List<Result> findByClassId(EntityManager em, Long classId) {
         return em.createQuery(

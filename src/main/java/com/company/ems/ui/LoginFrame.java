@@ -58,6 +58,7 @@ public class LoginFrame extends JFrame {
     private final PaymentService     paymentService;
     private final ScheduleService    scheduleService;
     private final AttendanceService  attendanceService;
+    private final ResultService      resultService;
 
     public LoginFrame(UserAccountService userAccountService,
                       StudentService studentService,
@@ -70,7 +71,8 @@ public class LoginFrame extends JFrame {
                       InvoiceService invoiceService,
                       PaymentService paymentService,
                       ScheduleService scheduleService,
-                      AttendanceService attendanceService) {
+                      AttendanceService attendanceService,
+                      ResultService resultService) {
         this.userAccountService = userAccountService;
         this.studentService     = studentService;
         this.teacherService     = teacherService;
@@ -83,6 +85,7 @@ public class LoginFrame extends JFrame {
         this.paymentService     = paymentService;
         this.scheduleService    = scheduleService;
         this.attendanceService  = attendanceService;
+        this.resultService      = resultService;
 
         setTitle("Language Center — Đăng nhập");
         setSize(900, 560);
@@ -314,12 +317,12 @@ public class LoginFrame extends JFrame {
 
         switch (account.getRole()) {
 
-            case "Quản trị", "Nhân viên" -> {
+            case "Quản trị" -> {
                 Runnable onLogout = () -> {
                     LoginFrame newLogin = new LoginFrame(
                             userAccountService, studentService, teacherService, courseService,
                             roomService, staffService, classService, enrollmentService,
-                            invoiceService, paymentService, scheduleService, attendanceService
+                            invoiceService, paymentService, scheduleService, attendanceService, resultService
                     );
                     newLogin.setVisible(true);
                 };
@@ -327,7 +330,28 @@ public class LoginFrame extends JFrame {
                         studentService, teacherService, courseService,
                         roomService, staffService, classService,
                         enrollmentService, invoiceService, paymentService,
-                        scheduleService, attendanceService, onLogout
+                        scheduleService, attendanceService, resultService,
+                        userAccountService, onLogout
+                );
+                frame.setTitle("Language Center — " + account.getRole()
+                        + " | " + account.getUsername());
+                frame.setVisible(true);
+            }
+
+            case "Nhân viên" -> {
+                Runnable onLogout = () -> {
+                    LoginFrame newLogin = new LoginFrame(
+                            userAccountService, studentService, teacherService, courseService,
+                            roomService, staffService, classService, enrollmentService,
+                            invoiceService, paymentService, scheduleService, attendanceService, resultService
+                    );
+                    newLogin.setVisible(true);
+                };
+                StaffMainFrame frame = new StaffMainFrame(
+                        studentService, teacherService, courseService,
+                        roomService, staffService, classService,
+                        enrollmentService, invoiceService, paymentService,
+                        scheduleService, attendanceService, resultService, onLogout
                 );
                 frame.setTitle("Language Center — " + account.getRole()
                         + " | " + account.getUsername());
@@ -343,12 +367,10 @@ public class LoginFrame extends JFrame {
                     LoginFrame newLogin = new LoginFrame(
                             userAccountService, studentService, teacherService, courseService,
                             roomService, staffService, classService, enrollmentService,
-                            invoiceService, paymentService, scheduleService, attendanceService
+                            invoiceService, paymentService, scheduleService, attendanceService, resultService
                     );
                     newLogin.setVisible(true);
                 };
-                ResultService resultService = new com.company.ems.service.ResultService(
-                        new com.company.ems.repo.jpa.JpaResultRepository());
                 TeacherMainFrame frame = new TeacherMainFrame(
                         teacherService, classService, scheduleService,
                         attendanceService, resultService, roomService,
@@ -366,7 +388,7 @@ public class LoginFrame extends JFrame {
                     LoginFrame newLogin = new LoginFrame(
                             userAccountService, studentService, teacherService, courseService,
                             roomService, staffService, classService, enrollmentService,
-                            invoiceService, paymentService, scheduleService, attendanceService
+                            invoiceService, paymentService, scheduleService, attendanceService, resultService
                     );
                     newLogin.setVisible(true);
                 };
@@ -403,7 +425,7 @@ public class LoginFrame extends JFrame {
         LoginFrame newLogin = new LoginFrame(
                 userAccountService, studentService, teacherService, courseService,
                 roomService, staffService, classService, enrollmentService,
-                invoiceService, paymentService, scheduleService, attendanceService
+                invoiceService, paymentService, scheduleService, attendanceService, resultService
         );
         newLogin.setVisible(true);
     }

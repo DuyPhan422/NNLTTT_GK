@@ -18,26 +18,49 @@ public class MainFrame extends JFrame {
     private final CardLayout cardLayout;
 
     // ── Tham chiếu đến các panel để có thể refresh ──
-    private final StudentPanel    studentPanel;
-    private final TeacherPanel    teacherPanel;
-    private final CoursePanel     coursePanel;
-    private final ClassPanel      classPanel;
-    private final EnrollmentPanel enrollmentPanel;
-    private final TuitionPanel    tuitionPanel;
-    private final StaffPanel      staffPanel;
+    private final StudentPanel          studentPanel;
+    private final TeacherPanel          teacherPanel;
+    private final CoursePanel           coursePanel;
+    private final ClassPanel            classPanel;
+    private final EnrollmentPanel       enrollmentPanel;
+    private final TuitionPanel          tuitionPanel;
+    private final StaffPanel            staffPanel;
+    private final RevenueDashboardPanel dashboardPanel;
+    private final UserAccountPanel      accountPanel;
+    private final ResultAdminPanel      resultPanel;
+
+    // Menu Admin đầy đủ (bao gồm Dashboard và Tài khoản)
+    private static final String[][] ADMIN_MENU = {
+        {"📊",  "Tổng quan",   "dashboard"},
+        {"👥",  "Học viên",    "students"},
+        {"👨",  "Giáo viên",   "teachers"},
+        {"🧑",  "Nhân viên",   "staffs"},
+        {"📚",  "Khóa học",    "courses"},
+        {"🏫",  "Lớp học",     "classes"},
+        {"📋",  "Đăng ký",     "enrollments"},
+        {"💰",  "Thanh toán",  "payments"},
+        {"🗓️", "Lịch học",    "schedules"},
+        {"✅",  "Điểm danh",   "attendances"},
+        {"✎",  "Kết quả",     "results"},
+        {"🚪",  "Phòng học",   "rooms"},
+        {"👤",  "Tài khoản",   "accounts"},
+    };
 
     private static final Map<String, String[]> PAGE_META = new HashMap<>();
     static {
-        PAGE_META.put("students",    new String[]{"Quản lý Học viên",  "Danh sách toàn bộ học viên"});
-        PAGE_META.put("teachers",    new String[]{"Quản lý Giáo viên", "Danh sách giảng viên"});
-        PAGE_META.put("courses",     new String[]{"Quản lý Khóa học",  "Danh sách chương trình đào tạo"});
-        PAGE_META.put("classes",     new String[]{"Quản lý Lớp học",   "Danh sách lớp đang mở"});
-        PAGE_META.put("enrollments", new String[]{"Đăng ký học",       "Quản lý đăng ký học viên"});
-        PAGE_META.put("payments",    new String[]{"Thanh toán",        "Quản lý thu chi học phí"});
-        PAGE_META.put("schedules",   new String[]{"Lịch học",          "Thời khóa biểu các lớp"});
-        PAGE_META.put("attendances", new String[]{"Điểm danh",         "Theo dõi chuyên cần học viên"});
-        PAGE_META.put("rooms",       new String[]{"Phòng học",         "Quản lý phòng học"});
-        PAGE_META.put("staffs",      new String[]{"Nhân viên",         "Quản lý nhân sự"});
+        PAGE_META.put("dashboard",   new String[]{"Dashboard Doanh thu",   "Tổng quan doanh thu & giao dịch"});
+        PAGE_META.put("students",    new String[]{"Quản lý Học viên",      "Danh sách toàn bộ học viên"});
+        PAGE_META.put("teachers",    new String[]{"Quản lý Giáo viên",     "Danh sách giảng viên"});
+        PAGE_META.put("courses",     new String[]{"Quản lý Khóa học",      "Danh sách chương trình đào tạo"});
+        PAGE_META.put("classes",     new String[]{"Quản lý Lớp học",       "Danh sách lớp đang mở"});
+        PAGE_META.put("enrollments", new String[]{"Đăng ký học",           "Quản lý đăng ký học viên"});
+        PAGE_META.put("payments",    new String[]{"Thanh toán",            "Quản lý thu chi học phí"});
+        PAGE_META.put("schedules",   new String[]{"Lịch học",              "Thời khóa biểu các lớp"});
+        PAGE_META.put("attendances", new String[]{"Điểm danh",             "Theo dõi chuyên cần học viên"});
+        PAGE_META.put("results",     new String[]{"Kết quả học tập",       "Điểm số và xếp loại toàn trung tâm"});
+        PAGE_META.put("rooms",       new String[]{"Phòng học",             "Quản lý phòng học"});
+        PAGE_META.put("staffs",      new String[]{"Nhân viên",             "Quản lý nhân sự"});
+        PAGE_META.put("accounts",    new String[]{"Quản lý Tài khoản",     "Danh sách tài khoản hệ thống"});
     }
 
     public MainFrame(StudentService studentService,
@@ -51,6 +74,8 @@ public class MainFrame extends JFrame {
                      PaymentService paymentService,
                      ScheduleService scheduleService,
                      AttendanceService attendanceService,
+                     ResultService resultService,
+                     UserAccountService userAccountService,
                      Runnable onLogout) {
 
         setTitle("Language Center Management System - ADMIN");
@@ -60,29 +85,26 @@ public class MainFrame extends JFrame {
         setLocationRelativeTo(null);
         setLayout(new BorderLayout());
 
-        // Sidebar — truyền onLogout để nút Đăng xuất hoạt động
-        SidebarPanel sidebar = new SidebarPanel(this::navigateTo, () -> {
+        // Sidebar Admin — menu đầy đủ
+        SidebarPanel sidebar = new SidebarPanel(ADMIN_MENU, this::navigateTo, () -> {
             dispose();
             if (onLogout != null) onLogout.run();
         });
         add(sidebar, BorderLayout.WEST);
 
-        // Vùng bên phải = Header + Content
         JPanel rightPanel = new JPanel(new BorderLayout());
         rightPanel.setBackground(new Color(248, 250, 252));
 
-        headerPanel = new HeaderPanel("Quản lý Học viên", "Danh sách toàn bộ học viên");
+        headerPanel = new HeaderPanel("Dashboard Doanh thu", "Tổng quan doanh thu & giao dịch");
+        headerPanel.setUserInfo("Quản trị");
         rightPanel.add(headerPanel, BorderLayout.NORTH);
 
         cardLayout = new CardLayout();
         contentPanel = new JPanel(cardLayout);
         contentPanel.setBackground(new Color(248, 250, 252));
 
-        // ============================================
-        // ĐĂNG KÝ CÁC PANEL CHÍNH
-        // ============================================
-
-        // 1. Khởi tạo và GÁN vào biến thành viên để có thể gọi loadData() & setOnDataChanged()
+        // ── Khởi tạo panels ─────────────────────────────────────────────
+        dashboardPanel  = new RevenueDashboardPanel(paymentService, invoiceService);
         studentPanel    = new StudentPanel(studentService);
         teacherPanel    = new TeacherPanel(teacherService);
         coursePanel     = new CoursePanel(courseService);
@@ -90,8 +112,11 @@ public class MainFrame extends JFrame {
         enrollmentPanel = new EnrollmentPanel(enrollmentService, studentService, classService, invoiceService);
         tuitionPanel    = new TuitionPanel(enrollmentService, invoiceService, paymentService, studentService, true, null);
         staffPanel      = new StaffPanel(staffService);
+        accountPanel    = new UserAccountPanel(userAccountService);
+        resultPanel     = new ResultAdminPanel(resultService, classService, false);
 
-        // 2. Đăng ký vào CardLayout
+        // ── Đăng ký CardLayout ──────────────────────────────────────────
+        contentPanel.add(dashboardPanel,  "dashboard");
         contentPanel.add(studentPanel,    "students");
         contentPanel.add(teacherPanel,    "teachers");
         contentPanel.add(coursePanel,     "courses");
@@ -102,8 +127,10 @@ public class MainFrame extends JFrame {
         contentPanel.add(new ScheduleManagerPanel(classService, scheduleService, roomService), "schedules");
         contentPanel.add(staffPanel, "staffs");
         contentPanel.add(new AttendanceAdminPanel(attendanceService, classService, studentService), "attendances");
+        contentPanel.add(resultPanel, "results");
+        contentPanel.add(accountPanel, "accounts");
 
-        // 3. Kết nối callback refresh toàn bộ sau khi tạo xong tất cả panel
+        // ── Callbacks ───────────────────────────────────────────────────
         Runnable refreshAll = this::refreshAllPanels;
         studentPanel.setOnDataChanged(refreshAll);
         teacherPanel.setOnDataChanged(refreshAll);
@@ -112,21 +139,14 @@ public class MainFrame extends JFrame {
         enrollmentPanel.setOnDataChanged(refreshAll);
         tuitionPanel.setOnDataChanged(refreshAll);
         staffPanel.setOnDataChanged(refreshAll);
+        resultPanel.setOnDataChanged(refreshAll);
 
-        // 4. Auto-refresh mỗi 30 giây — đảm bảo dữ liệu luôn mới kể cả khi không thao tác
         javax.swing.Timer autoRefresh = new javax.swing.Timer(30_000, e -> refreshAllPanels());
         autoRefresh.setCoalesce(true);
         autoRefresh.start();
 
-        // 5. Placeholder cho các chức năng chưa có panel thật
-        java.util.Set<String> handled = java.util.Set.of(
-                "students", "teachers", "courses", "classes",
-                "enrollments", "payments", "rooms", "schedules",
-                "staffs", "attendances"
-        );
-        PAGE_META.forEach((key, meta) -> {
-            if (!handled.contains(key)) contentPanel.add(buildPlaceholder(meta[0]), key);
-        });
+        // Hiển thị dashboard khi khởi động
+        cardLayout.show(contentPanel, "dashboard");
 
         rightPanel.add(contentPanel, BorderLayout.CENTER);
         add(rightPanel, BorderLayout.CENTER);
@@ -142,6 +162,7 @@ public class MainFrame extends JFrame {
 
     /** Refresh dữ liệu tất cả panel — được gọi mỗi khi có thay đổi ở bất kỳ panel nào. */
     private void refreshAllPanels() {
+        dashboardPanel.loadData();
         studentPanel.loadData();
         teacherPanel.loadData();
         coursePanel.loadData();
@@ -149,15 +170,8 @@ public class MainFrame extends JFrame {
         enrollmentPanel.loadData();
         tuitionPanel.loadData();
         staffPanel.loadData();
+        accountPanel.loadData();
+        resultPanel.loadData();
     }
 
-    private JPanel buildPlaceholder(String title) {
-        JPanel p = new JPanel(new GridBagLayout());
-        p.setBackground(new Color(248, 250, 252));
-        JLabel lbl = new JLabel("🚧  " + title + " — Đang phát triển");
-        lbl.setFont(new Font("Segoe UI", Font.PLAIN, 16));
-        lbl.setForeground(new Color(100, 116, 139));
-        p.add(lbl);
-        return p;
-    }
 }
