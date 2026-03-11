@@ -93,5 +93,18 @@ public class JpaClassRepository extends JpaBaseRepository<Class, Long> implement
                 .setParameter("fromDate", fromDate)
                 .getResultList();
     }
+
+    @Override
+    public List<Class> findByStudentId(EntityManager em, Long studentId) {
+        return em.createQuery(
+                "SELECT c FROM Class c " +
+                "LEFT JOIN FETCH c.course " +
+                "LEFT JOIN FETCH c.teacher " +
+                "LEFT JOIN FETCH c.room " +
+                "WHERE EXISTS (SELECT e FROM Enrollment e WHERE e.clazz = c AND e.student.studentId = :studentId) " +
+                "ORDER BY c.startDate", Class.class)
+                .setParameter("studentId", studentId)
+                .getResultList();
+    }
 }
 

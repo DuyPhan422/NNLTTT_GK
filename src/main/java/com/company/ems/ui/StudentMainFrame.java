@@ -3,6 +3,8 @@ package com.company.ems.ui;
 import com.company.ems.model.Student;
 import com.company.ems.service.*;
 import com.company.ems.ui.panels.attendance.AttendanceStudentPanel;
+import com.company.ems.ui.panels.student.ResultStudentPanel;
+import com.company.ems.ui.panels.student.ScheduleStudentPanel;
 import com.company.ems.ui.panels.student.StudentClassPanel;
 import com.company.ems.ui.panels.student.StudentTuitionPanel;
 
@@ -21,6 +23,8 @@ public class StudentMainFrame extends JFrame {
     private final EnrollmentService  enrollmentService;
     private final ClassService       classService;
     private final AttendanceService  attendanceService;
+    private final ScheduleService    scheduleService;
+    private final ResultService      resultService;
     private final Long               loggedInStudentId;
     private final Runnable           onLogout;
 
@@ -28,6 +32,8 @@ public class StudentMainFrame extends JFrame {
     private StudentClassPanel      classPanel;
     private StudentTuitionPanel    tuitionPanel;
     private AttendanceStudentPanel attendancePanel;
+    private ScheduleStudentPanel   schedulePanel;
+    private ResultStudentPanel     resultPanel;
 
     public StudentMainFrame(StudentService studentService,
                             InvoiceService invoiceService,
@@ -35,6 +41,8 @@ public class StudentMainFrame extends JFrame {
                             EnrollmentService enrollmentService,
                             ClassService classService,
                             AttendanceService attendanceService,
+                            ScheduleService scheduleService,
+                            ResultService resultService,
                             Long loggedInStudentId,
                             Runnable onLogout) {
         this.studentService    = studentService;
@@ -43,6 +51,8 @@ public class StudentMainFrame extends JFrame {
         this.enrollmentService = enrollmentService;
         this.classService      = classService;
         this.attendanceService = attendanceService;
+        this.scheduleService   = scheduleService;
+        this.resultService     = resultService;
         this.loggedInStudentId = loggedInStudentId;
         this.onLogout          = onLogout;
 
@@ -84,15 +94,17 @@ public class StudentMainFrame extends JFrame {
                 invoiceService, paymentService, enrollmentService, studentService, loggedInStudentId);
         contentPanel.add(tuitionPanel, "tuition");
 
-        // Tab 4 — Điểm danh ✅ (nhúng panel đã có sẵn)
+        // Tab 4 — Điểm danh
         attendancePanel = new AttendanceStudentPanel(attendanceService, currentStudent);
         contentPanel.add(attendancePanel, "attendance");
 
-        // Tab 5, 6 — Placeholder (hoàn thiện sau)
-        contentPanel.add(buildPlaceholder("Thời khóa biểu",
-                "🚧 Đang phát triển tính năng lịch học cá nhân..."), "schedule");
-        contentPanel.add(buildPlaceholder("Bảng điểm",
-                "🚧 Đang phát triển tính năng xem kết quả học tập..."), "results");
+        // Tab 5 — Thời khoá biểu (read-only weekly grid)
+        schedulePanel = new ScheduleStudentPanel(scheduleService, classService, currentStudent);
+        contentPanel.add(schedulePanel, "schedule");
+
+        // Tab 6 — Bảng điểm cá nhân
+        resultPanel = new ResultStudentPanel(resultService, currentStudent);
+        contentPanel.add(resultPanel, "results");
 
         // ── Cross-refresh callback ───────────────────────────────────────
         Runnable refreshAll = () -> {
@@ -158,11 +170,12 @@ public class StudentMainFrame extends JFrame {
             btn.addActionListener(e -> {
                 cardLayout.show(contentPanel, m[1]);
                 headerTitle.setText(m[2]);
-                // Refresh đúng panel khi chuyển tab
                 switch (m[1]) {
                     case "my_classes" -> classPanel.loadData();
                     case "tuition"    -> tuitionPanel.loadData();
                     case "attendance" -> attendancePanel.loadData();
+                    case "schedule"   -> schedulePanel.loadData();
+                    case "results"    -> resultPanel.loadData();
                 }
             });
 
@@ -237,20 +250,4 @@ public class StudentMainFrame extends JFrame {
         pnl.add(card);
         return pnl;
     }
-
-    // ══════════════════════════════════════════════════════════════════════
-    //  PLACEHOLDER
-    // ══════════════════════════════════════════════════════════════════════
-
-    private JPanel buildPlaceholder(String title, String message) {
-        JPanel p = new JPanel(new GridBagLayout());
-        p.setBackground(new Color(248, 250, 252));
-        JLabel lbl = new JLabel("<html><div style='text-align:center;'>" +
-                "<h2 style='color:#3b82f6;'>" + title + "</h2>" +
-                "<p style='color:#64748b; font-size:14px;'>" + message + "</p>" +
-                "</div></html>");
-        p.add(lbl);
-        return p;
-    }
 }
-

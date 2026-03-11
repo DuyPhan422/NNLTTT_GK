@@ -15,5 +15,8 @@ public interface ClassRepository extends BaseRepository<Class, Long> {
 
     /** Lấy danh sách Student đang Enrolled của một lớp — trong 1 query, không lazy */
     List<Student> findEnrolledStudents(EntityManager em, Long classId);
+
+    /** Lấy danh sách lớp mà học viên đã đăng ký */
+    List<Class> findByStudentId(EntityManager em, Long studentId);
 }
 

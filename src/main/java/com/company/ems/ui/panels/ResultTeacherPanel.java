@@ -18,12 +18,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Panel Nhập điểm dành cho Teacher.
- * Đồng bộ layout với AttendanceTeacherPanel (SRP + OCP).
+ * Panel Nhập điểm dành cho Teacher — 3 cột thành phần 25%-25%-50%.
  *
- * Layout: Sidebar chọn lớp | Bảng nhập điểm theo lớp
- * Luồng: Chọn lớp → Load DS học viên enrolled
- *        → Nhập điểm (editable) → Xếp loại tự động → Lưu
+ * Cột: STT | Họ tên | QT1 (25%) | QT2 (25%) | Cuối kỳ (50%) | Tổng | Xếp loại | Nhận xét
  */
 public class ResultTeacherPanel extends JPanel {
 
@@ -38,6 +35,9 @@ public class ResultTeacherPanel extends JPanel {
     private static final Color AMBER       = new Color(217, 119, 6);
     private static final Color RED         = new Color(220, 38,  38);
     private static final Color BLUE        = new Color(59,  130, 246);
+    private static final Color COL_QT      = new Color(254, 243, 199); // quá trình header bg
+    private static final Color COL_FINAL   = new Color(220, 252, 231); // cuối kỳ header bg
+    private static final Color COL_TOTAL   = new Color(219, 234, 254); // tổng header bg
     private static final Color TEXT_MAIN   = new Color(15,  23,  42);
     private static final Color TEXT_MUTED  = new Color(100, 116, 139);
     private static final Color ITEM_HOVER  = new Color(239, 246, 255);
@@ -51,7 +51,21 @@ public class ResultTeacherPanel extends JPanel {
     private static final Font FONT_SMALL  = new Font("Segoe UI", Font.PLAIN,  12);
     private static final Font FONT_HEADER = new Font("Segoe UI", Font.BOLD,   14);
 
-    private static final String[] TABLE_COLS = {"STT", "Họ và tên", "Điểm (0–10)", "Xếp loại", "Nhận xét"};
+    // COL indices
+    private static final int COL_STT     = 0;
+    private static final int COL_NAME    = 1;
+    private static final int COL_QT1     = 2;
+    private static final int COL_QT2     = 3;
+    private static final int COL_CK      = 4;
+    private static final int COL_TOTAL_I = 5;
+    private static final int COL_GRADE   = 6;
+    private static final int COL_COMMENT = 7;
+
+    private static final String[] TABLE_COLS = {
+        "STT", "Họ và tên",
+        "QT1 (25%)", "QT2 (25%)", "Cuối kỳ (50%)",
+        "Điểm tổng", "Xếp loại", "Nhận xét"
+    };
 
     // ── Services ──────────────────────────────────────────────────────────
     private final ResultService resultService;
@@ -123,7 +137,6 @@ public class ResultTeacherPanel extends JPanel {
         sidebar.setBackground(BG_SIDEBAR);
         sidebar.setBorder(new MatteBorder(0, 0, 0, 1, BORDER_COL));
 
-        // Header
         JPanel header = new JPanel(new BorderLayout(0, 8));
         header.setBackground(BG_SIDEBAR);
         header.setBorder(new EmptyBorder(16, 12, 12, 12));
@@ -145,7 +158,6 @@ public class ResultTeacherPanel extends JPanel {
         header.add(searchField, BorderLayout.SOUTH);
         sidebar.add(header, BorderLayout.NORTH);
 
-        // List
         classListPanel.setLayout(new BoxLayout(classListPanel, BoxLayout.Y_AXIS));
         classListPanel.setBackground(BG_SIDEBAR);
         JScrollPane scroll = new JScrollPane(classListPanel);
@@ -154,7 +166,6 @@ public class ResultTeacherPanel extends JPanel {
         scroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         sidebar.add(scroll, BorderLayout.CENTER);
 
-        // Footer
         JPanel footer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 6));
         footer.setBackground(BG_SIDEBAR);
         footer.setBorder(new MatteBorder(1, 0, 0, 0, BORDER_COL));
@@ -174,7 +185,6 @@ public class ResultTeacherPanel extends JPanel {
     }
 
     private JPanel buildClassItem(Class c) {
-        // Tính % đã nhập điểm để hiển thị trên sidebar
         JPanel item = new JPanel(new BorderLayout(0, 3));
         item.setOpaque(true);
         item.setBackground(BG_SIDEBAR);
@@ -259,9 +269,15 @@ public class ResultTeacherPanel extends JPanel {
         lblClassName.setForeground(TEXT_MAIN);
         header.add(lblClassName, BorderLayout.NORTH);
 
-        // Stats badges
+        // Formula badge
         JPanel statsRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         statsRow.setOpaque(false);
+
+        JLabel formulaLbl = new JLabel(
+                "<html><span style='background:#fef3c7;padding:2px 6px;border-radius:4px;'>"
+                + "Tổng = QT1×25% + QT2×25% + Cuối kỳ×50%</span></html>");
+        formulaLbl.setFont(FONT_SMALL);
+        statsRow.add(formulaLbl);
         statsRow.add(lblStats);
         statsRow.add(statusLabel);
         header.add(statsRow, BorderLayout.SOUTH);
@@ -286,12 +302,11 @@ public class ResultTeacherPanel extends JPanel {
         left.setOpaque(false);
         left.add(btnClearAll);
 
-        // Legend
         JLabel legendLbl = new JLabel(
                 "<html><span style='color:#22c55e;'>A+≥9.0</span> &nbsp;"
                 + "<span style='color:#3b82f6;'>A≥8.5</span> &nbsp;"
                 + "<span style='color:#f59e0b;'>B+≥7.0</span> &nbsp;"
-                + "<span style='color:#ef4444;'>D/F&lt;5.0</span></html>");
+                + "<span style='color:#ef4444;'>F&lt;4.0</span></html>");
         legendLbl.setFont(FONT_SMALL);
         left.add(Box.createHorizontalStrut(12));
         left.add(legendLbl);
@@ -306,7 +321,8 @@ public class ResultTeacherPanel extends JPanel {
     private DefaultTableModel buildTableModel() {
         return new DefaultTableModel(TABLE_COLS, 0) {
             @Override public boolean isCellEditable(int r, int c) {
-                return c == 2 || c == 4; // Điểm + Nhận xét
+                // QT1, QT2, CK, Nhận xét được nhập; Tổng + Xếp loại auto
+                return c == COL_QT1 || c == COL_QT2 || c == COL_CK || c == COL_COMMENT;
             }
             @Override public java.lang.Class<?> getColumnClass(int c) {
                 return String.class;
@@ -320,15 +336,32 @@ public class ResultTeacherPanel extends JPanel {
             public Component prepareRenderer(javax.swing.table.TableCellRenderer r, int row, int col) {
                 Component c = super.prepareRenderer(r, row, col);
                 boolean sel = isRowSelected(row);
-                c.setBackground(sel ? ROW_SELECT : (row % 2 == 0 ? ROW_EVEN : ROW_ODD));
+                // Column background hints
+                Color baseBg;
+                if (sel) {
+                    baseBg = ROW_SELECT;
+                } else if (col == COL_QT1 || col == COL_QT2) {
+                    baseBg = row % 2 == 0 ? new Color(255, 251, 235) : new Color(254, 243, 199);
+                } else if (col == COL_CK) {
+                    baseBg = row % 2 == 0 ? new Color(240, 253, 244) : new Color(220, 252, 231);
+                } else if (col == COL_TOTAL_I) {
+                    baseBg = row % 2 == 0 ? new Color(239, 246, 255) : new Color(219, 234, 254);
+                } else {
+                    baseBg = row % 2 == 0 ? ROW_EVEN : ROW_ODD;
+                }
+                c.setBackground(baseBg);
                 c.setForeground(TEXT_MAIN);
 
-                // Tô màu cột Xếp loại
-                if (col == 3 && !sel && c instanceof JLabel lbl) {
-                    String grade = lbl.getText();
+                // Grade col coloring
+                if (col == COL_GRADE && !sel && c instanceof JLabel lbl) {
                     lbl.setFont(FONT_BOLD);
                     lbl.setHorizontalAlignment(SwingConstants.CENTER);
-                    lbl.setForeground(gradeColor(grade));
+                    lbl.setForeground(gradeColor(lbl.getText()));
+                }
+                // Total col bold
+                if (col == COL_TOTAL_I && c instanceof JLabel lbl) {
+                    lbl.setFont(FONT_BOLD);
+                    lbl.setHorizontalAlignment(SwingConstants.CENTER);
                 }
                 return c;
             }
@@ -347,8 +380,8 @@ public class ResultTeacherPanel extends JPanel {
         header.setPreferredSize(new Dimension(0, 42));
         header.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, BORDER_COL));
 
-        // Cột điểm — custom editor chỉ nhận số 0–10
-        t.getColumnModel().getColumn(2).setCellEditor(new DefaultCellEditor(new JTextField()) {
+        // Score cell editor (0-10 validator)
+        DefaultCellEditor scoreEditor = new DefaultCellEditor(new JTextField()) {
             @Override
             public boolean stopCellEditing() {
                 String val = ((JTextField) getComponent()).getText().trim();
@@ -370,15 +403,40 @@ public class ResultTeacherPanel extends JPanel {
                 }
                 return super.stopCellEditing();
             }
+        };
+        t.getColumnModel().getColumn(COL_QT1).setCellEditor(scoreEditor);
+        t.getColumnModel().getColumn(COL_QT2).setCellEditor(new DefaultCellEditor(new JTextField()) {
+            @Override public boolean stopCellEditing() {
+                String val = ((JTextField) getComponent()).getText().trim();
+                if (!val.isEmpty()) {
+                    try { double d = Double.parseDouble(val);
+                        if (d < 0 || d > 10) { JOptionPane.showMessageDialog(table, "Điểm phải từ 0 đến 10.", "Lỗi", JOptionPane.WARNING_MESSAGE); return false; }
+                    } catch (NumberFormatException ex) { JOptionPane.showMessageDialog(table, "Nhập số hợp lệ.", "Lỗi", JOptionPane.WARNING_MESSAGE); return false; }
+                }
+                return super.stopCellEditing();
+            }
+        });
+        t.getColumnModel().getColumn(COL_CK).setCellEditor(new DefaultCellEditor(new JTextField()) {
+            @Override public boolean stopCellEditing() {
+                String val = ((JTextField) getComponent()).getText().trim();
+                if (!val.isEmpty()) {
+                    try { double d = Double.parseDouble(val);
+                        if (d < 0 || d > 10) { JOptionPane.showMessageDialog(table, "Điểm phải từ 0 đến 10.", "Lỗi", JOptionPane.WARNING_MESSAGE); return false; }
+                    } catch (NumberFormatException ex) { JOptionPane.showMessageDialog(table, "Nhập số hợp lệ.", "Lỗi", JOptionPane.WARNING_MESSAGE); return false; }
+                }
+                return super.stopCellEditing();
+            }
         });
 
-
         // Column widths
-        t.getColumnModel().getColumn(0).setPreferredWidth(50);  t.getColumnModel().getColumn(0).setMaxWidth(55);
-        t.getColumnModel().getColumn(1).setPreferredWidth(220);
-        t.getColumnModel().getColumn(2).setPreferredWidth(110); t.getColumnModel().getColumn(2).setMaxWidth(130);
-        t.getColumnModel().getColumn(3).setPreferredWidth(90);  t.getColumnModel().getColumn(3).setMaxWidth(100);
-        t.getColumnModel().getColumn(4).setPreferredWidth(260);
+        t.getColumnModel().getColumn(COL_STT)    .setPreferredWidth(45);  t.getColumnModel().getColumn(COL_STT).setMaxWidth(50);
+        t.getColumnModel().getColumn(COL_NAME)   .setPreferredWidth(200);
+        t.getColumnModel().getColumn(COL_QT1)    .setPreferredWidth(90);  t.getColumnModel().getColumn(COL_QT1).setMaxWidth(110);
+        t.getColumnModel().getColumn(COL_QT2)    .setPreferredWidth(90);  t.getColumnModel().getColumn(COL_QT2).setMaxWidth(110);
+        t.getColumnModel().getColumn(COL_CK)     .setPreferredWidth(110); t.getColumnModel().getColumn(COL_CK).setMaxWidth(130);
+        t.getColumnModel().getColumn(COL_TOTAL_I).setPreferredWidth(90);  t.getColumnModel().getColumn(COL_TOTAL_I).setMaxWidth(100);
+        t.getColumnModel().getColumn(COL_GRADE)  .setPreferredWidth(80);  t.getColumnModel().getColumn(COL_GRADE).setMaxWidth(90);
+        t.getColumnModel().getColumn(COL_COMMENT).setPreferredWidth(240);
 
         return t;
     }
@@ -442,19 +500,21 @@ public class ResultTeacherPanel extends JPanel {
             }
 
             currentSheet = resultService.prepareResultSheet(selectedClass, enrolled);
-
-            // Rebuild table model listener after reload
             rebuildTableModelListeners();
 
             tableModel.setRowCount(0);
             for (int i = 0; i < currentSheet.size(); i++) {
                 Result res = currentSheet.get(i);
-                String scoreStr = res.getScore() != null
-                        ? res.getScore().stripTrailingZeros().toPlainString() : "";
-                String grade    = res.getGrade()   != null ? res.getGrade()   : "";
-                String comment  = res.getComment() != null ? res.getComment() : "";
-                tableModel.addRow(new Object[]{i + 1,
-                        res.getStudent().getFullName(), scoreStr, grade, comment});
+                tableModel.addRow(new Object[]{
+                        i + 1,
+                        res.getStudent().getFullName(),
+                        fmtScore(res.getScore1()),
+                        fmtScore(res.getScore2()),
+                        fmtScore(res.getFinalScore()),
+                        fmtScore(res.getScore()),      // tổng (auto)
+                        res.getGrade()   != null ? res.getGrade()   : "",
+                        res.getComment() != null ? res.getComment() : ""
+                });
             }
 
             statusLabel.setText(enrolled.size() + " học viên");
@@ -466,33 +526,33 @@ public class ResultTeacherPanel extends JPanel {
     }
 
     /**
-     * Rebuild table listener sau mỗi lần reload để tránh listener leak.
-     * Listener tự động cập nhật cột Xếp loại khi Điểm thay đổi.
+     * Rebuild table listener: khi nhập QT1/QT2/CK → tự tính tổng và xếp loại.
      */
     private void rebuildTableModelListeners() {
-        // Remove all existing listeners
         for (javax.swing.event.TableModelListener l : tableModel.getTableModelListeners()) {
             tableModel.removeTableModelListener(l);
         }
-        // Re-add single listener
         tableModel.addTableModelListener(e -> {
-            if (e.getColumn() == 2 && e.getFirstRow() >= 0) {
-                int row = e.getFirstRow();
-                String scoreStr = (String) tableModel.getValueAt(row, 2);
-                String grade = "";
-                if (scoreStr != null && !scoreStr.isBlank()) {
-                    try {
-                        double d = Double.parseDouble(scoreStr.trim());
-                        grade = ResultService.autoGrade(d);
-                    } catch (NumberFormatException ignored) {}
-                }
-                // Temporarily remove listener to avoid recursion
+            int col = e.getColumn();
+            int row = e.getFirstRow();
+            if (row < 0) return;
+            if (col == COL_QT1 || col == COL_QT2 || col == COL_CK) {
+                // Parse all three
+                BigDecimal s1 = parseBD((String) tableModel.getValueAt(row, COL_QT1));
+                BigDecimal s2 = parseBD((String) tableModel.getValueAt(row, COL_QT2));
+                BigDecimal sf = parseBD((String) tableModel.getValueAt(row, COL_CK));
+                BigDecimal total = ResultService.calcTotal(s1, s2, sf);
+                String grade = (total != null)
+                        ? ResultService.autoGrade(total.doubleValue()) : "";
+
+                // Temporarily remove to avoid recursion
                 javax.swing.event.TableModelListener[] listeners = tableModel.getTableModelListeners();
-                for (javax.swing.event.TableModelListener l : listeners) {
-                    tableModel.removeTableModelListener(l);
-                }
-                tableModel.setValueAt(grade, row, 3);
-                rebuildTableModelListeners(); // restore
+                for (javax.swing.event.TableModelListener l : listeners) tableModel.removeTableModelListener(l);
+
+                tableModel.setValueAt(total != null ? total.toPlainString() : "", row, COL_TOTAL_I);
+                tableModel.setValueAt(grade, row, COL_GRADE);
+
+                rebuildTableModelListeners();
                 updateStats();
             }
         });
@@ -505,20 +565,20 @@ public class ResultTeacherPanel extends JPanel {
         }
         if (table.isEditing()) table.getCellEditor().stopCellEditing();
 
-        // Sync table → currentSheet
         for (int i = 0; i < currentSheet.size(); i++) {
             Result res = currentSheet.get(i);
-            String scoreStr = (String) tableModel.getValueAt(i, 2);
-            String grade    = (String) tableModel.getValueAt(i, 3);
-            String comment  = (String) tableModel.getValueAt(i, 4);
 
-            if (scoreStr != null && !scoreStr.isBlank()) {
-                try {
-                    res.setScore(new BigDecimal(scoreStr.trim()));
-                } catch (NumberFormatException ignored) {}
-            } else {
-                res.setScore(null);
-            }
+            BigDecimal s1 = parseBD((String) tableModel.getValueAt(i, COL_QT1));
+            BigDecimal s2 = parseBD((String) tableModel.getValueAt(i, COL_QT2));
+            BigDecimal sf = parseBD((String) tableModel.getValueAt(i, COL_CK));
+            BigDecimal total = ResultService.calcTotal(s1, s2, sf);
+            String grade    = (String) tableModel.getValueAt(i, COL_GRADE);
+            String comment  = (String) tableModel.getValueAt(i, COL_COMMENT);
+
+            res.setScore1(s1);
+            res.setScore2(s2);
+            res.setFinalScore(sf);
+            res.setScore(total);
             res.setGrade(grade != null && !grade.isBlank() ? grade : null);
             res.setComment(comment != null && !comment.isBlank() ? comment : null);
         }
@@ -526,7 +586,7 @@ public class ResultTeacherPanel extends JPanel {
         try {
             resultService.saveAll(currentSheet);
             showSuccess("Đã lưu điểm thành công (" + currentSheet.size() + " học viên).");
-            loadResultSheet(); // reload để lấy ID mới nếu vừa insert
+            loadResultSheet();
         } catch (Exception e) {
             showError("Lỗi khi lưu: " + e.getMessage());
         }
@@ -539,24 +599,35 @@ public class ResultTeacherPanel extends JPanel {
         if (ok != JOptionPane.YES_OPTION) return;
         if (table.isEditing()) table.getCellEditor().stopCellEditing();
         for (int i = 0; i < tableModel.getRowCount(); i++) {
-            tableModel.setValueAt("", i, 2);
-            tableModel.setValueAt("", i, 3);
+            tableModel.setValueAt("", i, COL_QT1);
+            tableModel.setValueAt("", i, COL_QT2);
+            tableModel.setValueAt("", i, COL_CK);
+            tableModel.setValueAt("", i, COL_TOTAL_I);
+            tableModel.setValueAt("", i, COL_GRADE);
         }
         updateStats();
     }
 
     private void updateStats() {
-        long entered = 0;
-        long total   = tableModel.getRowCount();
+        long entered = 0, total = tableModel.getRowCount();
         for (int i = 0; i < total; i++) {
-            String s = (String) tableModel.getValueAt(i, 2);
+            String s = (String) tableModel.getValueAt(i, COL_TOTAL_I);
             if (s != null && !s.isBlank()) entered++;
         }
-        lblStats.setText(String.format("Đã nhập: %d / %d học viên", entered, total));
+        lblStats.setText(String.format("  Đã có điểm tổng: %d / %d học viên", entered, total));
         lblStats.setForeground(entered == total && total > 0 ? GREEN : TEXT_MUTED);
     }
 
-    // ── Color helpers ─────────────────────────────────────────────────────
+    // ── Helpers ───────────────────────────────────────────────────────────
+
+    private static String fmtScore(BigDecimal v) {
+        return v != null ? v.stripTrailingZeros().toPlainString() : "";
+    }
+
+    private static BigDecimal parseBD(String s) {
+        if (s == null || s.isBlank()) return null;
+        try { return new BigDecimal(s.trim()); } catch (NumberFormatException e) { return null; }
+    }
 
     private Color gradeColor(String grade) {
         if (grade == null) return TEXT_MUTED;
@@ -579,8 +650,6 @@ public class ResultTeacherPanel extends JPanel {
         };
     }
 
-    // ── Button factories ──────────────────────────────────────────────────
-
     private JButton createPrimaryButton(String text) {
         JButton btn = new JButton(text);
         btn.setFont(FONT_BOLD); btn.setForeground(Color.WHITE); btn.setBackground(PRIMARY);
@@ -602,8 +671,6 @@ public class ResultTeacherPanel extends JPanel {
         btn.setFocusPainted(false); btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         return btn;
     }
-
-    // ── Notifications ─────────────────────────────────────────────────────
 
     private void showSuccess(String msg) {
         JOptionPane.showMessageDialog(this, msg, "Thành công", JOptionPane.INFORMATION_MESSAGE);

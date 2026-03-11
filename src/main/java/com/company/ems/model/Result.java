@@ -28,6 +28,19 @@ public class Result {
     @JoinColumn(name = "class_id", nullable = false)
     private Class clazz;
 
+    /** Điểm quá trình 1 (25%) */
+    @Column(name = "score1", precision = 5, scale = 2)
+    private BigDecimal score1;
+
+    /** Điểm quá trình 2 (25%) */
+    @Column(name = "score2", precision = 5, scale = 2)
+    private BigDecimal score2;
+
+    /** Điểm cuối kỳ (50%) */
+    @Column(name = "final_score", precision = 5, scale = 2)
+    private BigDecimal finalScore;
+
+    /** Điểm tổng tính tự động = 0.25*score1 + 0.25*score2 + 0.50*finalScore */
     @Column(name = "score", precision = 5, scale = 2)
     private BigDecimal score;
 

@@ -5,7 +5,10 @@ import com.company.ems.model.Result;
 import com.company.ems.model.Student;
 import com.company.ems.repo.ResultRepository;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -82,8 +85,21 @@ public class ResultService extends AbstractBaseService<Result, Long> {
     }
 
     /**
-     * Tự động xếp loại dựa trên điểm số.
-     * Stream pipeline: danh sách ngưỡng → tìm cái phù hợp đầu tiên.
+     * Tính điểm tổng theo tỉ lệ 25% – 25% – 50%.
+     * Nếu thiếu bất kỳ thành phần nào thì trả về null.
+     */
+    public static BigDecimal calcTotal(BigDecimal s1, BigDecimal s2, BigDecimal sf) {
+        if (s1 == null || s2 == null || sf == null) return null;
+        return s1.multiply(new BigDecimal("0.25"))
+                .add(s2.multiply(new BigDecimal("0.25")))
+                .add(sf.multiply(new BigDecimal("0.50")))
+                .setScale(2, RoundingMode.HALF_UP);
+    }
+
+    /**
+     * Tự động xếp loại dựa trên điểm tổng.
+     * Thang điểm 10:
+     *   A+: ≥9.0 | A: ≥8.5 | A-: ≥8.0 | B+: ≥7.0 | B: ≥6.5 | B-: ≥6.0 | C: ≥5.0 | D: ≥4.0 | F: <4.0
      */
     public static String autoGrade(double score) {
         record Threshold(double min, String grade) {}
@@ -103,12 +119,51 @@ public class ResultService extends AbstractBaseService<Result, Long> {
                 .orElse("F");
     }
 
+    /**
+     * Lấy kết quả học tập của học viên, kèm xếp hạng trong lớp.
+     * Mỗi Result sẽ được annotate rank trong field comment tạm thời (không lưu DB),
+     * thực ra rank được tính và trả về qua RankedResult record.
+     */
+    public List<RankedResult> findByStudentIdWithRanking(Long studentId) {
+        try {
+            List<Result> results = findByStudentId(studentId);
+            // Với mỗi result, lấy toàn bộ kết quả của lớp đó để tính hạng
+            return results.stream().map(r -> {
+                int rank = 0, total = 0;
+                try {
+                    List<Result> classResults = findByClassId(r.getClazz().getClassId());
+                    // Chỉ tính hạng với những học viên có điểm tổng
+                    List<Result> withScore = classResults.stream()
+                            .filter(cr -> cr.getScore() != null)
+                            .sorted(Comparator.comparing(Result::getScore).reversed())
+                            .toList();
+                    total = withScore.size();
+                    if (r.getScore() != null) {
+                        rank = 1;
+                        for (Result cr : withScore) {
+                            if (cr.getScore().compareTo(r.getScore()) > 0) rank++;
+                        }
+                    }
+                } catch (Exception ignored) {}
+                return new RankedResult(r, rank, total);
+            }).collect(Collectors.toList());
+        } catch (Exception e) {
+            throw new RuntimeException("Lỗi khi tải kết quả học tập: " + e.getMessage(), e);
+        }
+    }
+
+    /** DTO: kết quả + xếp hạng trong lớp */
+    public record RankedResult(Result result, int rank, int totalInClass) {}
+
     // ── Private helpers ───────────────────────────────────────────────────
 
     private Result buildNewResult(Class clazz, Student student) {
         Result r = new Result();
         r.setClazz(clazz);
         r.setStudent(student);
+        r.setScore1(null);
+        r.setScore2(null);
+        r.setFinalScore(null);
         r.setScore(null);
         r.setGrade(null);
         r.setComment(null);
