@@ -7,10 +7,13 @@ import com.company.ems.service.PaymentService;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
 import javax.swing.table.TableCellRenderer;
+import javax.swing.table.TableRowSorter;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -56,7 +59,7 @@ public class RevenueDashboardPanel extends JPanel {
         "#", "Học viên", "Số tiền", "Phương thức", "Ngày TT", "Trạng thái", "Mã tham chiếu"
     };
     private static final String[] INV_COLS = {
-        "#", "Học viên", "Tổng tiền", "Ngày phát hành", "Trạng thái", "Ghi chú"
+        "#", "Mã HV", "Học viên", "Tổng tiền", "Ngày phát hành", "Trạng thái", "Ghi chú"
     };
 
     private static final NumberFormat CURRENCY_FMT =
@@ -68,11 +71,13 @@ public class RevenueDashboardPanel extends JPanel {
 
     // ── UI state ─────────────────────────────────────────────────────────
     private JLabel            lblTotalRevenue, lblPaid, lblPending, lblTxCount;
-    private JLabel            lblTxSubCount, lblInvSubCount;
-    private DefaultTableModel txModel, invModel;
+    private JLabel            lblInvSubCount;
+    private DefaultTableModel invModel;
     private JTable            invTable;
     private JPanel            barChartPanel;
     private List<Invoice>     displayedInvoices = new ArrayList<>();
+    private TableRowSorter<DefaultTableModel> invSorter;
+    private JTextField        invSearchField;
 
     public RevenueDashboardPanel(PaymentService paymentService, InvoiceService invoiceService) {
         this.paymentService = paymentService;
@@ -109,10 +114,10 @@ public class RevenueDashboardPanel extends JPanel {
         lblPending      = new JLabel("—");
         lblTxCount      = new JLabel("—");
 
-        row.add(buildKpiCard("TỔNG ĐÃ THU",       "Thanh toán hoàn thành",   lblTotalRevenue, PRIMARY, PRIMARY_BG));
+        row.add(buildKpiCard("TỔNG ĐÃ THU",       "Thanh toán thành công",   lblTotalRevenue, PRIMARY, PRIMARY_BG));
         row.add(buildKpiCard("HOÁ ĐƠN ĐÃ TT",     "Tổng tiền đã thanh toán", lblPaid,         GREEN,   GREEN_BG));
         row.add(buildKpiCard("HOÁ ĐƠN CHỜ TT",    "Cần xử lý",               lblPending,      AMBER,   AMBER_BG));
-        row.add(buildKpiCard("SỐ GIAO DỊCH",       "Giao dịch hoàn thành",    lblTxCount,      PURPLE,  PURPLE_BG));
+        row.add(buildKpiCard("SỐ GIAO DỊCH",       "Giao dịch thành công",    lblTxCount,      PURPLE,  PURPLE_BG));
 
         return row;
     }
@@ -205,32 +210,24 @@ public class RevenueDashboardPanel extends JPanel {
     // ════════════════════════════════════════════════════════════════════════
 
     private JPanel buildTablesArea() {
-        // ── Giao dịch ────────────────────────────────────────────────────
-        txModel = new DefaultTableModel(TX_COLS, 0) {
-            @Override public boolean isCellEditable(int r, int c) { return false; }
-        };
-        JTable txTable = buildStyledTable(txModel);
-        setColumnWidths(txTable, new int[]{38, 0, 110, 100, 90, 100, 110});
-        txTable.getColumnModel().getColumn(2).setCellRenderer(amountRenderer(PRIMARY));
-        txTable.getColumnModel().getColumn(5).setCellRenderer(statusRenderer());
-
-        lblTxSubCount = new JLabel("");
-        lblTxSubCount.setFont(FONT_SMALL);
-        lblTxSubCount.setForeground(TEXT_MUTED);
-
         // ── Hoá đơn ──────────────────────────────────────────────────────
         invModel = new DefaultTableModel(INV_COLS, 0) {
             @Override public boolean isCellEditable(int r, int c) { return false; }
         };
         invTable = buildStyledTable(invModel);
-        setColumnWidths(invTable, new int[]{38, 0, 110, 106, 110, 0});
-        invTable.getColumnModel().getColumn(2).setCellRenderer(amountRenderer(PRIMARY));
-        invTable.getColumnModel().getColumn(4).setCellRenderer(statusRenderer());
+        invSorter = new TableRowSorter<>(invModel);
+        invTable.setRowSorter(invSorter);
+        setColumnWidths(invTable, new int[]{36, 60, 160, 120, 110, 110, 0});
+        invTable.getColumnModel().getColumn(3).setCellRenderer(amountRenderer(PRIMARY));
+        invTable.getColumnModel().getColumn(5).setCellRenderer(statusRenderer());
         invTable.addMouseListener(new MouseAdapter() {
             @Override public void mouseClicked(MouseEvent e) {
                 int row = invTable.getSelectedRow();
-                if (row >= 0 && row < displayedInvoices.size())
-                    showInvoiceDetailDialog(displayedInvoices.get(row));
+                if (row >= 0) {
+                    int modelRow = invTable.convertRowIndexToModel(row);
+                    if (modelRow >= 0 && modelRow < displayedInvoices.size())
+                        showInvoiceDetailDialog(displayedInvoices.get(modelRow));
+                }
             }
         });
         invTable.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
@@ -239,14 +236,34 @@ public class RevenueDashboardPanel extends JPanel {
         lblInvSubCount.setFont(FONT_SMALL);
         lblInvSubCount.setForeground(TEXT_MUTED);
 
-        JPanel area = new JPanel(new GridLayout(1, 2, 14, 0));
+        invSearchField = buildSearchField(() -> filterInv());
+
+        JPanel area = new JPanel(new BorderLayout());
         area.setOpaque(false);
-        area.add(buildTableCard("Giao dịch thanh toán gần đây", lblTxSubCount,  txTable));
-        area.add(buildTableCard("Hoá đơn",                       lblInvSubCount, invTable));
+        area.add(buildTableCard("L\u1ecbch s\u1eed ho\u00e1 \u0111\u01a1n", lblInvSubCount, invTable, invSearchField));
         return area;
     }
 
-    private JPanel buildTableCard(String title, JLabel badge, JTable table) {
+    private JTextField buildSearchField(Runnable filter) {
+        JTextField tf = new JTextField();
+        tf.setPreferredSize(new Dimension(155, 26));
+        tf.setFont(FONT_SMALL);
+        tf.putClientProperty("JTextField.placeholderText", "Tìm kiếm...");
+        tf.getDocument().addDocumentListener(new DocumentListener() {
+            public void insertUpdate(DocumentEvent e) { filter.run(); }
+            public void removeUpdate(DocumentEvent e) { filter.run(); }
+            public void changedUpdate(DocumentEvent e) { filter.run(); }
+        });
+        return tf;
+    }
+
+    private void filterInv() {
+        String q = invSearchField.getText().trim();
+        invSorter.setRowFilter(q.isEmpty() ? null
+                : RowFilter.regexFilter("(?i)" + java.util.regex.Pattern.quote(q)));
+    }
+
+    private JPanel buildTableCard(String title, JLabel badge, JTable table, JTextField searchField) {
         JPanel card = new JPanel(new BorderLayout());
         card.setBackground(BG_CARD);
         card.setBorder(BorderFactory.createLineBorder(BORDER_COL));
@@ -255,12 +272,17 @@ public class RevenueDashboardPanel extends JPanel {
         hdr.setBackground(new Color(248, 250, 252));
         hdr.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createMatteBorder(0, 0, 1, 0, BORDER_COL),
-                new EmptyBorder(11, 16, 11, 16)));
+                new EmptyBorder(8, 16, 8, 16)));
         JLabel titleLbl = new JLabel(title);
         titleLbl.setFont(FONT_SECTION);
         titleLbl.setForeground(TEXT_MAIN);
         hdr.add(titleLbl, BorderLayout.WEST);
-        hdr.add(badge,    BorderLayout.EAST);
+
+        JPanel east = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        east.setOpaque(false);
+        east.add(searchField);
+        east.add(badge);
+        hdr.add(east, BorderLayout.EAST);
 
         JScrollPane scroll = new JScrollPane(table);
         scroll.setBorder(BorderFactory.createEmptyBorder());
@@ -384,7 +406,7 @@ public class RevenueDashboardPanel extends JPanel {
     private void updateUI(List<Payment> payments, List<Invoice> invoices) {
         // ── KPI ──────────────────────────────────────────────────────────
         BigDecimal totalRevenue = sumAmounts(payments.stream()
-                .filter(p -> "Hoàn thành".equals(p.getStatus()))
+                .filter(p -> isPaid(p.getStatus()))
                 .map(Payment::getAmount).collect(Collectors.toList()));
         BigDecimal paidInvTotal = sumAmounts(invoices.stream()
                 .filter(i -> "Đã thanh toán".equals(i.getStatus()))
@@ -393,7 +415,7 @@ public class RevenueDashboardPanel extends JPanel {
                 .filter(i -> "Chờ thanh toán".equals(i.getStatus()))
                 .map(Invoice::getTotalAmount).collect(Collectors.toList()));
         long txCount = payments.stream()
-                .filter(p -> "Hoàn thành".equals(p.getStatus())).count();
+                .filter(p -> isPaid(p.getStatus())).count();
 
         lblTotalRevenue.setText(formatVnd(totalRevenue));
         lblPaid.setText(formatVnd(paidInvTotal));
@@ -401,25 +423,6 @@ public class RevenueDashboardPanel extends JPanel {
         lblTxCount.setText(txCount + " giao dịch");
 
         rebuildBarChart(payments);
-
-        // ── Bảng giao dịch ───────────────────────────────────────────────
-        txModel.setRowCount(0);
-        DateTimeFormatter dtFmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-        List<Payment> sorted = payments.stream()
-                .sorted(Comparator.comparing(Payment::getPaymentDate,
-                        Comparator.nullsLast(Comparator.reverseOrder())))
-                .limit(50).collect(Collectors.toList());
-        int i = 1;
-        for (Payment p : sorted) {
-            String name = p.getStudent() != null ? p.getStudent().getFullName() : "—";
-            String date = p.getPaymentDate() != null ? p.getPaymentDate().format(dtFmt) : "—";
-            txModel.addRow(new Object[]{
-                i++, name, formatVnd(p.getAmount()),
-                p.getPaymentMethod(), date, p.getStatus(),
-                p.getReferenceCode() != null ? p.getReferenceCode() : ""
-            });
-        }
-        if (lblTxSubCount != null) lblTxSubCount.setText(sorted.size() + " bản ghi");
 
         // ── Bảng hoá đơn ─────────────────────────────────────────────────
         invModel.setRowCount(0);
@@ -432,9 +435,10 @@ public class RevenueDashboardPanel extends JPanel {
         int j = 1;
         for (Invoice inv : sortedInv) {
             String name = inv.getStudent() != null ? inv.getStudent().getFullName() : "—";
+            String sid  = inv.getStudent() != null ? String.format("HV%04d", inv.getStudent().getStudentId()) : "—";
             String date = inv.getIssueDate() != null ? inv.getIssueDate().format(dFmt) : "—";
             invModel.addRow(new Object[]{
-                j++, name, formatVnd(inv.getTotalAmount()),
+                j++, sid, name, formatVnd(inv.getTotalAmount()),
                 date, inv.getStatus(),
                 inv.getNote() != null ? inv.getNote() : ""
             });
@@ -454,7 +458,7 @@ public class RevenueDashboardPanel extends JPanel {
             monthly.put(m.getYear() + "/" + String.format("%02d", m.getMonthValue()), BigDecimal.ZERO);
         }
         for (Payment p : payments) {
-            if (!"Hoàn thành".equals(p.getStatus()) || p.getPaymentDate() == null) continue;
+            if (!isPaid(p.getStatus()) || p.getPaymentDate() == null) continue;
             LocalDate d = p.getPaymentDate().toLocalDate();
             String key = d.getYear() + "/" + String.format("%02d", d.getMonthValue());
             monthly.merge(key, p.getAmount(), BigDecimal::add);
@@ -521,6 +525,13 @@ public class RevenueDashboardPanel extends JPanel {
 
     private BigDecimal sumAmounts(List<BigDecimal> list) {
         return list.stream().reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    /** Chấp nhận cả "Đã thanh toán" (mới) lẫn "Hoàn thành" / "Completed" (data cũ) */
+    private static boolean isPaid(String status) {
+        return "\u0110\u00e3 thanh to\u00e1n".equals(status)
+            || "Ho\u00e0n th\u00e0nh".equals(status)
+            || "Completed".equals(status);
     }
 
     private String formatVnd(BigDecimal amount) {
