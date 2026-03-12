@@ -6,6 +6,8 @@ import com.company.ems.model.Student;
 import com.company.ems.model.Teacher;
 import com.company.ems.service.ClassService;
 import com.company.ems.service.ResultService;
+import com.company.ems.ui.common.ComponentFactory;
+import com.company.ems.ui.common.Theme;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -23,33 +25,6 @@ import java.util.List;
  * Cột: STT | Họ tên | QT1 (25%) | QT2 (25%) | Cuối kỳ (50%) | Tổng | Xếp loại | Nhận xét
  */
 public class ResultTeacherPanel extends JPanel {
-
-    // ── Design tokens ─────────────────────────────────────────────────────
-    private static final Color BG_PAGE     = new Color(248, 250, 252);
-    private static final Color BG_SIDEBAR  = Color.WHITE;
-    private static final Color BG_CARD     = Color.WHITE;
-    private static final Color BORDER_COL  = new Color(226, 232, 240);
-    private static final Color PRIMARY     = new Color(37,  99,  235);
-    private static final Color PRIMARY_H   = new Color(29,  78,  216);
-    private static final Color GREEN       = new Color(22,  163, 74);
-    private static final Color AMBER       = new Color(217, 119, 6);
-    private static final Color RED         = new Color(220, 38,  38);
-    private static final Color BLUE        = new Color(59,  130, 246);
-    private static final Color COL_QT      = new Color(254, 243, 199); // quá trình header bg
-    private static final Color COL_FINAL   = new Color(220, 252, 231); // cuối kỳ header bg
-    private static final Color COL_TOTAL   = new Color(219, 234, 254); // tổng header bg
-    private static final Color TEXT_MAIN   = new Color(15,  23,  42);
-    private static final Color TEXT_MUTED  = new Color(100, 116, 139);
-    private static final Color ITEM_HOVER  = new Color(239, 246, 255);
-    private static final Color ITEM_ACTIVE = new Color(219, 234, 254);
-    private static final Color ROW_EVEN    = Color.WHITE;
-    private static final Color ROW_ODD     = new Color(248, 250, 252);
-    private static final Color ROW_SELECT  = new Color(219, 234, 254);
-
-    private static final Font FONT_MAIN   = new Font("Segoe UI", Font.PLAIN,  13);
-    private static final Font FONT_BOLD   = new Font("Segoe UI", Font.BOLD,   13);
-    private static final Font FONT_SMALL  = new Font("Segoe UI", Font.PLAIN,  12);
-    private static final Font FONT_HEADER = new Font("Segoe UI", Font.BOLD,   14);
 
     // COL indices
     private static final int COL_STT     = 0;
@@ -102,8 +77,8 @@ public class ResultTeacherPanel extends JPanel {
         searchField    = new JTextField();
         lblClassName   = new JLabel("Chưa chọn lớp");
         lblStats       = new JLabel(" ");
-        btnSaveAll     = createPrimaryButton("💾 Lưu tất cả điểm");
-        btnClearAll    = createSecondaryButton("🔄 Xóa trắng");
+        btnSaveAll     = ComponentFactory.primaryButton("💾 Lưu tất cả điểm");
+        btnClearAll    = ComponentFactory.secondaryButton("🔄 Xóa trắng");
         statusLabel    = new JLabel();
         tableModel     = buildTableModel();
         table          = buildTable();
@@ -113,11 +88,11 @@ public class ResultTeacherPanel extends JPanel {
         btnSaveAll .addActionListener(e -> saveResults());
         btnClearAll.addActionListener(e -> clearAll());
 
-        rightPanel.setBackground(BG_PAGE);
+        rightPanel.setBackground(Theme.BG_PAGE);
         rightPanel.add(emptyState, BorderLayout.CENTER);
 
         setLayout(new BorderLayout());
-        setBackground(BG_PAGE);
+        setBackground(Theme.BG_PAGE);
 
         JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT,
                 buildSidebar(), rightPanel);
@@ -134,22 +109,22 @@ public class ResultTeacherPanel extends JPanel {
 
     private JPanel buildSidebar() {
         JPanel sidebar = new JPanel(new BorderLayout());
-        sidebar.setBackground(BG_SIDEBAR);
-        sidebar.setBorder(new MatteBorder(0, 0, 0, 1, BORDER_COL));
+        sidebar.setBackground(Theme.BG_SIDEBAR);
+        sidebar.setBorder(new MatteBorder(0, 0, 0, 1, Theme.BORDER));
 
         JPanel header = new JPanel(new BorderLayout(0, 8));
-        header.setBackground(BG_SIDEBAR);
+        header.setBackground(Theme.BG_SIDEBAR);
         header.setBorder(new EmptyBorder(16, 12, 12, 12));
 
         JLabel title = new JLabel(currentTeacher != null ? "Lớp của tôi" : "Tất cả lớp");
-        title.setFont(FONT_HEADER);
-        title.setForeground(TEXT_MAIN);
+        title.setFont(Theme.FONT_HEADER);
+        title.setForeground(Theme.TEXT_MAIN);
         header.add(title, BorderLayout.NORTH);
 
-        searchField.setFont(FONT_MAIN);
+        searchField.setFont(Theme.FONT_PLAIN);
         searchField.setPreferredSize(new Dimension(0, 32));
         searchField.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(BORDER_COL),
+                BorderFactory.createLineBorder(Theme.BORDER),
                 new EmptyBorder(4, 8, 4, 8)));
         searchField.putClientProperty("JTextField.placeholderText", "Tìm tên lớp...");
         searchField.addKeyListener(new java.awt.event.KeyAdapter() {
@@ -159,20 +134,20 @@ public class ResultTeacherPanel extends JPanel {
         sidebar.add(header, BorderLayout.NORTH);
 
         classListPanel.setLayout(new BoxLayout(classListPanel, BoxLayout.Y_AXIS));
-        classListPanel.setBackground(BG_SIDEBAR);
+        classListPanel.setBackground(Theme.BG_SIDEBAR);
         JScrollPane scroll = new JScrollPane(classListPanel);
         scroll.setBorder(null);
-        scroll.getViewport().setBackground(BG_SIDEBAR);
+        scroll.getViewport().setBackground(Theme.BG_SIDEBAR);
         scroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         sidebar.add(scroll, BorderLayout.CENTER);
 
         JPanel footer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 6));
-        footer.setBackground(BG_SIDEBAR);
-        footer.setBorder(new MatteBorder(1, 0, 0, 0, BORDER_COL));
+        footer.setBackground(Theme.BG_SIDEBAR);
+        footer.setBorder(new MatteBorder(1, 0, 0, 0, Theme.BORDER));
         JButton refreshBtn = new JButton("↻");
-        refreshBtn.setFont(FONT_SMALL);
-        refreshBtn.setForeground(PRIMARY);
-        refreshBtn.setBackground(BG_SIDEBAR);
+        refreshBtn.setFont(Theme.FONT_SMALL);
+        refreshBtn.setForeground(Theme.PRIMARY);
+        refreshBtn.setBackground(Theme.BG_SIDEBAR);
         refreshBtn.setBorder(new EmptyBorder(4, 8, 4, 8));
         refreshBtn.setFocusPainted(false);
         refreshBtn.setToolTipText("Làm mới danh sách lớp");
@@ -187,22 +162,22 @@ public class ResultTeacherPanel extends JPanel {
     private JPanel buildClassItem(Class c) {
         JPanel item = new JPanel(new BorderLayout(0, 3));
         item.setOpaque(true);
-        item.setBackground(BG_SIDEBAR);
+        item.setBackground(Theme.BG_SIDEBAR);
         item.setMaximumSize(new Dimension(Integer.MAX_VALUE, 62));
         item.setMinimumSize(new Dimension(0, 62));
         item.setBorder(BorderFactory.createCompoundBorder(
-                new MatteBorder(0, 0, 1, 0, BORDER_COL),
+                new MatteBorder(0, 0, 1, 0, Theme.BORDER),
                 new EmptyBorder(8, 12, 8, 12)));
         item.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
         JLabel lblName   = new JLabel(c.getClassName());
-        lblName.setFont(FONT_BOLD);
-        lblName.setForeground(TEXT_MAIN);
+        lblName.setFont(Theme.FONT_BOLD);
+        lblName.setForeground(Theme.TEXT_MAIN);
 
         JLabel lblStatus = new JLabel(c.getStatus());
-        lblStatus.setFont(new Font("Segoe UI", Font.BOLD, 10));
+        lblStatus.setFont(Theme.FONT_BADGE);
         lblStatus.setOpaque(true);
-        lblStatus.setBackground(statusColor(c.getStatus()));
+        lblStatus.setBackground(Theme.classStatusColor(c.getStatus()));
         lblStatus.setForeground(Color.WHITE);
         lblStatus.setBorder(new EmptyBorder(2, 6, 2, 6));
 
@@ -214,23 +189,23 @@ public class ResultTeacherPanel extends JPanel {
         String courseName = c.getCourse() != null ? c.getCourse().getCourseName() : "";
         JLabel lblSub = new JLabel(courseName.length() > 30
                 ? courseName.substring(0, 28) + "…" : courseName);
-        lblSub.setFont(FONT_SMALL);
-        lblSub.setForeground(TEXT_MUTED);
+        lblSub.setFont(Theme.FONT_SMALL);
+        lblSub.setForeground(Theme.TEXT_MUTED);
 
         item.add(top,    BorderLayout.NORTH);
         item.add(lblSub, BorderLayout.CENTER);
 
         item.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override public void mouseEntered(java.awt.event.MouseEvent e) {
-                if (item != activeClassItem) item.setBackground(ITEM_HOVER);
+                if (item != activeClassItem) item.setBackground(Theme.ITEM_HOVER);
             }
             @Override public void mouseExited(java.awt.event.MouseEvent e) {
-                if (item != activeClassItem) item.setBackground(BG_SIDEBAR);
+                if (item != activeClassItem) item.setBackground(Theme.BG_SIDEBAR);
             }
             @Override public void mouseClicked(java.awt.event.MouseEvent e) {
-                if (activeClassItem != null) activeClassItem.setBackground(BG_SIDEBAR);
+                if (activeClassItem != null) activeClassItem.setBackground(Theme.BG_SIDEBAR);
                 activeClassItem = item;
-                item.setBackground(ITEM_ACTIVE);
+                item.setBackground(Theme.ITEM_ACTIVE);
                 selectClass(c);
             }
         });
@@ -241,17 +216,17 @@ public class ResultTeacherPanel extends JPanel {
 
     private JPanel buildEmptyState() {
         JPanel p = new JPanel(new GridBagLayout());
-        p.setBackground(BG_PAGE);
+        p.setBackground(Theme.BG_PAGE);
         JLabel lbl = new JLabel("← Chọn một lớp để nhập điểm");
         lbl.setFont(new Font("Segoe UI", Font.PLAIN, 15));
-        lbl.setForeground(TEXT_MUTED);
+        lbl.setForeground(Theme.TEXT_MUTED);
         p.add(lbl);
         return p;
     }
 
     private JPanel buildResultContent() {
         JPanel content = new JPanel(new BorderLayout(0, 0));
-        content.setBackground(BG_PAGE);
+        content.setBackground(Theme.BG_PAGE);
         content.setBorder(new EmptyBorder(20, 24, 20, 24));
 
         content.add(buildResultHeader(), BorderLayout.NORTH);
@@ -265,18 +240,17 @@ public class ResultTeacherPanel extends JPanel {
         header.setOpaque(false);
         header.setBorder(new EmptyBorder(0, 0, 16, 0));
 
-        lblClassName.setFont(FONT_HEADER);
-        lblClassName.setForeground(TEXT_MAIN);
+        lblClassName.setFont(Theme.FONT_HEADER);
+        lblClassName.setForeground(Theme.TEXT_MAIN);
         header.add(lblClassName, BorderLayout.NORTH);
 
-        // Formula badge
         JPanel statsRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         statsRow.setOpaque(false);
 
         JLabel formulaLbl = new JLabel(
                 "<html><span style='background:#fef3c7;padding:2px 6px;border-radius:4px;'>"
                 + "Tổng = QT1×25% + QT2×25% + Cuối kỳ×50%</span></html>");
-        formulaLbl.setFont(FONT_SMALL);
+        formulaLbl.setFont(Theme.FONT_SMALL);
         statsRow.add(formulaLbl);
         statsRow.add(lblStats);
         statsRow.add(statusLabel);
@@ -288,8 +262,8 @@ public class ResultTeacherPanel extends JPanel {
     private JScrollPane buildTableCard() {
         table.setFillsViewportHeight(true);
         JScrollPane scroll = new JScrollPane(table);
-        scroll.setBorder(BorderFactory.createLineBorder(BORDER_COL));
-        scroll.getViewport().setBackground(BG_CARD);
+        scroll.setBorder(BorderFactory.createLineBorder(Theme.BORDER));
+        scroll.getViewport().setBackground(Theme.BG_CARD);
         return scroll;
     }
 
@@ -307,7 +281,7 @@ public class ResultTeacherPanel extends JPanel {
                 + "<span style='color:#3b82f6;'>A≥8.5</span> &nbsp;"
                 + "<span style='color:#f59e0b;'>B+≥7.0</span> &nbsp;"
                 + "<span style='color:#ef4444;'>F&lt;4.0</span></html>");
-        legendLbl.setFont(FONT_SMALL);
+        legendLbl.setFont(Theme.FONT_SMALL);
         left.add(Box.createHorizontalStrut(12));
         left.add(legendLbl);
 
@@ -321,7 +295,6 @@ public class ResultTeacherPanel extends JPanel {
     private DefaultTableModel buildTableModel() {
         return new DefaultTableModel(TABLE_COLS, 0) {
             @Override public boolean isCellEditable(int r, int c) {
-                // QT1, QT2, CK, Nhận xét được nhập; Tổng + Xếp loại auto
                 return c == COL_QT1 || c == COL_QT2 || c == COL_CK || c == COL_COMMENT;
             }
             @Override public java.lang.Class<?> getColumnClass(int c) {
@@ -336,51 +309,47 @@ public class ResultTeacherPanel extends JPanel {
             public Component prepareRenderer(javax.swing.table.TableCellRenderer r, int row, int col) {
                 Component c = super.prepareRenderer(r, row, col);
                 boolean sel = isRowSelected(row);
-                // Column background hints
                 Color baseBg;
                 if (sel) {
-                    baseBg = ROW_SELECT;
+                    baseBg = Theme.ROW_SELECT;
                 } else if (col == COL_QT1 || col == COL_QT2) {
-                    baseBg = row % 2 == 0 ? new Color(255, 251, 235) : new Color(254, 243, 199);
+                    baseBg = row % 2 == 0 ? Theme.COL_QT_EVEN : Theme.COL_QT_ODD;
                 } else if (col == COL_CK) {
-                    baseBg = row % 2 == 0 ? new Color(240, 253, 244) : new Color(220, 252, 231);
+                    baseBg = row % 2 == 0 ? Theme.COL_CK_EVEN : Theme.COL_CK_ODD;
                 } else if (col == COL_TOTAL_I) {
-                    baseBg = row % 2 == 0 ? new Color(239, 246, 255) : new Color(219, 234, 254);
+                    baseBg = row % 2 == 0 ? Theme.COL_TOT_EVEN : Theme.COL_TOT_ODD;
                 } else {
-                    baseBg = row % 2 == 0 ? ROW_EVEN : ROW_ODD;
+                    baseBg = row % 2 == 0 ? Theme.ROW_EVEN : Theme.ROW_ODD;
                 }
                 c.setBackground(baseBg);
-                c.setForeground(TEXT_MAIN);
+                c.setForeground(Theme.TEXT_MAIN);
 
-                // Grade col coloring
                 if (col == COL_GRADE && !sel && c instanceof JLabel lbl) {
-                    lbl.setFont(FONT_BOLD);
+                    lbl.setFont(Theme.FONT_BOLD);
                     lbl.setHorizontalAlignment(SwingConstants.CENTER);
-                    lbl.setForeground(gradeColor(lbl.getText()));
+                    lbl.setForeground(Theme.gradeColor(lbl.getText()));
                 }
-                // Total col bold
                 if (col == COL_TOTAL_I && c instanceof JLabel lbl) {
-                    lbl.setFont(FONT_BOLD);
+                    lbl.setFont(Theme.FONT_BOLD);
                     lbl.setHorizontalAlignment(SwingConstants.CENTER);
                 }
                 return c;
             }
         };
 
-        t.setFont(FONT_MAIN);
+        t.setFont(Theme.FONT_PLAIN);
         t.setRowHeight(40);
         t.setShowGrid(false);
         t.setIntercellSpacing(new Dimension(0, 0));
-        t.setBackground(BG_CARD);
+        t.setBackground(Theme.BG_CARD);
 
         JTableHeader header = t.getTableHeader();
-        header.setFont(FONT_BOLD);
-        header.setBackground(new Color(241, 245, 249));
-        header.setForeground(TEXT_MUTED);
+        header.setFont(Theme.FONT_BOLD);
+        header.setBackground(Theme.BG_HEADER);
+        header.setForeground(Theme.TEXT_MUTED);
         header.setPreferredSize(new Dimension(0, 42));
-        header.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, BORDER_COL));
+        header.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, Theme.BORDER));
 
-        // Score cell editor (0-10 validator)
         DefaultCellEditor scoreEditor = new DefaultCellEditor(new JTextField()) {
             @Override
             public boolean stopCellEditing() {
@@ -428,7 +397,6 @@ public class ResultTeacherPanel extends JPanel {
             }
         });
 
-        // Column widths
         t.getColumnModel().getColumn(COL_STT)    .setPreferredWidth(45);  t.getColumnModel().getColumn(COL_STT).setMaxWidth(50);
         t.getColumnModel().getColumn(COL_NAME)   .setPreferredWidth(200);
         t.getColumnModel().getColumn(COL_QT1)    .setPreferredWidth(90);  t.getColumnModel().getColumn(COL_QT1).setMaxWidth(110);
@@ -467,8 +435,8 @@ public class ResultTeacherPanel extends JPanel {
         classListPanel.removeAll();
         if (classes.isEmpty()) {
             JLabel lbl = new JLabel("Không có lớp nào", SwingConstants.CENTER);
-            lbl.setFont(FONT_SMALL);
-            lbl.setForeground(TEXT_MUTED);
+            lbl.setFont(Theme.FONT_SMALL);
+            lbl.setForeground(Theme.TEXT_MUTED);
             classListPanel.add(lbl);
         } else {
             classes.stream().map(this::buildClassItem).forEach(classListPanel::add);
@@ -511,7 +479,7 @@ public class ResultTeacherPanel extends JPanel {
                         fmtScore(res.getScore1()),
                         fmtScore(res.getScore2()),
                         fmtScore(res.getFinalScore()),
-                        fmtScore(res.getScore()),      // tổng (auto)
+                        fmtScore(res.getScore()),
                         res.getGrade()   != null ? res.getGrade()   : "",
                         res.getComment() != null ? res.getComment() : ""
                 });
@@ -525,9 +493,6 @@ public class ResultTeacherPanel extends JPanel {
         }
     }
 
-    /**
-     * Rebuild table listener: khi nhập QT1/QT2/CK → tự tính tổng và xếp loại.
-     */
     private void rebuildTableModelListeners() {
         for (javax.swing.event.TableModelListener l : tableModel.getTableModelListeners()) {
             tableModel.removeTableModelListener(l);
@@ -537,7 +502,6 @@ public class ResultTeacherPanel extends JPanel {
             int row = e.getFirstRow();
             if (row < 0) return;
             if (col == COL_QT1 || col == COL_QT2 || col == COL_CK) {
-                // Parse all three
                 BigDecimal s1 = parseBD((String) tableModel.getValueAt(row, COL_QT1));
                 BigDecimal s2 = parseBD((String) tableModel.getValueAt(row, COL_QT2));
                 BigDecimal sf = parseBD((String) tableModel.getValueAt(row, COL_CK));
@@ -545,7 +509,6 @@ public class ResultTeacherPanel extends JPanel {
                 String grade = (total != null)
                         ? ResultService.autoGrade(total.doubleValue()) : "";
 
-                // Temporarily remove to avoid recursion
                 javax.swing.event.TableModelListener[] listeners = tableModel.getTableModelListeners();
                 for (javax.swing.event.TableModelListener l : listeners) tableModel.removeTableModelListener(l);
 
@@ -615,7 +578,7 @@ public class ResultTeacherPanel extends JPanel {
             if (s != null && !s.isBlank()) entered++;
         }
         lblStats.setText(String.format("  Đã có điểm tổng: %d / %d học viên", entered, total));
-        lblStats.setForeground(entered == total && total > 0 ? GREEN : TEXT_MUTED);
+        lblStats.setForeground(entered == total && total > 0 ? Theme.GREEN : Theme.TEXT_MUTED);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────
@@ -627,49 +590,6 @@ public class ResultTeacherPanel extends JPanel {
     private static BigDecimal parseBD(String s) {
         if (s == null || s.isBlank()) return null;
         try { return new BigDecimal(s.trim()); } catch (NumberFormatException e) { return null; }
-    }
-
-    private Color gradeColor(String grade) {
-        if (grade == null) return TEXT_MUTED;
-        return switch (grade) {
-            case "A+", "A", "A-" -> GREEN;
-            case "B+", "B", "B-" -> BLUE;
-            case "C"              -> AMBER;
-            case "D", "F"         -> RED;
-            default               -> TEXT_MUTED;
-        };
-    }
-
-    private Color statusColor(String s) {
-        if (s == null) return TEXT_MUTED;
-        return switch (s) {
-            case "Open", "Ongoing" -> GREEN;
-            case "Planned"         -> new Color(59, 130, 246);
-            case "Cancelled"       -> RED;
-            default                -> TEXT_MUTED;
-        };
-    }
-
-    private JButton createPrimaryButton(String text) {
-        JButton btn = new JButton(text);
-        btn.setFont(FONT_BOLD); btn.setForeground(Color.WHITE); btn.setBackground(PRIMARY);
-        btn.setBorder(new EmptyBorder(7, 16, 7, 16));
-        btn.setFocusPainted(false); btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        btn.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseEntered(java.awt.event.MouseEvent e) { btn.setBackground(PRIMARY_H); }
-            public void mouseExited (java.awt.event.MouseEvent e) { btn.setBackground(PRIMARY); }
-        });
-        return btn;
-    }
-
-    private JButton createSecondaryButton(String text) {
-        JButton btn = new JButton(text);
-        btn.setFont(FONT_MAIN); btn.setForeground(TEXT_MAIN); btn.setBackground(BG_CARD);
-        btn.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(BORDER_COL),
-                new EmptyBorder(6, 14, 6, 14)));
-        btn.setFocusPainted(false); btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        return btn;
     }
 
     private void showSuccess(String msg) {

@@ -2,6 +2,7 @@ package com.company.ems.ui;
 
 import com.company.ems.model.UserAccount;
 import com.company.ems.service.*;
+import com.company.ems.ui.common.Theme;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -22,21 +23,9 @@ import java.util.Optional;
 public class LoginFrame extends JFrame {
 
     // ── Design tokens ────────────────────────────────────────────────────
-    private static final Color BG_LEFT    = new Color(15,  23,  42);
-    private static final Color BG_RIGHT   = new Color(248, 250, 252);
-    private static final Color PRIMARY    = new Color(37,  99,  235);
-    private static final Color PRIMARY_H  = new Color(29,  78,  216);
-    private static final Color DANGER     = new Color(220, 38,  38);
-    private static final Color BORDER_COL = new Color(226, 232, 240);
-    private static final Color TEXT_MAIN  = new Color(15,  23,  42);
-    private static final Color TEXT_MUTED = new Color(100, 116, 139);
-
-    private static final Font FONT_TITLE = new Font("Segoe UI", Font.BOLD,  28);
-    private static final Font FONT_SUB   = new Font("Segoe UI", Font.PLAIN, 14);
-    private static final Font FONT_LABEL = new Font("Segoe UI", Font.BOLD,  13);
+    private static final Color BG_LEFT = new Color(15, 23, 42);
+    private static final Font FONT_TITLE = new Font("Segoe UI", Font.BOLD, 28);
     private static final Font FONT_INPUT = new Font("Segoe UI", Font.PLAIN, 14);
-    private static final Font FONT_BTN   = new Font("Segoe UI", Font.BOLD,  14);
-    private static final Font FONT_SMALL = new Font("Segoe UI", Font.PLAIN, 12);
 
     // ── Components ───────────────────────────────────────────────────────
     private final JTextField     tfUsername = new JTextField();
@@ -123,7 +112,7 @@ public class LoginFrame extends JFrame {
 
         JLabel sub = new JLabel("<html><div style='text-align:center;color:#94a3b8'>"
                 + "Hệ thống quản lý trung tâm<br>ngoại ngữ toàn diện</div></html>");
-        sub.setFont(FONT_SUB);
+        sub.setFont(Theme.FONT_PLAIN);
         sub.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         JPanel features = new JPanel();
@@ -137,7 +126,7 @@ public class LoginFrame extends JFrame {
         };
         for (String item : items) {
             JLabel lbl = new JLabel(item);
-            lbl.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+            lbl.setFont(Theme.FONT_PLAIN);
             lbl.setForeground(new Color(148, 163, 184));
             lbl.setAlignmentX(Component.LEFT_ALIGNMENT);
             lbl.setBorder(new EmptyBorder(4, 0, 4, 0));
@@ -160,7 +149,7 @@ public class LoginFrame extends JFrame {
     /** Bên phải: Form đăng nhập */
     private JPanel buildRightPanel() {
         JPanel p = new JPanel(new GridBagLayout());
-        p.setBackground(BG_RIGHT);
+        p.setBackground(Theme.BG_PAGE);
         p.setBorder(new EmptyBorder(40, 50, 40, 50));
 
         JPanel form = new JPanel();
@@ -169,18 +158,18 @@ public class LoginFrame extends JFrame {
 
         JLabel lblTitle = new JLabel("Đăng nhập");
         lblTitle.setFont(FONT_TITLE);
-        lblTitle.setForeground(TEXT_MAIN);
+        lblTitle.setForeground(Theme.TEXT_MAIN);
         lblTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         JLabel lblSub = new JLabel("Nhập thông tin tài khoản để tiếp tục");
-        lblSub.setFont(FONT_SUB);
-        lblSub.setForeground(TEXT_MUTED);
+        lblSub.setFont(Theme.FONT_PLAIN);
+        lblSub.setForeground(Theme.TEXT_MUTED);
         lblSub.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         // Username
         JLabel lblUser = new JLabel("Tên đăng nhập");
-        lblUser.setFont(FONT_LABEL);
-        lblUser.setForeground(TEXT_MAIN);
+        lblUser.setFont(Theme.FONT_SMALL_BOLD);
+        lblUser.setForeground(Theme.TEXT_MAIN);
         lblUser.setAlignmentX(Component.LEFT_ALIGNMENT);
         styleInput(tfUsername);
         tfUsername.putClientProperty("JTextField.placeholderText", "Nhập tên đăng nhập...");
@@ -189,8 +178,8 @@ public class LoginFrame extends JFrame {
 
         // Password
         JLabel lblPass = new JLabel("Mật khẩu");
-        lblPass.setFont(FONT_LABEL);
-        lblPass.setForeground(TEXT_MAIN);
+        lblPass.setFont(Theme.FONT_SMALL_BOLD);
+        lblPass.setForeground(Theme.TEXT_MAIN);
         lblPass.setAlignmentX(Component.LEFT_ALIGNMENT);
         styleInput(tfPassword);
         tfPassword.putClientProperty("JTextField.placeholderText", "Nhập mật khẩu...");
@@ -198,21 +187,21 @@ public class LoginFrame extends JFrame {
         tfPassword.setMaximumSize(new Dimension(Integer.MAX_VALUE, 44));
 
         // Show password checkbox
-        cbShowPass.setFont(FONT_SMALL);
-        cbShowPass.setForeground(TEXT_MUTED);
+        cbShowPass.setFont(Theme.FONT_SMALL);
+        cbShowPass.setForeground(Theme.TEXT_MUTED);
         cbShowPass.setOpaque(false);
         cbShowPass.setAlignmentX(Component.LEFT_ALIGNMENT);
         cbShowPass.addActionListener(e ->
                 tfPassword.setEchoChar(cbShowPass.isSelected() ? '\0' : '•'));
 
         // Error label
-        lblError.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        lblError.setForeground(DANGER);
+        lblError.setFont(Theme.FONT_SMALL);
+        lblError.setForeground(Theme.DANGER);
         lblError.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         // Login button
-        btnLogin.setFont(FONT_BTN);
-        btnLogin.setBackground(PRIMARY);
+        btnLogin.setFont(Theme.FONT_BOLD);
+        btnLogin.setBackground(Theme.PRIMARY);
         btnLogin.setForeground(Color.WHITE);
         btnLogin.setFocusPainted(false);
         btnLogin.setBorderPainted(false);
@@ -220,8 +209,8 @@ public class LoginFrame extends JFrame {
         btnLogin.setMaximumSize(new Dimension(Integer.MAX_VALUE, 46));
         btnLogin.setAlignmentX(Component.LEFT_ALIGNMENT);
         btnLogin.addMouseListener(new MouseAdapter() {
-            public void mouseEntered(MouseEvent e) { btnLogin.setBackground(PRIMARY_H); }
-            public void mouseExited (MouseEvent e) { btnLogin.setBackground(PRIMARY); }
+            public void mouseEntered(MouseEvent e) { btnLogin.setBackground(Theme.PRIMARY_H); }
+            public void mouseExited (MouseEvent e) { btnLogin.setBackground(Theme.PRIMARY); }
         });
         btnLogin.addActionListener(e -> doLogin());
 
@@ -412,7 +401,7 @@ public class LoginFrame extends JFrame {
     private void styleInput(JComponent c) {
         c.setFont(FONT_INPUT);
         c.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(BORDER_COL),
+                BorderFactory.createLineBorder(Theme.BORDER),
                 BorderFactory.createEmptyBorder(6, 12, 6, 12)));
     }
 

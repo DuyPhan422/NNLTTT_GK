@@ -2,6 +2,7 @@ package com.company.ems.ui;
 
 import com.company.ems.model.Teacher;
 import com.company.ems.service.*;
+import com.company.ems.ui.common.Theme;
 import com.company.ems.ui.panels.ResultTeacherPanel;
 import com.company.ems.ui.panels.ScheduleTeacherPanel;
 import com.company.ems.ui.panels.attendance.AttendanceTeacherPanel;
@@ -22,10 +23,7 @@ import java.awt.*;
 public class TeacherMainFrame extends JFrame {
 
     private static final Color BG_SIDEBAR  = new Color(15,  23,  42);
-    private static final Color BG_CONTENT  = new Color(248, 250, 252);
-    private static final Color ITEM_ACTIVE = new Color(37,  99,  235);
     private static final Color TEXT_NAV    = new Color(203, 213, 225);
-    private static final Color DANGER      = new Color(220, 38,  38);
 
     private final Teacher  currentTeacher;
     private final Runnable onLogout;
@@ -59,21 +57,21 @@ public class TeacherMainFrame extends JFrame {
 
         // ── Header ───────────────────────────────────────────────────────
         JPanel rightPanel = new JPanel(new BorderLayout());
-        rightPanel.setBackground(BG_CONTENT);
+        rightPanel.setBackground(Theme.BG_PAGE);
 
         JPanel headerPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 24, 16));
         headerPanel.setBackground(Color.WHITE);
-        headerPanel.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(226, 232, 240)));
+        headerPanel.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, Theme.BORDER));
         headerTitle = new JLabel("Lịch dạy");
         headerTitle.setFont(new Font("Segoe UI", Font.BOLD, 22));
-        headerTitle.setForeground(new Color(15, 23, 42));
+        headerTitle.setForeground(Theme.TEXT_MAIN);
         headerPanel.add(headerTitle);
         rightPanel.add(headerPanel, BorderLayout.NORTH);
 
         // ── Content (CardLayout) ─────────────────────────────────────────
         cardLayout   = new CardLayout();
         contentPanel = new JPanel(cardLayout);
-        contentPanel.setBackground(BG_CONTENT);
+        contentPanel.setBackground(Theme.BG_PAGE);
 
         // 1. Lịch dạy
         schedulePanel = new ScheduleTeacherPanel(scheduleService, classService, roomService, teacher);
@@ -117,15 +115,15 @@ public class TeacherMainFrame extends JFrame {
 
         // Tên giáo viên
         JLabel lblName = new JLabel(currentTeacher.getFullName());
-        lblName.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        lblName.setForeground(new Color(148, 163, 184));
+        lblName.setFont(Theme.FONT_SMALL);
+        lblName.setForeground(Theme.TEXT_MUTED);
         lblName.setAlignmentX(Component.CENTER_ALIGNMENT);
         sidebar.add(Box.createRigidArea(new Dimension(0, 4)));
         sidebar.add(lblName);
 
         // Badge
         JLabel lblRole = new JLabel("  GIÁO VIÊN  ");
-        lblRole.setFont(new Font("Segoe UI", Font.BOLD, 10));
+        lblRole.setFont(Theme.FONT_SMALL_BOLD);
         lblRole.setForeground(new Color(147, 197, 253));
         lblRole.setOpaque(true);
         lblRole.setBackground(new Color(30, 58, 138));
@@ -168,15 +166,15 @@ public class TeacherMainFrame extends JFrame {
         // Nút đăng xuất
         JButton btnLogout = new JButton("⏻  Đăng xuất");
         btnLogout.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
-        btnLogout.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        btnLogout.setFont(Theme.FONT_PLAIN);
         btnLogout.setForeground(Color.WHITE);
-        btnLogout.setBackground(DANGER);
+        btnLogout.setBackground(Theme.DANGER);
         btnLogout.setFocusPainted(false);
         btnLogout.setBorderPainted(false);
         btnLogout.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnLogout.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseEntered(java.awt.event.MouseEvent e) { btnLogout.setBackground(new Color(185, 28, 28)); }
-            public void mouseExited (java.awt.event.MouseEvent e) { btnLogout.setBackground(DANGER); }
+            public void mouseEntered(java.awt.event.MouseEvent e) { btnLogout.setBackground(Theme.DANGER_H); }
+            public void mouseExited (java.awt.event.MouseEvent e) { btnLogout.setBackground(Theme.DANGER); }
         });
         btnLogout.addActionListener(e -> {
             int ok = JOptionPane.showConfirmDialog(this,
@@ -197,7 +195,7 @@ public class TeacherMainFrame extends JFrame {
         JToggleButton btn = new JToggleButton(label);
         btn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 44));
         btn.setHorizontalAlignment(SwingConstants.LEFT);
-        btn.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        btn.setFont(Theme.FONT_PLAIN);
         btn.setFocusPainted(false);
         btn.setBorderPainted(false);
         btn.setBackground(BG_SIDEBAR);
@@ -205,7 +203,7 @@ public class TeacherMainFrame extends JFrame {
         btn.setBorder(new EmptyBorder(10, 14, 10, 14));
         btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btn.addChangeListener(e -> {
-            btn.setBackground(btn.isSelected() ? ITEM_ACTIVE : BG_SIDEBAR);
+            btn.setBackground(btn.isSelected() ? Theme.ITEM_ACTIVE : BG_SIDEBAR);
             btn.setForeground(btn.isSelected() ? Color.WHITE  : TEXT_NAV);
         });
         return btn;
@@ -213,7 +211,7 @@ public class TeacherMainFrame extends JFrame {
 
     private JPanel buildPlaceholder(String message) {
         JPanel p = new JPanel(new GridBagLayout());
-        p.setBackground(BG_CONTENT);
+        p.setBackground(Theme.BG_PAGE);
         JPanel inner = new JPanel();
         inner.setOpaque(false);
         inner.setLayout(new BoxLayout(inner, BoxLayout.Y_AXIS));
@@ -221,8 +219,8 @@ public class TeacherMainFrame extends JFrame {
         icon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 48));
         icon.setAlignmentX(Component.CENTER_ALIGNMENT);
         JLabel lbl = new JLabel(message);
-        lbl.setFont(new Font("Segoe UI", Font.PLAIN, 15));
-        lbl.setForeground(new Color(100, 116, 139));
+        lbl.setFont(Theme.FONT_PLAIN);
+        lbl.setForeground(Theme.TEXT_MUTED);
         lbl.setAlignmentX(Component.CENTER_ALIGNMENT);
         inner.add(icon);
         inner.add(Box.createRigidArea(new Dimension(0, 12)));

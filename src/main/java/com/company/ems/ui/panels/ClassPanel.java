@@ -156,13 +156,13 @@ public class ClassPanel extends BaseCrudPanel<Class> {
 
             if (existing != null) {
                 String oldStatus = existing.getStatus();
-                classService.update(dlg.getClazz());
-                if (!"Hủy lớp".equals(oldStatus) && "Hủy lớp".equals(dlg.getClazz().getStatus())) {
-                    cancelClassEnrollments(dlg.getClazz());
+                classService.update(dlg.getEntity());
+                if (!"Hủy lớp".equals(oldStatus) && "Hủy lớp".equals(dlg.getEntity().getStatus())) {
+                    cancelClassEnrollments(dlg.getEntity());
                 }
                 showSuccess("Cập nhật lớp học thành công.");
             } else {
-                classService.save(dlg.getClazz());
+                classService.save(dlg.getEntity());
                 showSuccess("Thêm lớp học mới thành công.");
             }
             notifyChanged();

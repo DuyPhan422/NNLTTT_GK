@@ -8,6 +8,9 @@ import com.company.ems.service.EnrollmentService;
 import com.company.ems.service.InvoiceService;
 import com.company.ems.service.PaymentService;
 import com.company.ems.service.StudentService;
+import com.company.ems.ui.common.ComponentFactory;
+import com.company.ems.ui.common.TableStyler;
+import com.company.ems.ui.common.Theme;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -31,16 +34,6 @@ import java.util.stream.IntStream;
 
 public class StudentTuitionPanel extends JPanel {
 
-    // ── Màu sắc ─────────────────────────────────────────────────────────────
-    private static final Color C_DARK   = new Color(15,  23,  42);
-    private static final Color C_NAVY   = new Color(30,  41,  59);
-    private static final Color C_BLUE   = new Color(37,  99,  235);
-    private static final Color C_GREEN  = new Color(22,  163, 74);
-    private static final Color C_RED    = new Color(220, 38,  38);
-    private static final Color C_MUTED  = new Color(148, 163, 184);
-    private static final Color C_BORDER = new Color(226, 232, 240);
-    private static final Color C_BG     = new Color(248, 250, 252);
-
     private static final DateTimeFormatter FMT_FULL =
             DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
     private static final DateTimeFormatter FMT_DATE =
@@ -54,8 +47,8 @@ public class StudentTuitionPanel extends JPanel {
     private final Long              loggedInStudentId;
 
     private List<Enrollment> pendingEnrollments = new ArrayList<>();
-    private String selectedPaymentMethod = "Tiền mặt";
-    private Runnable onDataChanged;
+    private String           selectedPaymentMethod = "Tiền mặt";
+    private Runnable         onDataChanged;
 
     /** Callback từ StudentMainFrame để reload các panel khác sau khi thanh toán. */
     public void setOnDataChanged(Runnable r) { this.onDataChanged = r; }
@@ -71,7 +64,7 @@ public class StudentTuitionPanel extends JPanel {
         this.loggedInStudentId = loggedInStudentId;
 
         setLayout(new BorderLayout());
-        setBackground(C_BG);
+        setBackground(Theme.BG_PAGE);
         setBorder(new EmptyBorder(20, 24, 20, 24));
         loadData();
     }
@@ -82,7 +75,7 @@ public class StudentTuitionPanel extends JPanel {
                 .filter(e -> e.getStudent() != null
                           && e.getStudent().getStudentId().equals(loggedInStudentId)
                           && "Đã đăng ký".equals(e.getStatus()))
-                .collect(Collectors.toList());
+                .toList();
 
         removeAll();
         buildUI();
@@ -99,20 +92,15 @@ public class StudentTuitionPanel extends JPanel {
                 .map(e -> e.getClazz().getCourse().getFee())
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        // ── TOP: hai cột thông tin + thanh toán ──────────────────────────────
         JPanel topSection = new JPanel(new GridLayout(1, 2, 20, 0));
-        topSection.setBackground(C_BG);
-
+        topSection.setBackground(Theme.BG_PAGE);
         topSection.add(buildStudentInfoCard(student, totalDebt));
-        topSection.add(buildPaymentMethodCard(totalDebt));
+        topSection.add(buildPaymentMethodCard());
 
-        // ── CONTAINER ────────────────────────────────────────────────────────
         JPanel container = new JPanel(new BorderLayout(0, 28));
         container.setOpaque(false);
         container.add(topSection, BorderLayout.NORTH);
-
-        JPanel histSection = buildHistorySection();
-        container.add(histSection, BorderLayout.CENTER);
+        container.add(buildHistorySection(), BorderLayout.CENTER);
 
         JScrollPane scrollMain = new JScrollPane(container);
         scrollMain.setBorder(null);
@@ -127,29 +115,25 @@ public class StudentTuitionPanel extends JPanel {
     private JPanel buildStudentInfoCard(Student s, BigDecimal totalDebt) {
         JPanel card = new JPanel();
         card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
-        card.setBackground(C_NAVY);
+        card.setBackground(new Color(30, 41, 59));
         card.setBorder(new EmptyBorder(26, 26, 26, 26));
 
         addSectionHeader(card, "THÔNG TIN HỌC VIÊN");
         card.add(Box.createVerticalStrut(18));
 
-        addInfoRow(card, "Mã học viên (MSSV)",
-                s != null ? String.valueOf(s.getStudentId()) : "—");
+        addInfoRow(card, "Mã học viên (MSSV)", s != null ? String.valueOf(s.getStudentId()) : "—");
         card.add(Box.createVerticalStrut(14));
-
-        addInfoRow(card, "Họ và tên học viên",
-                s != null ? s.getFullName() : "—");
+        addInfoRow(card, "Họ và tên học viên",  s != null ? s.getFullName() : "—");
         card.add(Box.createVerticalStrut(14));
-
         addInfoRow(card, "Email / Liên hệ",
                 s != null && s.getEmail() != null ? s.getEmail()
                         : (s != null && s.getPhone() != null ? s.getPhone() : "—"));
         card.add(Box.createVerticalStrut(18));
 
-        // ── Dòng số tiền nợ ──────────────────────────────────────────────────
+        // Dòng số tiền nợ
         JLabel lblDebtTitle = new JLabel("Số tiền nợ học phí");
-        lblDebtTitle.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        lblDebtTitle.setForeground(C_MUTED);
+        lblDebtTitle.setFont(Theme.FONT_SMALL);
+        lblDebtTitle.setForeground(new Color(148, 163, 184));
         lblDebtTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
         card.add(lblDebtTitle);
         card.add(Box.createVerticalStrut(6));
@@ -166,28 +150,19 @@ public class StudentTuitionPanel extends JPanel {
         lblAmt.setFont(new Font("Segoe UI", Font.BOLD, hasDebt ? 22 : 15));
         lblAmt.setForeground(hasDebt ? Color.WHITE : new Color(74, 222, 128));
         if (hasDebt) {
-            lblAmt.setCursor(new Cursor(Cursor.HAND_CURSOR));
+            lblAmt.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
             lblAmt.setToolTipText("Nhấp để xem chi tiết các khoản phí");
             lblAmt.addMouseListener(new MouseAdapter() {
                 @Override public void mouseClicked(MouseEvent e) { showFeeDetailDialog(); }
-                @Override public void mouseEntered(MouseEvent e) {
-                    lblAmt.setForeground(new Color(147, 197, 253));
-                }
-                @Override public void mouseExited(MouseEvent e) {
-                    lblAmt.setForeground(Color.WHITE);
-                }
+                @Override public void mouseEntered(MouseEvent e) { lblAmt.setForeground(new Color(147, 197, 253)); }
+                @Override public void mouseExited(MouseEvent e)  { lblAmt.setForeground(Color.WHITE); }
             });
         }
         debtRow.add(lblAmt, BorderLayout.WEST);
 
         if (hasDebt) {
-            JButton btnArrow = new JButton("→");
+            JButton btnArrow = ComponentFactory.primaryButton("→");
             btnArrow.setFont(new Font("Segoe UI", Font.BOLD, 16));
-            btnArrow.setForeground(Color.WHITE);
-            btnArrow.setBackground(C_BLUE);
-            btnArrow.setBorder(new EmptyBorder(4, 12, 4, 12));
-            btnArrow.setFocusPainted(false);
-            btnArrow.setCursor(new Cursor(Cursor.HAND_CURSOR));
             btnArrow.addActionListener(e -> showFeeDetailDialog());
             debtRow.add(btnArrow, BorderLayout.EAST);
         }
@@ -197,8 +172,8 @@ public class StudentTuitionPanel extends JPanel {
 
     private void addSectionHeader(JPanel parent, String text) {
         JLabel lbl = new JLabel(text);
-        lbl.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        lbl.setForeground(C_MUTED);
+        lbl.setFont(Theme.FONT_SMALL_BOLD);
+        lbl.setForeground(new Color(148, 163, 184));
         lbl.setAlignmentX(Component.LEFT_ALIGNMENT);
         parent.add(lbl);
     }
@@ -206,10 +181,10 @@ public class StudentTuitionPanel extends JPanel {
     private void addInfoRow(JPanel parent, String label, String value) {
         JLabel lblLbl = new JLabel(label);
         lblLbl.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-        lblLbl.setForeground(C_MUTED);
+        lblLbl.setForeground(new Color(148, 163, 184));
         lblLbl.setAlignmentX(Component.LEFT_ALIGNMENT);
         JLabel lblVal = new JLabel(value);
-        lblVal.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        lblVal.setFont(Theme.FONT_PLAIN);
         lblVal.setForeground(Color.WHITE);
         lblVal.setAlignmentX(Component.LEFT_ALIGNMENT);
         parent.add(lblLbl);
@@ -220,44 +195,42 @@ public class StudentTuitionPanel extends JPanel {
     // ══════════════════════════════════════════════════════════════════════════
     // RIGHT CARD – Chọn hình thức thanh toán
     // ══════════════════════════════════════════════════════════════════════════
-    private JPanel buildPaymentMethodCard(BigDecimal totalDebt) {
+    private JPanel buildPaymentMethodCard() {
         JPanel card = new JPanel(new BorderLayout(0, 16));
-        card.setBackground(Color.WHITE);
+        card.setBackground(Theme.BG_CARD);
         card.setBorder(BorderFactory.createCompoundBorder(
-                new LineBorder(C_BORDER, 1),
+                new LineBorder(Theme.BORDER, 1),
                 new EmptyBorder(22, 22, 22, 22)));
 
         JLabel lblHeader = new JLabel("HÌNH THỨC THANH TOÁN");
-        lblHeader.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        lblHeader.setForeground(C_NAVY);
+        lblHeader.setFont(Theme.FONT_BOLD);
+        lblHeader.setForeground(new Color(30, 41, 59));
         card.add(lblHeader, BorderLayout.NORTH);
 
-        // Hai nút chọn phương thức: Tiền mặt | Chuyển khoản
         JPanel btnGrid = new JPanel(new GridLayout(1, 2, 10, 0));
         btnGrid.setOpaque(false);
-        btnGrid.setMaximumSize(new Dimension(340, 38));
         ButtonGroup bg = new ButtonGroup();
         for (String m : new String[]{"Tiền mặt", "Chuyển khoản"}) {
             JToggleButton btn = new JToggleButton(m);
-            btn.setFont(new Font("Segoe UI", Font.BOLD, 12));
+            btn.setFont(Theme.FONT_SMALL_BOLD);
             btn.setFocusPainted(false);
-            btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+            btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
             boolean isCash = "Tiền mặt".equals(m);
             btn.setSelected(isCash);
-            btn.setBackground(isCash ? new Color(219, 234, 254) : Color.WHITE);
-            btn.setForeground(isCash ? C_BLUE : C_NAVY);
+            btn.setBackground(isCash ? Theme.ITEM_ACTIVE : Theme.BG_CARD);
+            btn.setForeground(isCash ? Theme.PRIMARY : Theme.TEXT_MAIN);
             btn.setBorder(BorderFactory.createCompoundBorder(
-                    new LineBorder(isCash ? C_BLUE : C_BORDER, isCash ? 2 : 1, true),
+                    new LineBorder(isCash ? Theme.PRIMARY : Theme.BORDER, isCash ? 2 : 1, true),
                     new EmptyBorder(6, 12, 6, 12)));
             btn.addActionListener(ev -> {
                 selectedPaymentMethod = m;
                 for (int i = 0; i < btnGrid.getComponentCount(); i++) {
                     JToggleButton b = (JToggleButton) btnGrid.getComponent(i);
                     boolean sel = b.isSelected();
-                    b.setBackground(sel ? new Color(219, 234, 254) : Color.WHITE);
-                    b.setForeground(sel ? C_BLUE : C_NAVY);
+                    b.setBackground(sel ? Theme.ITEM_ACTIVE : Theme.BG_CARD);
+                    b.setForeground(sel ? Theme.PRIMARY : Theme.TEXT_MAIN);
                     b.setBorder(BorderFactory.createCompoundBorder(
-                            new LineBorder(sel ? C_BLUE : C_BORDER, sel ? 2 : 1, true),
+                            new LineBorder(sel ? Theme.PRIMARY : Theme.BORDER, sel ? 2 : 1, true),
                             new EmptyBorder(6, 12, 6, 12)));
                 }
             });
@@ -270,14 +243,12 @@ public class StudentTuitionPanel extends JPanel {
         card.add(center, BorderLayout.CENTER);
 
         boolean hasDebt = !pendingEnrollments.isEmpty();
-        JButton btnPay = new JButton("THANH TOÁN");
+        JButton btnPay = hasDebt
+                ? ComponentFactory.primaryButton("THANH TOÁN")
+                : ComponentFactory.secondaryButton("THANH TOÁN");
         btnPay.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        btnPay.setBackground(hasDebt ? C_BLUE : new Color(148, 163, 184));
-        btnPay.setForeground(Color.WHITE);
-        btnPay.setFocusPainted(false);
         btnPay.setEnabled(hasDebt);
         btnPay.setBorder(new EmptyBorder(12, 24, 12, 24));
-        btnPay.setCursor(hasDebt ? new Cursor(Cursor.HAND_CURSOR) : Cursor.getDefaultCursor());
         btnPay.addActionListener(e -> showFeeDetailDialog());
         card.add(btnPay, BorderLayout.SOUTH);
 
@@ -296,7 +267,7 @@ public class StudentTuitionPanel extends JPanel {
         Window owner = SwingUtilities.getWindowAncestor(this);
         JDialog dialog = new JDialog(owner, "CÁC KHOẢN PHÍ", Dialog.ModalityType.APPLICATION_MODAL);
         dialog.setLayout(new BorderLayout());
-        dialog.getContentPane().setBackground(Color.WHITE);
+        dialog.getContentPane().setBackground(Theme.BG_CARD);
 
         String[] cols = {"Mã", "Tên", "Loại phí", "Số tiền (VND)", "Chọn"};
         DefaultTableModel mdl = new DefaultTableModel(cols, 0) {
@@ -328,17 +299,17 @@ public class StudentTuitionPanel extends JPanel {
         tbl.getColumnModel().getColumn(3).setCellRenderer(rightR);
 
         JScrollPane scroll = new JScrollPane(tbl);
-        scroll.setBorder(new LineBorder(C_BORDER));
-        scroll.getViewport().setBackground(Color.WHITE);
+        scroll.setBorder(new LineBorder(Theme.BORDER));
+        scroll.getViewport().setBackground(Theme.BG_CARD);
         dialog.add(scroll, BorderLayout.CENTER);
 
         JPanel footer = new JPanel(new BorderLayout(12, 0));
-        footer.setBackground(Color.WHITE);
+        footer.setBackground(Theme.BG_CARD);
         footer.setBorder(new EmptyBorder(12, 16, 14, 16));
 
         JLabel lblTotal = new JLabel();
-        lblTotal.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        lblTotal.setForeground(C_RED);
+        lblTotal.setFont(Theme.FONT_BOLD);
+        lblTotal.setForeground(Theme.DANGER);
         refreshTotalLabel(mdl, lblTotal);
         mdl.addTableModelListener(e -> refreshTotalLabel(mdl, lblTotal));
 
@@ -351,20 +322,17 @@ public class StudentTuitionPanel extends JPanel {
         JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         btnPanel.setOpaque(false);
 
-        JButton btnClose = new JButton("Đóng");
+        JButton btnClose = ComponentFactory.secondaryButton("Đóng");
         btnClose.addActionListener(e -> dialog.dispose());
 
-        JButton btnConfirm = new JButton("THANH TOÁN");
-        btnConfirm.setBackground(C_BLUE);
-        btnConfirm.setForeground(Color.WHITE);
-        btnConfirm.setFocusPainted(false);
+        JButton btnConfirm = ComponentFactory.primaryButton("THANH TOÁN");
         btnConfirm.setFont(new Font("Segoe UI", Font.BOLD, 13));
         btnConfirm.setBorder(new EmptyBorder(8, 20, 8, 20));
         btnConfirm.addActionListener(e -> {
             List<Enrollment> chosen = IntStream.range(0, mdl.getRowCount())
                     .filter(i -> Boolean.TRUE.equals(mdl.getValueAt(i, 4)))
                     .mapToObj(pendingEnrollments::get)
-                    .collect(Collectors.toList());
+                    .toList();
             if (chosen.isEmpty()) {
                 JOptionPane.showMessageDialog(dialog, "Vui lòng chọn ít nhất một môn học để thanh toán.");
                 return;
@@ -403,7 +371,6 @@ public class StudentTuitionPanel extends JPanel {
         BigDecimal total = chosen.stream()
                 .map(e -> e.getClazz().getCourse().getFee())
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        // Mã duy nhất: HVMS{studentId} + 6 chữ số cuối timestamp
         String code = String.format("HVMS%d%06d", loggedInStudentId,
                 System.currentTimeMillis() % 1_000_000L);
         Window owner = SwingUtilities.getWindowAncestor(this);
@@ -428,16 +395,10 @@ public class StudentTuitionPanel extends JPanel {
                 .map(e -> e.getClazz().getCourse().getFee())
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        String enrollIds = chosen.stream()
-                .map(e -> String.valueOf(e.getEnrollmentId()))
-                .collect(Collectors.joining(","));
-        String courseNames = chosen.stream()
-                .map(e -> e.getClazz().getCourse().getCourseName())
-                .collect(Collectors.joining("; "));
-        String note = "eids:" + enrollIds + "|"
-                + courseNames.substring(0, Math.min(courseNames.length(), 180));
+        String enrollIds   = chosen.stream().map(e -> String.valueOf(e.getEnrollmentId())).collect(Collectors.joining(","));
+        String courseNames = chosen.stream().map(e -> e.getClazz().getCourse().getCourseName()).collect(Collectors.joining("; "));
+        String note        = "eids:" + enrollIds + "|" + courseNames.substring(0, Math.min(courseNames.length(), 180));
 
-        // Tạo hóa đơn MỚI cho các môn vừa thanh toán
         Invoice inv = new Invoice();
         inv.setStudent(student);
         inv.setTotalAmount(total);
@@ -455,19 +416,14 @@ public class StudentTuitionPanel extends JPanel {
         p.setStatus("Completed");
         paymentService.save(p);
 
-        // Cập nhật trạng thái enrollment → "Đã thanh toán"
-        Set<Long> chosenIds = chosen.stream()
-                .map(Enrollment::getEnrollmentId)
-                .collect(Collectors.toSet());
+        Set<Long> chosenIds = chosen.stream().map(Enrollment::getEnrollmentId).collect(Collectors.toSet());
         for (Enrollment e : chosen) {
             e.setStatus("Đã thanh toán");
             enrollmentService.update(e);
         }
 
-        // Cập nhật/xóa hóa đơn "Chờ thanh toán" còn lại
         List<Enrollment> remaining = pendingEnrollments.stream()
-                .filter(e -> !chosenIds.contains(e.getEnrollmentId()))
-                .collect(Collectors.toList());
+                .filter(e -> !chosenIds.contains(e.getEnrollmentId())).toList();
         Invoice pendingInv = invoiceService.findAll().stream()
                 .filter(i -> i.getStudent() != null
                           && i.getStudent().getStudentId().equals(loggedInStudentId)
@@ -478,14 +434,9 @@ public class StudentTuitionPanel extends JPanel {
                 invoiceService.delete(pendingInv.getInvoiceId());
             } else {
                 BigDecimal remainTotal = remaining.stream()
-                        .map(e -> e.getClazz().getCourse().getFee())
-                        .reduce(BigDecimal.ZERO, BigDecimal::add);
-                String remainIds = remaining.stream()
-                        .map(e -> String.valueOf(e.getEnrollmentId()))
-                        .collect(Collectors.joining(","));
-                String remainNames = remaining.stream()
-                        .map(e -> e.getClazz().getCourse().getCourseName())
-                        .collect(Collectors.joining("; "));
+                        .map(e -> e.getClazz().getCourse().getFee()).reduce(BigDecimal.ZERO, BigDecimal::add);
+                String remainIds   = remaining.stream().map(e -> String.valueOf(e.getEnrollmentId())).collect(Collectors.joining(","));
+                String remainNames = remaining.stream().map(e -> e.getClazz().getCourse().getCourseName()).collect(Collectors.joining("; "));
                 pendingInv.setTotalAmount(remainTotal);
                 pendingInv.setNote("eids:" + remainIds + "|" + remainNames.substring(0, Math.min(remainNames.length(), 180)));
                 invoiceService.update(pendingInv);
@@ -507,8 +458,8 @@ public class StudentTuitionPanel extends JPanel {
         section.setOpaque(false);
 
         JLabel lblHdr = new JLabel("DANH SÁCH HÓA ĐƠN");
-        lblHdr.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        lblHdr.setForeground(C_NAVY);
+        lblHdr.setFont(Theme.FONT_HEADER);
+        lblHdr.setForeground(new Color(30, 41, 59));
         lblHdr.setBorder(new EmptyBorder(0, 0, 6, 0));
         section.add(lblHdr, BorderLayout.NORTH);
 
@@ -517,17 +468,16 @@ public class StudentTuitionPanel extends JPanel {
                           && i.getStudent().getStudentId().equals(loggedInStudentId)
                           && "Đã thanh toán".equals(i.getStatus()))
                 .sorted((a, b) -> {
-                    // Ưu tiên createdAt (có timestamp), fallback về issueDate
                     java.time.LocalDateTime ta = a.getCreatedAt() != null ? a.getCreatedAt() : a.getIssueDate().atStartOfDay();
                     java.time.LocalDateTime tb = b.getCreatedAt() != null ? b.getCreatedAt() : b.getIssueDate().atStartOfDay();
                     return tb.compareTo(ta);
                 })
-                .collect(Collectors.toList());
+                .toList();
 
         if (invoices.isEmpty()) {
             JLabel lbl = new JLabel("Chưa có hóa đơn nào.");
             lbl.setFont(new Font("Segoe UI", Font.ITALIC, 13));
-            lbl.setForeground(new Color(100, 116, 139));
+            lbl.setForeground(Theme.TEXT_MUTED);
             section.add(lbl, BorderLayout.CENTER);
             return section;
         }
@@ -539,37 +489,28 @@ public class StudentTuitionPanel extends JPanel {
 
         for (Invoice i : invoices) {
             String created = i.getCreatedAt() != null
-                    ? i.getCreatedAt().format(FMT_FULL)
-                    : i.getIssueDate().format(FMT_DATE);
+                    ? i.getCreatedAt().format(FMT_FULL) : i.getIssueDate().format(FMT_DATE);
             String due = i.getIssueDate().plusDays(7).format(FMT_DATE);
             mdl.addRow(new Object[]{
-                i.getInvoiceId(),
-                "INV" + String.format("%04d", i.getInvoiceId()),
-                created, due,
-                String.format("%,.0f", i.getTotalAmount()),
-                mapStatus(i.getStatus())
+                i.getInvoiceId(), "INV" + String.format("%04d", i.getInvoiceId()),
+                created, due, String.format("%,.0f", i.getTotalAmount()), mapStatus(i.getStatus())
             });
         }
 
         JTable tbl = buildStyledTable(mdl);
         tbl.setRowSelectionAllowed(false);
         tbl.setCellSelectionEnabled(false);
-
-        // Ẩn cột ID
-        tbl.getColumnModel().getColumn(0).setMinWidth(0);
-        tbl.getColumnModel().getColumn(0).setMaxWidth(0);
+        TableStyler.hideColumn(tbl, 0);
         tbl.getColumnModel().getColumn(1).setPreferredWidth(100);
         tbl.getColumnModel().getColumn(2).setPreferredWidth(165);
         tbl.getColumnModel().getColumn(3).setPreferredWidth(100);
         tbl.getColumnModel().getColumn(4).setPreferredWidth(130);
         tbl.getColumnModel().getColumn(5).setPreferredWidth(130);
 
-        // Header màu tối
-        tbl.getTableHeader().setBackground(C_NAVY);
+        tbl.getTableHeader().setBackground(new Color(30, 41, 59));
         tbl.getTableHeader().setForeground(Color.WHITE);
-        tbl.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 13));
+        tbl.getTableHeader().setFont(Theme.FONT_BOLD);
 
-        // Row coloring
         tbl.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(
@@ -577,11 +518,11 @@ public class StudentTuitionPanel extends JPanel {
                 super.getTableCellRendererComponent(t, v, sel, foc, row, col);
                 String st = (String) mdl.getValueAt(row, 5);
                 boolean paid = "Đã thanh toán".equals(st);
-                setBackground(paid ? Color.WHITE : new Color(255, 251, 235));
-                setForeground(C_DARK);
+                setBackground(paid ? Theme.BG_CARD : Theme.AMBER_TINT);
+                setForeground(Theme.TEXT_MAIN);
                 if (col == 5) {
                     setHorizontalAlignment(SwingConstants.CENTER);
-                    setForeground(paid ? C_GREEN : new Color(180, 83, 9));
+                    setForeground(paid ? Theme.GREEN : Theme.AMBER);
                     setFont(getFont().deriveFont(Font.BOLD));
                 } else {
                     setHorizontalAlignment(col == 4 ? SwingConstants.RIGHT : SwingConstants.LEFT);
@@ -590,8 +531,7 @@ public class StudentTuitionPanel extends JPanel {
             }
         });
 
-        // Nhấp vào dòng → hiện chi tiết
-        tbl.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        tbl.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         tbl.addMouseListener(new MouseAdapter() {
             @Override public void mouseClicked(MouseEvent e) {
                 int row = tbl.rowAtPoint(e.getPoint());
@@ -604,7 +544,7 @@ public class StudentTuitionPanel extends JPanel {
         });
 
         JScrollPane scroll = new JScrollPane(tbl);
-        scroll.setBorder(new LineBorder(C_BORDER));
+        scroll.setBorder(new LineBorder(Theme.BORDER));
         section.add(scroll, BorderLayout.CENTER);
         return section;
     }
@@ -618,27 +558,26 @@ public class StudentTuitionPanel extends JPanel {
                 "Chi tiết hóa đơn – INV" + String.format("%04d", inv.getInvoiceId()),
                 Dialog.ModalityType.APPLICATION_MODAL);
         dialog.setLayout(new BorderLayout());
-        dialog.getContentPane().setBackground(Color.WHITE);
+        dialog.getContentPane().setBackground(Theme.BG_CARD);
 
-        // ─── Header ───────────────────────────────────────────────────────────
+        // Header
         JPanel header = new JPanel(new GridLayout(1, 3, 0, 0));
-        header.setBackground(C_NAVY);
+        header.setBackground(new Color(30, 41, 59));
         header.setBorder(new EmptyBorder(14, 18, 14, 18));
 
         JLabel lblInvNo = new JLabel("INV" + String.format("%04d", inv.getInvoiceId()));
-        lblInvNo.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 15));
+        lblInvNo.setFont(Theme.FONT_TITLE);
         lblInvNo.setForeground(Color.WHITE);
 
         String dateStr = inv.getCreatedAt() != null
-                ? inv.getCreatedAt().format(FMT_FULL)
-                : inv.getIssueDate().format(FMT_DATE);
+                ? inv.getCreatedAt().format(FMT_FULL) : inv.getIssueDate().format(FMT_DATE);
         JLabel lblDate = new JLabel("Ngày: " + dateStr, SwingConstants.CENTER);
-        lblDate.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 12));
-        lblDate.setForeground(C_MUTED);
+        lblDate.setFont(Theme.FONT_SMALL);
+        lblDate.setForeground(new Color(148, 163, 184));
 
         String statusStr = mapStatus(inv.getStatus());
         JLabel lblStatus = new JLabel(statusStr, SwingConstants.RIGHT);
-        lblStatus.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 13));
+        lblStatus.setFont(Theme.FONT_BOLD);
         lblStatus.setForeground("Đã thanh toán".equals(statusStr)
                 ? new Color(134, 239, 172) : new Color(253, 224, 132));
 
@@ -647,7 +586,7 @@ public class StudentTuitionPanel extends JPanel {
         header.add(lblStatus);
         dialog.add(header, BorderLayout.NORTH);
 
-        // ─── Table ────────────────────────────────────────────────────────────
+        // Table
         List<String[]> items = parseInvoiceItems(inv);
         DefaultTableModel mdl = new DefaultTableModel(
                 new String[]{"STT", "Môn học / Lớp", "Loại phí", "Số tiền (VND)"}, 0) {
@@ -659,7 +598,6 @@ public class StudentTuitionPanel extends JPanel {
 
         JTable tbl = buildStyledTable(mdl);
         tbl.setRowSelectionAllowed(false);
-        tbl.setCellSelectionEnabled(false);
         tbl.getColumnModel().getColumn(0).setPreferredWidth(45);
         tbl.getColumnModel().getColumn(1).setPreferredWidth(300);
         tbl.getColumnModel().getColumn(2).setPreferredWidth(130);
@@ -668,46 +606,37 @@ public class StudentTuitionPanel extends JPanel {
         DefaultTableCellRenderer centerR = new DefaultTableCellRenderer();
         centerR.setHorizontalAlignment(SwingConstants.CENTER);
         tbl.getColumnModel().getColumn(0).setCellRenderer(centerR);
-        DefaultTableCellRenderer rightR2 = new DefaultTableCellRenderer();
-        rightR2.setHorizontalAlignment(SwingConstants.RIGHT);
-        tbl.getColumnModel().getColumn(3).setCellRenderer(rightR2);
+        DefaultTableCellRenderer rightR = new DefaultTableCellRenderer();
+        rightR.setHorizontalAlignment(SwingConstants.RIGHT);
+        tbl.getColumnModel().getColumn(3).setCellRenderer(rightR);
 
-        JScrollPane scroll = new JScrollPane(tbl);
-        scroll.setBorder(new LineBorder(C_BORDER));
-        dialog.add(scroll, BorderLayout.CENTER);
+        dialog.add(new JScrollPane(tbl), BorderLayout.CENTER);
 
-        // ─── Total + Buttons ──────────────────────────────────────────────────
+        // Total + Buttons
         JPanel south = new JPanel(new BorderLayout());
-        south.setBackground(Color.WHITE);
+        south.setBackground(Theme.BG_CARD);
 
         JPanel totalRow = new JPanel(new BorderLayout());
-        totalRow.setBackground(C_BG);
+        totalRow.setBackground(Theme.BG_PAGE);
         totalRow.setBorder(new EmptyBorder(12, 18, 12, 18));
         JLabel lblTotalTitle = new JLabel("TỔNG CỘNG");
-        lblTotalTitle.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 14));
-        lblTotalTitle.setForeground(C_NAVY);
+        lblTotalTitle.setFont(Theme.FONT_BOLD);
+        lblTotalTitle.setForeground(new Color(30, 41, 59));
         JLabel lblTotalAmt = new JLabel(String.format("%,.0f VND", inv.getTotalAmount()));
-        lblTotalAmt.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 18));
-        lblTotalAmt.setForeground(C_RED);
+        lblTotalAmt.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        lblTotalAmt.setForeground(Theme.DANGER);
         totalRow.add(lblTotalTitle, BorderLayout.WEST);
-        totalRow.add(lblTotalAmt, BorderLayout.EAST);
+        totalRow.add(lblTotalAmt,   BorderLayout.EAST);
         south.add(totalRow, BorderLayout.NORTH);
 
         JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 8));
-        btnPanel.setBackground(Color.WHITE);
+        btnPanel.setBackground(Theme.BG_CARD);
         btnPanel.setBorder(new EmptyBorder(0, 12, 4, 12));
 
-        JButton btnPrint = new JButton("\uD83D\uDDA8 In hóa đơn");
-        btnPrint.setFocusPainted(false);
-        btnPrint.setBackground(C_BLUE);
-        btnPrint.setForeground(Color.WHITE);
-        btnPrint.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
-        btnPrint.setBorder(new EmptyBorder(8, 16, 8, 16));
-        List<String[]> itemsFinal = items;
-        btnPrint.addActionListener(e -> generateInvoicePdf(inv, itemsFinal, dialog));
+        JButton btnPrint = ComponentFactory.primaryButton("🖨 In hóa đơn");
+        btnPrint.addActionListener(e -> generateInvoicePdf(inv, items, dialog));
 
-        JButton btnClose = new JButton("Đóng");
-        btnClose.setFocusPainted(false);
+        JButton btnClose = ComponentFactory.secondaryButton("Đóng");
         btnClose.addActionListener(e -> dialog.dispose());
 
         btnPanel.add(btnPrint);
@@ -741,7 +670,6 @@ public class StudentTuitionPanel extends JPanel {
             com.lowagie.text.pdf.PdfWriter.getInstance(doc, new FileOutputStream(outFile));
             doc.open();
 
-            // Load font hỗ trợ tiếng Việt
             String[] fontCandidates = {
                 "C:\\Windows\\Fonts\\arial.ttf",
                 "C:\\Windows\\Fonts\\calibri.ttf",
@@ -764,7 +692,6 @@ public class StudentTuitionPanel extends JPanel {
             com.lowagie.text.Font fTotal  = new com.lowagie.text.Font(bf, 14, com.lowagie.text.Font.BOLD,   new Color(220, 38, 38));
             com.lowagie.text.Font fTLabel = new com.lowagie.text.Font(bf, 12, com.lowagie.text.Font.BOLD,   new Color(30, 41, 59));
 
-            // Tiêu đề
             com.lowagie.text.Paragraph title = new com.lowagie.text.Paragraph("HÓA ĐƠN HỌC PHÍ", fTitle);
             title.setAlignment(com.lowagie.text.Element.ALIGN_CENTER);
             title.setSpacingAfter(4);
@@ -776,18 +703,16 @@ public class StudentTuitionPanel extends JPanel {
             invNo.setSpacingAfter(16);
             doc.add(invNo);
 
-            // ── Thông tin học viên ──────────────────────────────────
             Student stu = inv.getStudent();
             if (stu != null) {
                 com.lowagie.text.Font fInfoLabel = new com.lowagie.text.Font(bf, 10, com.lowagie.text.Font.BOLD,   new Color(30, 41, 59));
                 com.lowagie.text.Font fInfoValue = new com.lowagie.text.Font(bf, 10, com.lowagie.text.Font.NORMAL, new Color(15, 23, 42));
-                Color infoBg  = new Color(241, 245, 249);
+                Color infoBg      = new Color(241, 245, 249);
                 Color borderInfoC = new Color(226, 232, 240);
 
-                // Heading "THÔNG TIN HỌC VIÊN"
                 com.lowagie.text.Paragraph stuHeading = new com.lowagie.text.Paragraph(
-                        "TH\u00d4NG TIN H\u1eccC VI\u00caN",
-                        new com.lowagie.text.Font(bf, 11, com.lowagie.text.Font.BOLD, new Color(37, 99, 235)));
+                        "THÔNG TIN HỌC VIÊN",
+                        new com.lowagie.text.Font(bf, 11, com.lowagie.text.Font.BOLD, Theme.PRIMARY));
                 stuHeading.setSpacingAfter(4);
                 doc.add(stuHeading);
 
@@ -803,7 +728,7 @@ public class StudentTuitionPanel extends JPanel {
                     lCell.setPadding(7); lCell.setBorderColor(borderInfoC); lCell.setBorderWidth(0.5f);
                     stuTbl.addCell(lCell);
                     com.lowagie.text.pdf.PdfPCell vCell = new com.lowagie.text.pdf.PdfPCell(
-                            new com.lowagie.text.Phrase(value != null && !value.isEmpty() ? value : "\u2014", fInfoValue));
+                            new com.lowagie.text.Phrase(value != null && !value.isEmpty() ? value : "—", fInfoValue));
                     vCell.setBackgroundColor(Color.WHITE);
                     vCell.setPadding(7); vCell.setBorderColor(borderInfoC); vCell.setBorderWidth(0.5f);
                     stuTbl.addCell(vCell);
@@ -813,20 +738,19 @@ public class StudentTuitionPanel extends JPanel {
                 String dob     = stu.getDateOfBirth() != null ? stu.getDateOfBirth().format(FMT_DATE) : "";
                 String gender  = stu.getGender() != null ? switch (stu.getGender()) {
                     case "Male"   -> "Nam";
-                    case "Female" -> "N\u1EF1";
+                    case "Female" -> "Nữ";
                     default       -> stu.getGender();
                 } : "";
 
-                addInfo.accept("H\u1ECD t\u00EAn:",     stu.getFullName());
-                addInfo.accept("M\u00E3 h\u1ECDc vi\u00EAn:", stuCode);
-                addInfo.accept("Ng\u00E0y sinh:",        dob);
-                addInfo.accept("Gi\u1EDBi t\u00EDnh:",   gender);
-                addInfo.accept("Email:",                  stu.getEmail() != null ? stu.getEmail() : "");
-                addInfo.accept("\u0110i\u1EC7n tho\u1EA1i:", stu.getPhone() != null ? stu.getPhone() : "");
+                addInfo.accept("Họ tên:",           stu.getFullName());
+                addInfo.accept("Mã học viên:",      stuCode);
+                addInfo.accept("Ngày sinh:",         dob);
+                addInfo.accept("Giới tính:",         gender);
+                addInfo.accept("Email:",             stu.getEmail() != null ? stu.getEmail() : "");
+                addInfo.accept("Điện thoại:",        stu.getPhone() != null ? stu.getPhone() : "");
                 doc.add(stuTbl);
             }
 
-            // Thông tin phụ
             String dateStr2 = inv.getCreatedAt() != null
                     ? inv.getCreatedAt().format(FMT_FULL) : inv.getIssueDate().format(FMT_DATE);
             com.lowagie.text.pdf.PdfPTable infoTbl = new com.lowagie.text.pdf.PdfPTable(2);
@@ -843,7 +767,6 @@ public class StudentTuitionPanel extends JPanel {
             infoTbl.addCell(cStatus);
             doc.add(infoTbl);
 
-            // Bảng chi tiết
             float[] colW = {5f, 52f, 22f, 21f};
             com.lowagie.text.pdf.PdfPTable table = new com.lowagie.text.pdf.PdfPTable(colW);
             table.setWidthPercentage(100);
@@ -868,7 +791,7 @@ public class StudentTuitionPanel extends JPanel {
             int[] cellAligns = {com.lowagie.text.Element.ALIGN_CENTER, com.lowagie.text.Element.ALIGN_LEFT,
                                 com.lowagie.text.Element.ALIGN_LEFT, com.lowagie.text.Element.ALIGN_RIGHT};
             for (int r = 0; r < items.size(); r++) {
-                Color bg = rowBg[r % 2];
+                Color bg    = rowBg[r % 2];
                 String[] row = items.get(r);
                 String[] cellTexts = {String.valueOf(r + 1), row[0], "[Học phí học kỳ]", row[1]};
                 for (int c = 0; c < cellTexts.length; c++) {
@@ -884,12 +807,11 @@ public class StudentTuitionPanel extends JPanel {
             }
             doc.add(table);
 
-            // Tổng cộng
             com.lowagie.text.pdf.PdfPTable totalTbl = new com.lowagie.text.pdf.PdfPTable(2);
             totalTbl.setWidthPercentage(100);
             totalTbl.setSpacingBefore(0);
             totalTbl.setSpacingAfter(30);
-            Color sumBg = new Color(241, 245, 249);
+            Color sumBg   = new Color(241, 245, 249);
             Color borderC = new Color(226, 232, 240);
             com.lowagie.text.pdf.PdfPCell cTLabel = new com.lowagie.text.pdf.PdfPCell(
                     new com.lowagie.text.Phrase("TỔNG CỘNG", fTLabel));
@@ -904,10 +826,10 @@ public class StudentTuitionPanel extends JPanel {
             totalTbl.addCell(cTAmt);
             doc.add(totalTbl);
 
-            com.lowagie.text.Paragraph note = new com.lowagie.text.Paragraph(
+            com.lowagie.text.Paragraph note2 = new com.lowagie.text.Paragraph(
                     "Đây là hóa đơn điện tử tự động tạo bởi hệ thống quản lý trung tâm ngoại ngữ.", fMuted);
-            note.setAlignment(com.lowagie.text.Element.ALIGN_CENTER);
-            doc.add(note);
+            note2.setAlignment(com.lowagie.text.Element.ALIGN_CENTER);
+            doc.add(note2);
 
             doc.close();
 
@@ -921,9 +843,8 @@ public class StudentTuitionPanel extends JPanel {
         }
     }
 
-    /**
-     * Parse enrollment IDs từ note field "eids:1,2,3|..." hoặc fallback về note text.
-     */
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
     private List<String[]> parseInvoiceItems(Invoice inv) {
         List<String[]> items = new ArrayList<>();
         String note = inv.getNote();
@@ -931,39 +852,32 @@ public class StudentTuitionPanel extends JPanel {
         if (note != null && note.startsWith("eids:")) {
             try {
                 String eidsPart = note.contains("|")
-                        ? note.substring(5, note.indexOf("|"))
-                        : note.substring(5);
+                        ? note.substring(5, note.indexOf("|")) : note.substring(5);
                 for (String idStr : eidsPart.split(",")) {
                     long eid = Long.parseLong(idStr.trim());
                     enrollmentService.findAll().stream()
                             .filter(e -> e.getEnrollmentId() == eid)
                             .findFirst()
                             .ifPresent(e -> items.add(new String[]{
-                                e.getClazz().getCourse().getCourseName()
-                                    + " – " + e.getClazz().getClassName(),
+                                e.getClazz().getCourse().getCourseName() + " – " + e.getClazz().getClassName(),
                                 String.format("%,.0f VND", e.getClazz().getCourse().getFee())
                             }));
                 }
             } catch (Exception ignored) {}
         }
 
-        if (items.isEmpty()) {
-            // Fallback: tìm enrollments của student này trong DB
-            if (inv.getStudent() != null) {
-                Long sid = inv.getStudent().getStudentId();
-                List<com.company.ems.model.Enrollment> enrs = enrollmentService.findAll().stream()
-                        .filter(e -> e.getStudent() != null && e.getStudent().getStudentId().equals(sid))
-                        .collect(Collectors.toList());
-                for (com.company.ems.model.Enrollment e : enrs) {
-                    try {
-                        items.add(new String[]{
-                            e.getClazz().getCourse().getCourseName()
-                                + " – " + e.getClazz().getClassName(),
-                            String.format("%,.0f VND", e.getClazz().getCourse().getFee())
-                        });
-                    } catch (Exception ignored) {}
-                }
-            }
+        if (items.isEmpty() && inv.getStudent() != null) {
+            Long sid = inv.getStudent().getStudentId();
+            enrollmentService.findAll().stream()
+                    .filter(e -> e.getStudent() != null && e.getStudent().getStudentId().equals(sid))
+                    .forEach(e -> {
+                        try {
+                            items.add(new String[]{
+                                e.getClazz().getCourse().getCourseName() + " – " + e.getClazz().getClassName(),
+                                String.format("%,.0f VND", e.getClazz().getCourse().getFee())
+                            });
+                        } catch (Exception ignored) {}
+                    });
         }
 
         if (items.isEmpty()) {
@@ -975,23 +889,19 @@ public class StudentTuitionPanel extends JPanel {
     private String mapStatus(String s) {
         if (s == null) return "—";
         return switch (s) {
-            case "Đã thanh toán", "Paid" -> "Đã thanh toán";
-            case "Chờ thanh toán", "Issued" -> "Chờ thanh toán";
-            default -> s;
+            case "Đã thanh toán", "Paid"          -> "Đã thanh toán";
+            case "Chờ thanh toán", "Issued"        -> "Chờ thanh toán";
+            default                                -> s;
         };
     }
 
     private JTable buildStyledTable(DefaultTableModel model) {
         JTable tbl = new JTable(model);
-        tbl.setRowHeight(40);
-        tbl.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        tbl.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 13));
-        tbl.getTableHeader().setPreferredSize(new Dimension(0, 40));
-        tbl.getTableHeader().setBackground(C_BG);
-        tbl.setGridColor(C_BORDER);
-        tbl.setSelectionBackground(new Color(224, 242, 254));
+        TableStyler.applyDefaults(tbl);
         tbl.setIntercellSpacing(new Dimension(12, 1));
         tbl.setShowVerticalLines(false);
+        tbl.setSelectionBackground(new Color(224, 242, 254));
         return tbl;
     }
 }
+

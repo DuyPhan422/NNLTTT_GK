@@ -117,8 +117,8 @@ public class StaffPanel extends BaseCrudPanel<Staff> {
         dlg.setVisible(true);
         if (!dlg.isSaved()) return;
         try {
-            if (existing != null) staffService.update(dlg.getStaff());
-            else                  staffService.save(dlg.getStaff());
+            if (existing != null) staffService.update(dlg.getEntity());
+            else                  staffService.save(dlg.getEntity());
             showSuccess(existing != null ? "Cập nhật nhân viên thành công." : "Thêm nhân viên mới thành công.");
             notifyChanged();
         } catch (Exception e) {

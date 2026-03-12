@@ -141,8 +141,8 @@ public class CoursePanel extends BaseCrudPanel<Course> {
         dlg.setVisible(true);
         if (!dlg.isSaved()) return;
         try {
-            if (existing != null) courseService.update(dlg.getCourse());
-            else                  courseService.save(dlg.getCourse());
+            if (existing != null) courseService.update(dlg.getEntity());
+            else                  courseService.save(dlg.getEntity());
             showSuccess(existing != null ? "Cập nhật khóa học thành công." : "Thêm khóa học mới thành công.");
             notifyChanged();
         } catch (Exception e) {

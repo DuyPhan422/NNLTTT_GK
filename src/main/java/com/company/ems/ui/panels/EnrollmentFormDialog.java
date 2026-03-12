@@ -7,6 +7,8 @@ import com.company.ems.model.Student;
 import com.company.ems.model.enums.EnrollmentResult;
 import com.company.ems.model.enums.EnrollmentStatus;
 import com.company.ems.service.StudentService;
+import com.company.ems.ui.common.ComponentFactory;
+import com.company.ems.ui.common.Theme;
 
 import javax.swing.*;
 import java.awt.*;
@@ -24,17 +26,6 @@ public class EnrollmentFormDialog extends JDialog {
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
-    // Design tokens (Đồng bộ)
-    private static final Color BG_CARD      = Color.WHITE;
-    private static final Color BORDER_COLOR = new Color(226, 232, 240);
-    private static final Color PRIMARY      = new Color(37, 99, 235);
-    private static final Color PRIMARY_HOVER= new Color(29, 78, 216);
-    private static final Color TEXT_MUTED   = new Color(100, 116, 139);
-    private static final Color TEXT_MAIN    = new Color(15, 23, 42);
-    private static final Color DANGER       = new Color(220, 38, 38);
-    private static final Font  FONT_MAIN    = new Font("Segoe UI", Font.PLAIN, 13);
-    private static final Font  FONT_BOLD    = new Font("Segoe UI", Font.BOLD, 13);
-    private static final Font  FONT_SMALL   = new Font("Segoe UI", Font.PLAIN, 12);
 
     private final JTextField tfStudentCode;
     private final JLabel lblStudentName;
@@ -87,7 +78,7 @@ public class EnrollmentFormDialog extends JDialog {
         tfStudentCode = createField(prefillCode);
         if (studentLocked) {
             tfStudentCode.setEditable(false);
-            tfStudentCode.setBackground(new Color(241, 245, 249));
+            tfStudentCode.setBackground(Theme.BG_HEADER);
         }
 
         String prefillName = lockedStudent != null ? "✅ " + lockedStudent.getFullName()
@@ -95,8 +86,8 @@ public class EnrollmentFormDialog extends JDialog {
                         ? "✅ " + existing.getStudent().getFullName()
                         : "Nhập mã để kiểm tra (VD: HV0001, 1)");
         lblStudentName = new JLabel(prefillName);
-        lblStudentName.setFont(FONT_SMALL);
-        lblStudentName.setForeground((studentLocked || isEdit) ? new Color(22, 163, 74) : TEXT_MUTED);
+        lblStudentName.setFont(Theme.FONT_SMALL);
+        lblStudentName.setForeground((studentLocked || isEdit) ? Theme.GREEN : Theme.TEXT_MUTED);
 
         if (!studentLocked) {
             tfStudentCode.addFocusListener(new FocusAdapter() {
@@ -130,11 +121,11 @@ public class EnrollmentFormDialog extends JDialog {
                 ? existing.getEnrollmentDate().format(DATE_FMT) : LocalDate.now().format(DATE_FMT));
 
         cbStatus = new JComboBox<>(EnrollmentStatus.values());
-        cbStatus.setFont(FONT_MAIN);
+        cbStatus.setFont(Theme.FONT_PLAIN);
         if (isEdit && existing.getStatus() != null) cbStatus.setSelectedItem(EnrollmentStatus.fromValue(existing.getStatus()));
 
         cbResult = new JComboBox<>(EnrollmentResult.values());
-        cbResult.setFont(FONT_MAIN);
+        cbResult.setFont(Theme.FONT_PLAIN);
         if (isEdit && existing.getResult() != null) cbResult.setSelectedItem(EnrollmentResult.fromValue(existing.getResult()));
 
         buildUI();
@@ -149,7 +140,7 @@ public class EnrollmentFormDialog extends JDialog {
         String code = tfStudentCode.getText().trim();
         if (code.isEmpty()) {
             lblStudentName.setText("Vui lòng nhập mã Học viên!");
-            lblStudentName.setForeground(DANGER);
+            lblStudentName.setForeground(Theme.DANGER);
             currentStudent = null;
             return;
         }
@@ -160,22 +151,22 @@ public class EnrollmentFormDialog extends JDialog {
             if (s != null) {
                 if (!"Hoạt động".equals(s.getStatus())) {
                     lblStudentName.setText("⛔ Tài khoản học viên \"" + s.getFullName() + "\" đang bị khóa!");
-                    lblStudentName.setForeground(DANGER);
+                    lblStudentName.setForeground(Theme.DANGER);
                     currentStudent = null;
                     return;
                 }
                 lblStudentName.setText("✅ " + s.getFullName());
-                lblStudentName.setForeground(new Color(22, 163, 74)); // Xanh lá
+                lblStudentName.setForeground(Theme.GREEN);
                 currentStudent = s;
                 if (onStudentChanged != null) onStudentChanged.run();
             } else {
                 lblStudentName.setText("❌ Không tìm thấy Học viên trong hệ thống!");
-                lblStudentName.setForeground(DANGER);
+                lblStudentName.setForeground(Theme.DANGER);
                 currentStudent = null;
             }
         } catch (Exception ex) {
             lblStudentName.setText("❌ Mã không hợp lệ!");
-            lblStudentName.setForeground(DANGER);
+            lblStudentName.setForeground(Theme.DANGER);
             currentStudent = null;
         }
     }
@@ -189,14 +180,14 @@ public class EnrollmentFormDialog extends JDialog {
 
         // ── Navy header ───────────────────────────────────────────────
         JPanel header = new JPanel(new BorderLayout(0, 4));
-        header.setBackground(new Color(15, 23, 42));
+        header.setBackground(Theme.TEXT_MAIN);
         header.setBorder(BorderFactory.createEmptyBorder(16, 22, 16, 22));
 
         String stuName = currentStudent != null ? currentStudent.getFullName() : "";
         String stuCode = currentStudent != null
                 ? String.format("HV%04d", currentStudent.getStudentId()) : "";
         JLabel nameLbl = new JLabel(stuName + "  |  " + stuCode);
-        nameLbl.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        nameLbl.setFont(Theme.FONT_BOLD);
         nameLbl.setForeground(Color.WHITE);
 
         JPanel headerText = new JPanel();
@@ -207,7 +198,7 @@ public class EnrollmentFormDialog extends JDialog {
 
         // ── Form ──────────────────────────────────────────────────────
         JPanel body = new JPanel(new GridBagLayout());
-        body.setBackground(BG_CARD);
+        body.setBackground(Theme.BG_CARD);
         body.setBorder(BorderFactory.createEmptyBorder(22, 24, 8, 24));
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.fill    = GridBagConstraints.HORIZONTAL;
@@ -245,7 +236,7 @@ public class EnrollmentFormDialog extends JDialog {
             List<Course> courseList = new java.util.ArrayList<>(courseById.values());
 
             cbCourse = new JComboBox<>(courseList.toArray(new Course[0]));
-            cbCourse.setFont(FONT_MAIN);
+            cbCourse.setFont(Theme.FONT_PLAIN);
             cbCourse.setRenderer(new DefaultListCellRenderer() {
                 @Override public Component getListCellRendererComponent(
                         JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
@@ -259,7 +250,7 @@ public class EnrollmentFormDialog extends JDialog {
             });
 
             cbClass = new JComboBox<>();
-            cbClass.setFont(FONT_MAIN);
+            cbClass.setFont(Theme.FONT_PLAIN);
             cbClass.setRenderer(new DefaultListCellRenderer() {
                 @Override public Component getListCellRendererComponent(
                         JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
@@ -311,9 +302,9 @@ public class EnrollmentFormDialog extends JDialog {
                     ? enrollment.getClazz().getCourse().getCourseName() : "";
             String classInfo2 = enrollment.getClazz() != null ? enrollment.getClazz().getClassName() : "";
             JTextField tfCourseLock = createField(courseInfo);
-            tfCourseLock.setEditable(false); tfCourseLock.setBackground(new Color(241, 245, 249));
+            tfCourseLock.setEditable(false); tfCourseLock.setBackground(Theme.BG_HEADER);
             JTextField tfClassLock = createField(classInfo2);
-            tfClassLock.setEditable(false); tfClassLock.setBackground(new Color(241, 245, 249));
+            tfClassLock.setEditable(false); tfClassLock.setBackground(Theme.BG_HEADER);
             addRow(body, gbc, row++, "Khóa học", tfCourseLock);
             addRow(body, gbc, row++, "Lớp học", tfClassLock);
         }
@@ -324,17 +315,17 @@ public class EnrollmentFormDialog extends JDialog {
 
         // ── Button bar ────────────────────────────────────────────────
         JPanel btnBar = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
-        btnBar.setBackground(BG_CARD);
+        btnBar.setBackground(Theme.BG_CARD);
         btnBar.setBorder(BorderFactory.createEmptyBorder(12, 24, 16, 24));
-        JButton cancelBtn = createSecondaryButton("Hủy");
+        JButton cancelBtn = ComponentFactory.secondaryButton("Hủy");
         cancelBtn.addActionListener(e -> dispose());
-        JButton saveBtn = createPrimaryButton("Lưu thay đổi");
+        JButton saveBtn = ComponentFactory.primaryButton("Lưu thay đổi");
         saveBtn.addActionListener(e -> onSave());
         btnBar.add(cancelBtn);
         btnBar.add(saveBtn);
 
         JPanel content = new JPanel(new BorderLayout());
-        content.setBackground(BG_CARD);
+        content.setBackground(Theme.BG_CARD);
         content.add(header, BorderLayout.NORTH);
         content.add(body,   BorderLayout.CENTER);
         content.add(btnBar, BorderLayout.SOUTH);
@@ -343,7 +334,7 @@ public class EnrollmentFormDialog extends JDialog {
 
     private void buildAddUI() {
         JPanel content = new JPanel(new BorderLayout());
-        content.setBackground(BG_CARD);
+        content.setBackground(Theme.BG_CARD);
         content.setBorder(BorderFactory.createEmptyBorder(24, 24, 16, 24));
 
         JPanel form = new JPanel(new GridBagLayout());
@@ -370,7 +361,7 @@ public class EnrollmentFormDialog extends JDialog {
         final Map<Long, List<Class>>[] mapRef = new Map[]{new java.util.LinkedHashMap<>()};
 
         cbCourse = new JComboBox<>();
-        cbCourse.setFont(FONT_MAIN);
+        cbCourse.setFont(Theme.FONT_PLAIN);
         cbCourse.setRenderer(new DefaultListCellRenderer() {
             @Override
             public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
@@ -384,7 +375,7 @@ public class EnrollmentFormDialog extends JDialog {
         });
 
         cbClass = new JComboBox<>();
-        cbClass.setFont(FONT_MAIN);
+        cbClass.setFont(Theme.FONT_PLAIN);
         cbClass.setRenderer(new DefaultListCellRenderer() {
             @Override
             public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
@@ -466,8 +457,8 @@ public class EnrollmentFormDialog extends JDialog {
 
         // Label cảnh báo (ẩn mặc định)
         JLabel lblWarn = new JLabel("\u26a0\ufe0f  Học viên này đã đăng ký tất cả các khóa học!");
-        lblWarn.setFont(FONT_SMALL);
-        lblWarn.setForeground(new Color(220, 38, 38));
+        lblWarn.setFont(Theme.FONT_SMALL);
+        lblWarn.setForeground(Theme.DANGER);
         lblWarn.setVisible(false);
         lblAllEnrolled[0] = lblWarn;  // gán vào mảng đã khai báo trước lambda
 
@@ -490,8 +481,8 @@ public class EnrollmentFormDialog extends JDialog {
         JLabel infoNote = new JLabel(
             "\u2139\ufe0f Tr\u1ea1ng th\u00e1i: \u0110\u00e3 \u0111\u0103ng k\u00fd  \u00b7  "
             + "H\u00f3a \u0111\u01a1n h\u1ecdc ph\u00ed s\u1ebd \u0111\u01b0\u1ee3c t\u1ea1o t\u1ef1 \u0111\u1ed9ng.");
-        infoNote.setFont(FONT_SMALL);
-        infoNote.setForeground(new Color(37, 99, 235));
+        infoNote.setFont(Theme.FONT_SMALL);
+        infoNote.setForeground(Theme.PRIMARY);
         gbc.gridy  = 13;
         gbc.insets = new Insets(6, 0, 0, 0);
         form.add(infoNote, gbc);
@@ -625,8 +616,8 @@ public class EnrollmentFormDialog extends JDialog {
         gbc.gridy  = row * 3;
         gbc.insets = new Insets(row == 0 ? 0 : 10, 0, 2, 0);
         JLabel lbl = new JLabel(label);
-        lbl.setFont(FONT_SMALL);
-        lbl.setForeground(TEXT_MUTED);
+        lbl.setFont(Theme.FONT_SMALL);
+        lbl.setForeground(Theme.TEXT_MUTED);
         panel.add(lbl, gbc);
 
         gbc.gridy  = row * 3 + 1;
@@ -644,38 +635,20 @@ public class EnrollmentFormDialog extends JDialog {
 
     private JTextField createField(String value) {
         JTextField tf = new JTextField(value);
-        tf.setFont(FONT_MAIN);
+        tf.setFont(Theme.FONT_PLAIN);
         tf.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(BORDER_COLOR),
+                BorderFactory.createLineBorder(Theme.BORDER),
                 BorderFactory.createEmptyBorder(4, 10, 4, 10)
         ));
         return tf;
     }
 
     private JButton createPrimaryButton(String text) {
-        JButton btn = new JButton(text);
-        btn.setFont(FONT_BOLD); btn.setForeground(Color.WHITE); btn.setBackground(PRIMARY);
-        btn.setBorder(BorderFactory.createEmptyBorder(8, 18, 8, 18));
-        btn.setFocusPainted(false); btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        btn.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseEntered(java.awt.event.MouseEvent e) { btn.setBackground(PRIMARY_HOVER); }
-            public void mouseExited (java.awt.event.MouseEvent e) { btn.setBackground(PRIMARY); }
-        });
-        return btn;
+        return ComponentFactory.primaryButton(text);
     }
 
     private JButton createSecondaryButton(String text) {
-        JButton btn = new JButton(text);
-        btn.setFont(FONT_MAIN); btn.setForeground(TEXT_MAIN); btn.setBackground(Color.WHITE);
-        btn.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(BORDER_COLOR),
-                BorderFactory.createEmptyBorder(7, 16, 7, 16)));
-        btn.setFocusPainted(false); btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        btn.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseEntered(java.awt.event.MouseEvent e) { btn.setBackground(new Color(241, 245, 249)); }
-            public void mouseExited (java.awt.event.MouseEvent e) { btn.setBackground(Color.WHITE); }
-        });
-        return btn;
+        return ComponentFactory.secondaryButton(text);
     }
 
     private void showWarning(String msg) {

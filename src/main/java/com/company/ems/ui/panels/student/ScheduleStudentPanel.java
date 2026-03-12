@@ -5,10 +5,11 @@ import com.company.ems.model.Schedule;
 import com.company.ems.model.Student;
 import com.company.ems.service.ClassService;
 import com.company.ems.service.ScheduleService;
+import com.company.ems.ui.common.ComponentFactory;
+import com.company.ems.ui.common.Theme;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
-import javax.swing.border.MatteBorder;
 import java.awt.*;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
@@ -23,32 +24,6 @@ import java.util.stream.Collectors;
  * Chỉ hiển thị lịch của các lớp học viên đang tham gia.
  */
 public class ScheduleStudentPanel extends JPanel {
-
-    // ── Design tokens ─────────────────────────────────────────────────────
-    private static final Color BG_PAGE      = new Color(248, 250, 252);
-    private static final Color BG_CARD      = Color.WHITE;
-    private static final Color BG_HEADER    = new Color(241, 245, 249);
-    private static final Color BORDER_COL   = new Color(226, 232, 240);
-    private static final Color PRIMARY      = new Color(37,  99,  235);
-    private static final Color TEXT_MAIN    = new Color(15,  23,  42);
-    private static final Color TEXT_MUTED   = new Color(100, 116, 139);
-    private static final Color TODAY_COL    = new Color(239, 246, 255);
-    private static final Color TODAY_BORDER = new Color(147, 197, 253);
-
-    private static final Color[] CLASS_COLORS = {
-        new Color(219, 234, 254), new Color(220, 252, 231), new Color(254, 243, 199),
-        new Color(252, 231, 243), new Color(237, 233, 254), new Color(255, 237, 213)
-    };
-    private static final Color[] CLASS_BORDER_COLORS = {
-        new Color(147, 197, 253), new Color(134, 239, 172), new Color(253, 224, 71),
-        new Color(249, 168, 212), new Color(196, 181, 253), new Color(253, 186, 116)
-    };
-
-    private static final Font FONT_MAIN   = new Font("Segoe UI", Font.PLAIN,  12);
-    private static final Font FONT_BOLD   = new Font("Segoe UI", Font.BOLD,   12);
-    private static final Font FONT_SMALL  = new Font("Segoe UI", Font.PLAIN,  11);
-    private static final Font FONT_HEADER = new Font("Segoe UI", Font.BOLD,   13);
-    private static final Font FONT_TITLE  = new Font("Segoe UI", Font.BOLD,   15);
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd/MM");
     private static final DateTimeFormatter FULL_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
@@ -70,7 +45,6 @@ public class ScheduleStudentPanel extends JPanel {
     // ── State ─────────────────────────────────────────────────────────────
     private LocalDate              weekStart;
     private List<Schedule>         weekSchedules  = new ArrayList<>();
-    private List<Class>            studentClasses = new ArrayList<>();
     private final Map<Long, Integer> classColorMap = new LinkedHashMap<>();
 
     // ── UI ────────────────────────────────────────────────────────────────
@@ -87,21 +61,21 @@ public class ScheduleStudentPanel extends JPanel {
         this.currentStudent  = currentStudent;
         this.weekStart       = LocalDate.now().with(DayOfWeek.MONDAY);
 
-        lblWeekRange  = new JLabel();
-        lblWeekRange.setFont(FONT_TITLE);
-        lblWeekRange.setForeground(TEXT_MAIN);
+        lblWeekRange = new JLabel();
+        lblWeekRange.setFont(Theme.FONT_TITLE);
+        lblWeekRange.setForeground(Theme.TEXT_MAIN);
 
         cbFilterClass = new JComboBox<>();
-        cbFilterClass.setFont(FONT_MAIN);
+        cbFilterClass.setFont(Theme.FONT_PLAIN);
         cbFilterClass.addActionListener(e -> renderGrid());
 
-        gridPanel  = new JPanel();
+        gridPanel = new JPanel();
         lblStatus  = new JLabel(" ");
-        lblStatus.setFont(FONT_SMALL);
-        lblStatus.setForeground(TEXT_MUTED);
+        lblStatus.setFont(Theme.FONT_SMALL);
+        lblStatus.setForeground(Theme.TEXT_MUTED);
 
         setLayout(new BorderLayout(0, 0));
-        setBackground(BG_PAGE);
+        setBackground(Theme.BG_PAGE);
         setBorder(new EmptyBorder(20, 24, 20, 24));
 
         add(buildTopBar(),  BorderLayout.NORTH);
@@ -122,13 +96,13 @@ public class ScheduleStudentPanel extends JPanel {
         JPanel navRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
         navRow.setOpaque(false);
 
-        JButton btnPrev  = navBtn("◀ Tuần trước");
+        JButton btnPrev  = ComponentFactory.navButton("◀ Tuần trước");
         btnPrev.addActionListener(e -> { weekStart = weekStart.minusWeeks(1); loadData(); });
 
-        JButton btnToday = navBtn("Tuần này");
+        JButton btnToday = ComponentFactory.navButton("Tuần này");
         btnToday.addActionListener(e -> { weekStart = LocalDate.now().with(DayOfWeek.MONDAY); loadData(); });
 
-        JButton btnNext  = navBtn("Tuần sau ▶");
+        JButton btnNext  = ComponentFactory.navButton("Tuần sau ▶");
         btnNext.addActionListener(e -> { weekStart = weekStart.plusWeeks(1); loadData(); });
 
         navRow.add(btnPrev);
@@ -137,19 +111,19 @@ public class ScheduleStudentPanel extends JPanel {
         navRow.add(btnNext);
         bar.add(navRow, BorderLayout.NORTH);
 
-        // Row 2 — Filter + readonly notice
+        // Row 2 — Filter + refresh
         JPanel filterRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
         filterRow.setOpaque(false);
 
         JLabel filterLbl = new JLabel("Lọc lớp:");
-        filterLbl.setFont(FONT_SMALL);
-        filterLbl.setForeground(TEXT_MUTED);
+        filterLbl.setFont(Theme.FONT_SMALL);
+        filterLbl.setForeground(Theme.TEXT_MUTED);
 
         cbFilterClass.setPreferredSize(new Dimension(200, 30));
         filterRow.add(filterLbl);
         filterRow.add(cbFilterClass);
 
-        JButton btnRefresh = navBtn("↻ Làm mới");
+        JButton btnRefresh = ComponentFactory.navButton("↻ Làm mới");
         btnRefresh.addActionListener(e -> loadData());
         filterRow.add(btnRefresh);
 
@@ -160,10 +134,10 @@ public class ScheduleStudentPanel extends JPanel {
     // ── Grid ──────────────────────────────────────────────────────────────
 
     private JScrollPane buildGrid() {
-        gridPanel.setBackground(BG_CARD);
+        gridPanel.setBackground(Theme.BG_CARD);
         JScrollPane scroll = new JScrollPane(gridPanel);
-        scroll.setBorder(BorderFactory.createLineBorder(BORDER_COL));
-        scroll.getViewport().setBackground(BG_CARD);
+        scroll.setBorder(BorderFactory.createLineBorder(Theme.BORDER));
+        scroll.getViewport().setBackground(Theme.BG_CARD);
         scroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         scroll.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
         return scroll;
@@ -177,7 +151,7 @@ public class ScheduleStudentPanel extends JPanel {
                 .filter(s -> selectedClassName == null
                         || "Tất cả lớp".equals(selectedClassName)
                         || s.getClazz().getClassName().equals(selectedClassName))
-                .collect(Collectors.toList());
+                .toList();
 
         int cols = 7;
         int rows = SESSIONS.size() + 1;
@@ -185,27 +159,27 @@ public class ScheduleStudentPanel extends JPanel {
 
         // ── Header row ───────────────────────────────────────────────────
         JPanel corner = new JPanel();
-        corner.setBackground(BG_HEADER);
-        corner.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 1, BORDER_COL));
+        corner.setBackground(Theme.BG_HEADER);
+        corner.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 1, Theme.BORDER));
         gridPanel.add(corner);
 
         for (int d = 0; d < 6; d++) {
-            LocalDate day     = weekStart.plusDays(d);
-            boolean isToday   = day.equals(LocalDate.now());
+            LocalDate day   = weekStart.plusDays(d);
+            boolean isToday = day.equals(LocalDate.now());
 
             JPanel dayHeader = new JPanel(new BorderLayout());
-            dayHeader.setBackground(isToday ? TODAY_COL : BG_HEADER);
+            dayHeader.setBackground(isToday ? Theme.TODAY_BG : Theme.BG_HEADER);
             dayHeader.setBorder(BorderFactory.createCompoundBorder(
-                    BorderFactory.createMatteBorder(0, 0, 1, d < 5 ? 1 : 0, BORDER_COL),
+                    BorderFactory.createMatteBorder(0, 0, 1, d < 5 ? 1 : 0, Theme.BORDER),
                     new EmptyBorder(6, 8, 6, 8)));
 
             JLabel dowLbl = new JLabel(DOW_LABELS[d], SwingConstants.CENTER);
-            dowLbl.setFont(FONT_BOLD);
-            dowLbl.setForeground(isToday ? PRIMARY : TEXT_MAIN);
+            dowLbl.setFont(Theme.FONT_BOLD);
+            dowLbl.setForeground(isToday ? Theme.PRIMARY : Theme.TEXT_MAIN);
 
             JLabel dateLbl = new JLabel(day.format(DATE_FMT), SwingConstants.CENTER);
-            dateLbl.setFont(FONT_SMALL);
-            dateLbl.setForeground(isToday ? PRIMARY : TEXT_MUTED);
+            dateLbl.setFont(Theme.FONT_SMALL);
+            dateLbl.setForeground(isToday ? Theme.PRIMARY : Theme.TEXT_MUTED);
 
             dayHeader.add(dowLbl,  BorderLayout.CENTER);
             dayHeader.add(dateLbl, BorderLayout.SOUTH);
@@ -215,15 +189,15 @@ public class ScheduleStudentPanel extends JPanel {
         // ── Session rows ─────────────────────────────────────────────────
         for (SessionBand session : SESSIONS) {
             JPanel sessionLbl = new JPanel(new GridBagLayout());
-            sessionLbl.setBackground(BG_HEADER);
-            sessionLbl.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 1, BORDER_COL));
+            sessionLbl.setBackground(Theme.BG_HEADER);
+            sessionLbl.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 1, Theme.BORDER));
             sessionLbl.setPreferredSize(new Dimension(80, 110));
 
             JLabel sLbl = new JLabel("<html><div style='text-align:center;'>"
                     + session.name().replace("\n", "<br>") + "</div></html>",
                     SwingConstants.CENTER);
-            sLbl.setFont(FONT_SMALL);
-            sLbl.setForeground(TEXT_MUTED);
+            sLbl.setFont(Theme.FONT_SMALL);
+            sLbl.setForeground(Theme.TEXT_MUTED);
             sessionLbl.add(sLbl);
             gridPanel.add(sessionLbl);
 
@@ -235,17 +209,17 @@ public class ScheduleStudentPanel extends JPanel {
                                 && s.getStartTime().getHour() >= session.startHour()
                                 && s.getStartTime().getHour() < session.endHour())
                         .sorted(Comparator.comparing(Schedule::getStartTime))
-                        .collect(Collectors.toList());
+                        .toList();
 
-                boolean isToday   = day.equals(LocalDate.now());
-                boolean lastDay   = (d == 5);
-                boolean lastSess  = (SESSIONS.indexOf(session) == SESSIONS.size() - 1);
+                boolean isToday  = day.equals(LocalDate.now());
+                boolean lastDay  = (d == 5);
+                boolean lastSess = (SESSIONS.indexOf(session) == SESSIONS.size() - 1);
 
                 JPanel cell = new JPanel();
                 cell.setLayout(new BoxLayout(cell, BoxLayout.Y_AXIS));
-                cell.setBackground(isToday ? TODAY_COL : BG_CARD);
+                cell.setBackground(isToday ? Theme.TODAY_BG : Theme.BG_CARD);
                 cell.setBorder(BorderFactory.createMatteBorder(
-                        0, 0, lastSess ? 0 : 1, lastDay ? 0 : 1, BORDER_COL));
+                        0, 0, lastSess ? 0 : 1, lastDay ? 0 : 1, Theme.BORDER));
                 cell.setMinimumSize(new Dimension(120, 110));
                 cell.setPreferredSize(new Dimension(160, 110));
 
@@ -268,10 +242,10 @@ public class ScheduleStudentPanel extends JPanel {
 
     /** Tạo bloc hiển thị — không có click reschedule */
     private JPanel buildScheduleBloc(Schedule sch) {
-        Long classId   = sch.getClazz().getClassId();
-        int  colorIdx  = classColorMap.getOrDefault(classId, 0) % CLASS_COLORS.length;
-        Color bg       = CLASS_COLORS[colorIdx];
-        Color border   = CLASS_BORDER_COLORS[colorIdx];
+        Long classId  = sch.getClazz().getClassId();
+        int  colorIdx = classColorMap.getOrDefault(classId, 0) % Theme.BLOC_BG.length;
+        Color bg      = Theme.BLOC_BG[colorIdx];
+        Color border  = Theme.BLOC_BORDER[colorIdx];
 
         JPanel bloc = new JPanel(new BorderLayout(0, 2));
         bloc.setBackground(bg);
@@ -284,18 +258,17 @@ public class ScheduleStudentPanel extends JPanel {
         String className = sch.getClazz().getClassName();
         JLabel lblClass = new JLabel(className.length() > 18
                 ? className.substring(0, 17) + "…" : className);
-        lblClass.setFont(FONT_BOLD);
-        lblClass.setForeground(PRIMARY);
+        lblClass.setFont(Theme.FONT_BOLD);
+        lblClass.setForeground(Theme.PRIMARY);
         bloc.add(lblClass, BorderLayout.NORTH);
 
         String timeStr = sch.getStartTime().format(TIME_FMT) + " – " + sch.getEndTime().format(TIME_FMT);
         String roomStr = sch.getRoom() != null ? "📍 " + sch.getRoom().getRoomName() : "📍 Chưa có phòng";
         JLabel lblDetail = new JLabel("<html><span style='color:#475569'>" + timeStr
                 + "</span><br><span style='color:#64748b'>" + roomStr + "</span></html>");
-        lblDetail.setFont(FONT_SMALL);
+        lblDetail.setFont(Theme.FONT_SMALL);
         bloc.add(lblDetail, BorderLayout.CENTER);
 
-        // Hover effect only (no click action)
         bloc.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override public void mouseEntered(java.awt.event.MouseEvent e) { bloc.setBackground(border); }
             @Override public void mouseExited (java.awt.event.MouseEvent e) { bloc.setBackground(bg); }
@@ -313,9 +286,9 @@ public class ScheduleStudentPanel extends JPanel {
 
         JOptionPane.showMessageDialog(this,
                 "<html><b>" + sch.getClazz().getClassName() + "</b><br><br>"
-                + "📅 Ngày: "  + sch.getStudyDate().format(FULL_FMT) + "<br>"
-                + "⏰ Giờ: "   + sch.getStartTime().format(TIME_FMT) + " – " + sch.getEndTime().format(TIME_FMT) + "<br>"
-                + "📍 Phòng: " + room + "<br>"
+                + "📅 Ngày: "       + sch.getStudyDate().format(FULL_FMT) + "<br>"
+                + "⏰ Giờ: "        + sch.getStartTime().format(TIME_FMT) + " – " + sch.getEndTime().format(TIME_FMT) + "<br>"
+                + "📍 Phòng: "      + room + "<br>"
                 + "👨‍🏫 Giáo viên: " + teacher + "</html>",
                 "Chi tiết buổi học", JOptionPane.INFORMATION_MESSAGE);
     }
@@ -324,8 +297,7 @@ public class ScheduleStudentPanel extends JPanel {
 
     public void loadData() {
         try {
-            // Lấy các lớp mà học viên đang tham gia
-            studentClasses = classService.findByStudentId(currentStudent.getStudentId());
+            List<Class> studentClasses = classService.findByStudentId(currentStudent.getStudentId());
 
             classColorMap.clear();
             int[] idx = {0};
@@ -348,37 +320,14 @@ public class ScheduleStudentPanel extends JPanel {
 
             weekSchedules = allWeek.stream()
                     .filter(s -> s.getClazz() != null && myClassIds.contains(s.getClazz().getClassId()))
-                    .collect(Collectors.toList());
+                    .toList();
 
-            lblWeekRange.setText("Tuần: " + weekStart.format(FULL_FMT)
-                    + "  –  " + weekStart.plusDays(5).format(FULL_FMT));
-
+            LocalDate end = weekStart.plusDays(6);
+            lblWeekRange.setText(weekStart.format(FULL_FMT) + " — " + end.format(FULL_FMT));
             renderGrid();
-
-        } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this,
-                    "Không thể tải lịch học: " + ex.getMessage(),
-                    "Lỗi", JOptionPane.ERROR_MESSAGE);
+        } catch (Exception e) {
+            lblStatus.setText("Lỗi tải dữ liệu: " + e.getMessage());
         }
-    }
-
-    // ── Button factory ────────────────────────────────────────────────────
-
-    private JButton navBtn(String text) {
-        JButton btn = new JButton(text);
-        btn.setFont(FONT_MAIN);
-        btn.setForeground(PRIMARY);
-        btn.setBackground(BG_CARD);
-        btn.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(BORDER_COL),
-                new EmptyBorder(5, 12, 5, 12)));
-        btn.setFocusPainted(false);
-        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        btn.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseEntered(java.awt.event.MouseEvent e) { btn.setBackground(new Color(239, 246, 255)); }
-            public void mouseExited (java.awt.event.MouseEvent e) { btn.setBackground(BG_CARD); }
-        });
-        return btn;
     }
 }
 

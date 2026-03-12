@@ -6,6 +6,8 @@ import com.company.ems.model.Student;
 import com.company.ems.model.Teacher;
 import com.company.ems.service.AttendanceService;
 import com.company.ems.service.ClassService;
+import com.company.ems.ui.common.ComponentFactory;
+import com.company.ems.ui.common.Theme;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -18,37 +20,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Panel điểm danh dành cho Teacher.
- * Layout: Sidebar chọn lớp (chỉ lớp mình dạy) | Panel điểm danh theo buổi
- *
- * Luồng: Chọn lớp → Chọn ngày buổi học → Load DS học viên enrolled
- *        → Tick Present/Absent/Late → Lưu hàng loạt
- */
 public class AttendanceTeacherPanel extends JPanel {
-
-    // ── Design tokens ─────────────────────────────────────────────────────
-    private static final Color BG_PAGE     = new Color(248, 250, 252);
-    private static final Color BG_SIDEBAR  = Color.WHITE;
-    private static final Color BG_CARD     = Color.WHITE;
-    private static final Color BORDER_COL  = new Color(226, 232, 240);
-    private static final Color PRIMARY     = new Color(37,  99,  235);
-    private static final Color PRIMARY_H   = new Color(29,  78,  216);
-    private static final Color GREEN       = new Color(22,  163, 74);
-    private static final Color AMBER       = new Color(217, 119, 6);
-    private static final Color RED         = new Color(220, 38,  38);
-    private static final Color TEXT_MAIN   = new Color(15,  23,  42);
-    private static final Color TEXT_MUTED  = new Color(100, 116, 139);
-    private static final Color ITEM_HOVER  = new Color(239, 246, 255);
-    private static final Color ITEM_ACTIVE = new Color(219, 234, 254);
-    private static final Color ROW_EVEN    = Color.WHITE;
-    private static final Color ROW_ODD     = new Color(248, 250, 252);
-    private static final Color ROW_SELECT  = new Color(219, 234, 254);
-
-    private static final Font FONT_MAIN   = new Font("Segoe UI", Font.PLAIN,  13);
-    private static final Font FONT_BOLD   = new Font("Segoe UI", Font.BOLD,   13);
-    private static final Font FONT_SMALL  = new Font("Segoe UI", Font.PLAIN,  12);
-    private static final Font FONT_HEADER = new Font("Segoe UI", Font.BOLD,   14);
 
     private static final DateTimeFormatter DATE_FMT  = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final DateTimeFormatter LABEL_FMT = DateTimeFormatter.ofPattern("EEEE, dd/MM/yyyy",
@@ -60,18 +32,17 @@ public class AttendanceTeacherPanel extends JPanel {
     // ── Services ──────────────────────────────────────────────────────────
     private final AttendanceService attendanceService;
     private final ClassService      classService;
-    private final Teacher           currentTeacher; // null = xem tất cả (dev mode admin)
+    private final Teacher           currentTeacher;
 
     // ── State ─────────────────────────────────────────────────────────────
     private List<Class>      allClasses     = new ArrayList<>();
     private Class            selectedClass  = null;
-    private List<Attendance> currentSheet   = new ArrayList<>(); // sheet đang chỉnh sửa
+    private List<Attendance> currentSheet   = new ArrayList<>();
     private JPanel           activeClassItem = null;
 
     // ── UI components ─────────────────────────────────────────────────────
     private final JPanel     classListPanel;
     private final JTextField searchField;
-    // Right side
     private final JLabel     lblClassName;
     private final JLabel     lblDateDisplay;
     private final JSpinner   datePicker;
@@ -93,18 +64,17 @@ public class AttendanceTeacherPanel extends JPanel {
         this.classService      = classService;
         this.currentTeacher    = currentTeacher;
 
-        // Build components
         classListPanel = new JPanel();
         searchField    = new JTextField();
         lblClassName   = new JLabel("Chưa chọn lớp");
         lblDateDisplay = new JLabel("");
         datePicker     = buildDateSpinner(LocalDate.now());
-        btnMarkAll     = createSecondaryButton("✅ Đánh dấu tất cả Có mặt");
-        btnSave        = createPrimaryButton("💾 Lưu điểm danh");
+        btnMarkAll     = ComponentFactory.secondaryButton("✅ Đánh dấu tất cả Có mặt");
+        btnSave        = ComponentFactory.primaryButton("💾 Lưu điểm danh");
         statusLabel    = new JLabel();
-        statPresent    = statBadge("Có mặt: 0", GREEN);
-        statAbsent     = statBadge("Vắng: 0",   RED);
-        statLate       = statBadge("Trễ: 0",    AMBER);
+        statPresent    = statBadge("Có mặt: 0", Theme.GREEN);
+        statAbsent     = statBadge("Vắng: 0",   Theme.RED);
+        statLate       = statBadge("Trễ: 0",    Theme.AMBER);
         tableModel     = buildTableModel();
         table          = buildTable();
         emptyState     = buildEmptyState();
@@ -114,7 +84,7 @@ public class AttendanceTeacherPanel extends JPanel {
         btnSave   .addActionListener(e -> saveAttendance());
 
         setLayout(new BorderLayout());
-        setBackground(BG_PAGE);
+        setBackground(Theme.BG_PAGE);
 
         JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT,
                 buildSidebar(), rightPanel);
@@ -131,24 +101,22 @@ public class AttendanceTeacherPanel extends JPanel {
 
     private JPanel buildSidebar() {
         JPanel sidebar = new JPanel(new BorderLayout());
-        sidebar.setBackground(BG_SIDEBAR);
-        sidebar.setBorder(new MatteBorder(0, 0, 0, 1, BORDER_COL));
+        sidebar.setBackground(Theme.BG_SIDEBAR);
+        sidebar.setBorder(new MatteBorder(0, 0, 0, 1, Theme.BORDER));
 
-        // Header
         JPanel header = new JPanel(new BorderLayout(0, 8));
-        header.setBackground(BG_SIDEBAR);
+        header.setBackground(Theme.BG_SIDEBAR);
         header.setBorder(new EmptyBorder(16, 12, 12, 12));
 
-        JLabel title = new JLabel(currentTeacher != null
-                ? "Lớp của tôi" : "Tất cả lớp");
-        title.setFont(FONT_HEADER);
-        title.setForeground(TEXT_MAIN);
+        JLabel title = new JLabel(currentTeacher != null ? "Lớp của tôi" : "Tất cả lớp");
+        title.setFont(Theme.FONT_HEADER);
+        title.setForeground(Theme.TEXT_MAIN);
         header.add(title, BorderLayout.NORTH);
 
-        searchField.setFont(FONT_MAIN);
+        searchField.setFont(Theme.FONT_PLAIN);
         searchField.setPreferredSize(new Dimension(0, 32));
         searchField.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(BORDER_COL),
+                BorderFactory.createLineBorder(Theme.BORDER),
                 new EmptyBorder(4, 8, 4, 8)));
         searchField.putClientProperty("JTextField.placeholderText", "Tìm tên lớp...");
         searchField.addKeyListener(new java.awt.event.KeyAdapter() {
@@ -157,23 +125,21 @@ public class AttendanceTeacherPanel extends JPanel {
         header.add(searchField, BorderLayout.SOUTH);
         sidebar.add(header, BorderLayout.NORTH);
 
-        // List
         classListPanel.setLayout(new BoxLayout(classListPanel, BoxLayout.Y_AXIS));
-        classListPanel.setBackground(BG_SIDEBAR);
+        classListPanel.setBackground(Theme.BG_SIDEBAR);
         JScrollPane scroll = new JScrollPane(classListPanel);
         scroll.setBorder(null);
-        scroll.getViewport().setBackground(BG_SIDEBAR);
+        scroll.getViewport().setBackground(Theme.BG_SIDEBAR);
         scroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         sidebar.add(scroll, BorderLayout.CENTER);
 
-        // Footer
         JPanel footer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 6));
-        footer.setBackground(BG_SIDEBAR);
-        footer.setBorder(new MatteBorder(1, 0, 0, 0, BORDER_COL));
+        footer.setBackground(Theme.BG_SIDEBAR);
+        footer.setBorder(new MatteBorder(1, 0, 0, 0, Theme.BORDER));
         JButton refreshBtn = new JButton("↻");
-        refreshBtn.setFont(FONT_SMALL);
-        refreshBtn.setForeground(PRIMARY);
-        refreshBtn.setBackground(BG_SIDEBAR);
+        refreshBtn.setFont(Theme.FONT_SMALL);
+        refreshBtn.setForeground(Theme.PRIMARY);
+        refreshBtn.setBackground(Theme.BG_SIDEBAR);
         refreshBtn.setBorder(new EmptyBorder(4, 8, 4, 8));
         refreshBtn.setFocusPainted(false);
         refreshBtn.setToolTipText("Làm mới danh sách lớp");
@@ -188,49 +154,49 @@ public class AttendanceTeacherPanel extends JPanel {
     private JPanel buildClassItem(Class c) {
         JPanel item = new JPanel(new BorderLayout(0, 3));
         item.setOpaque(true);
-        item.setBackground(BG_SIDEBAR);
+        item.setBackground(Theme.BG_SIDEBAR);
         item.setMaximumSize(new Dimension(Integer.MAX_VALUE, 62));
         item.setMinimumSize(new Dimension(0, 62));
         item.setBorder(BorderFactory.createCompoundBorder(
-                new MatteBorder(0, 0, 1, 0, BORDER_COL),
+                new MatteBorder(0, 0, 1, 0, Theme.BORDER),
                 new EmptyBorder(8, 12, 8, 12)));
         item.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
         JLabel lblName = new JLabel(c.getClassName());
-        lblName.setFont(FONT_BOLD);
-        lblName.setForeground(TEXT_MAIN);
+        lblName.setFont(Theme.FONT_BOLD);
+        lblName.setForeground(Theme.TEXT_MAIN);
 
         JLabel lblStatus = new JLabel(c.getStatus());
-        lblStatus.setFont(new Font("Segoe UI", Font.BOLD, 10));
+        lblStatus.setFont(Theme.FONT_BADGE);
         lblStatus.setOpaque(true);
-        lblStatus.setBackground(statusColor(c.getStatus()));
+        lblStatus.setBackground(Theme.classStatusColor(c.getStatus()));
         lblStatus.setForeground(Color.WHITE);
         lblStatus.setBorder(new EmptyBorder(2, 6, 2, 6));
 
         JPanel top = new JPanel(new BorderLayout());
         top.setOpaque(false);
-        top.add(lblName, BorderLayout.CENTER);
+        top.add(lblName,   BorderLayout.CENTER);
         top.add(lblStatus, BorderLayout.EAST);
 
         String teacher = c.getTeacher() != null ? c.getTeacher().getFullName() : "Chưa phân công";
         JLabel lblSub = new JLabel(teacher);
-        lblSub.setFont(FONT_SMALL);
-        lblSub.setForeground(TEXT_MUTED);
+        lblSub.setFont(Theme.FONT_SMALL);
+        lblSub.setForeground(Theme.TEXT_MUTED);
 
         item.add(top,    BorderLayout.NORTH);
         item.add(lblSub, BorderLayout.CENTER);
 
         item.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override public void mouseEntered(java.awt.event.MouseEvent e) {
-                if (item != activeClassItem) item.setBackground(ITEM_HOVER);
+                if (item != activeClassItem) item.setBackground(Theme.ITEM_HOVER);
             }
             @Override public void mouseExited(java.awt.event.MouseEvent e) {
-                if (item != activeClassItem) item.setBackground(BG_SIDEBAR);
+                if (item != activeClassItem) item.setBackground(Theme.BG_SIDEBAR);
             }
             @Override public void mouseClicked(java.awt.event.MouseEvent e) {
-                if (activeClassItem != null) activeClassItem.setBackground(BG_SIDEBAR);
+                if (activeClassItem != null) activeClassItem.setBackground(Theme.BG_SIDEBAR);
                 activeClassItem = item;
-                item.setBackground(ITEM_ACTIVE);
+                item.setBackground(Theme.ITEM_ACTIVE);
                 selectClass(c);
             }
         });
@@ -241,24 +207,24 @@ public class AttendanceTeacherPanel extends JPanel {
 
     private JPanel buildRightPanel() {
         JPanel panel = new JPanel(new BorderLayout());
-        panel.setBackground(BG_PAGE);
+        panel.setBackground(Theme.BG_PAGE);
         panel.add(emptyState, BorderLayout.CENTER);
         return panel;
     }
 
     private JPanel buildEmptyState() {
         JPanel p = new JPanel(new GridBagLayout());
-        p.setBackground(BG_PAGE);
+        p.setBackground(Theme.BG_PAGE);
         JLabel lbl = new JLabel("← Chọn một lớp để bắt đầu điểm danh");
         lbl.setFont(new Font("Segoe UI", Font.PLAIN, 15));
-        lbl.setForeground(TEXT_MUTED);
+        lbl.setForeground(Theme.TEXT_MUTED);
         p.add(lbl);
         return p;
     }
 
     private JPanel buildAttendanceContent() {
         JPanel content = new JPanel(new BorderLayout(0, 0));
-        content.setBackground(BG_PAGE);
+        content.setBackground(Theme.BG_PAGE);
         content.setBorder(new EmptyBorder(20, 24, 20, 24));
 
         content.add(buildAttendanceHeader(), BorderLayout.NORTH);
@@ -272,29 +238,26 @@ public class AttendanceTeacherPanel extends JPanel {
         header.setOpaque(false);
         header.setBorder(new EmptyBorder(0, 0, 16, 0));
 
-        // Class name + date picker row
-        lblClassName.setFont(FONT_HEADER);
-        lblClassName.setForeground(TEXT_MAIN);
+        lblClassName.setFont(Theme.FONT_HEADER);
+        lblClassName.setForeground(Theme.TEXT_MAIN);
 
         JPanel titleRow = new JPanel(new BorderLayout(12, 0));
         titleRow.setOpaque(false);
         titleRow.add(lblClassName, BorderLayout.WEST);
 
-        // Date picker group
         JPanel dateGroup = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         dateGroup.setOpaque(false);
         JLabel dateLbl = new JLabel("Ngày:");
-        dateLbl.setFont(FONT_SMALL);
-        dateLbl.setForeground(TEXT_MUTED);
+        dateLbl.setFont(Theme.FONT_SMALL);
+        dateLbl.setForeground(Theme.TEXT_MUTED);
         dateGroup.add(dateLbl);
         dateGroup.add(datePicker);
-        JButton loadBtn = createPrimaryButton("Tải danh sách");
+        JButton loadBtn = ComponentFactory.primaryButton("Tải danh sách");
         loadBtn.addActionListener(e -> loadAttendanceSheet());
         dateGroup.add(loadBtn);
         titleRow.add(dateGroup, BorderLayout.EAST);
         header.add(titleRow, BorderLayout.NORTH);
 
-        // Stats row
         JPanel statsRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         statsRow.setOpaque(false);
         statsRow.add(statPresent);
@@ -310,8 +273,8 @@ public class AttendanceTeacherPanel extends JPanel {
     private JScrollPane buildTableCard() {
         table.setFillsViewportHeight(true);
         JScrollPane scroll = new JScrollPane(table);
-        scroll.setBorder(BorderFactory.createLineBorder(BORDER_COL));
-        scroll.getViewport().setBackground(BG_CARD);
+        scroll.setBorder(BorderFactory.createLineBorder(Theme.BORDER));
+        scroll.getViewport().setBackground(Theme.BG_CARD);
         return scroll;
     }
 
@@ -324,7 +287,7 @@ public class AttendanceTeacherPanel extends JPanel {
         left.setOpaque(false);
         left.add(btnMarkAll);
 
-        JButton btnMarkAbsent = createSecondaryButton("❌ Đánh dấu tất cả Vắng");
+        JButton btnMarkAbsent = ComponentFactory.secondaryButton("❌ Đánh dấu tất cả Vắng");
         btnMarkAbsent.addActionListener(e -> markAll("Absent"));
         left.add(btnMarkAbsent);
 
@@ -350,23 +313,21 @@ public class AttendanceTeacherPanel extends JPanel {
             public Component prepareRenderer(javax.swing.table.TableCellRenderer r, int row, int col) {
                 Component c = super.prepareRenderer(r, row, col);
                 boolean selected = isRowSelected(row);
-                c.setBackground(selected ? ROW_SELECT : (row % 2 == 0 ? ROW_EVEN : ROW_ODD));
-                c.setForeground(TEXT_MAIN);
+                c.setBackground(selected ? Theme.ROW_SELECT : (row % 2 == 0 ? Theme.ROW_EVEN : Theme.ROW_ODD));
+                c.setForeground(Theme.TEXT_MAIN);
                 return c;
             }
         };
-        t.setFont(FONT_MAIN);
+        t.setFont(Theme.FONT_PLAIN);
         t.setRowHeight(40);
         t.setShowGrid(false);
         t.setIntercellSpacing(new Dimension(0, 0));
-        t.setBackground(BG_CARD);
+        t.setBackground(Theme.BG_CARD);
 
-        // Cột Trạng thái dùng JComboBox
         JComboBox<String> statusCombo = new JComboBox<>(STATUS_OPTIONS);
-        statusCombo.setFont(FONT_MAIN);
+        statusCombo.setFont(Theme.FONT_PLAIN);
         t.getColumnModel().getColumn(2).setCellEditor(new DefaultCellEditor(statusCombo));
 
-        // Custom renderer cho cột trạng thái — tô màu
         t.getColumnModel().getColumn(2).setCellRenderer(
                 new javax.swing.table.DefaultTableCellRenderer() {
                     @Override
@@ -377,32 +338,30 @@ public class AttendanceTeacherPanel extends JPanel {
                         if (!isSel) {
                             String s = val != null ? val.toString() : "";
                             setForeground(switch (s) {
-                                case "Present" -> GREEN;
-                                case "Absent"  -> RED;
-                                case "Late"    -> AMBER;
-                                default        -> TEXT_MAIN;
+                                case "Present" -> Theme.GREEN;
+                                case "Absent"  -> Theme.RED;
+                                case "Late"    -> Theme.AMBER;
+                                default        -> Theme.TEXT_MAIN;
                             });
-                            setFont(FONT_BOLD);
+                            setFont(Theme.FONT_BOLD);
                         }
                         return this;
                     }
                 });
 
         JTableHeader header = t.getTableHeader();
-        header.setFont(FONT_BOLD);
-        header.setBackground(new Color(241, 245, 249));
-        header.setForeground(TEXT_MUTED);
+        header.setFont(Theme.FONT_BOLD);
+        header.setBackground(Theme.BG_HEADER);
+        header.setForeground(Theme.TEXT_MUTED);
         header.setPreferredSize(new Dimension(0, 42));
-        header.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, BORDER_COL));
+        header.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, Theme.BORDER));
 
-        // Column widths
         t.getColumnModel().getColumn(0).setPreferredWidth(50);
         t.getColumnModel().getColumn(0).setMaxWidth(60);
         t.getColumnModel().getColumn(1).setPreferredWidth(220);
         t.getColumnModel().getColumn(2).setPreferredWidth(120);
         t.getColumnModel().getColumn(3).setPreferredWidth(200);
 
-        // Sync thay đổi status về currentSheet + cập nhật stats
         tableModel.addTableModelListener(e -> {
             if (e.getColumn() == 2) updateStats();
         });
@@ -438,8 +397,8 @@ public class AttendanceTeacherPanel extends JPanel {
         classListPanel.removeAll();
         if (classes.isEmpty()) {
             JLabel lbl = new JLabel("Không có lớp nào", SwingConstants.CENTER);
-            lbl.setFont(FONT_SMALL);
-            lbl.setForeground(TEXT_MUTED);
+            lbl.setFont(Theme.FONT_SMALL);
+            lbl.setForeground(Theme.TEXT_MUTED);
             classListPanel.add(lbl);
         } else {
             classes.stream().map(this::buildClassItem).forEach(classListPanel::add);
@@ -452,7 +411,6 @@ public class AttendanceTeacherPanel extends JPanel {
         selectedClass = c;
         lblClassName.setText("Lớp: " + c.getClassName());
 
-        // Rebuild right panel với attendance content
         rightPanel.removeAll();
         rightPanel.add(buildAttendanceContent(), BorderLayout.CENTER);
         rightPanel.revalidate();
@@ -467,23 +425,19 @@ public class AttendanceTeacherPanel extends JPanel {
         LocalDate date = getSpinnerDate(datePicker);
         lblDateDisplay.setText(date.format(LABEL_FMT));
 
-        // ── Chặn điểm danh cho buổi tương lai ────────────────────────────
         if (date.isAfter(LocalDate.now())) {
             tableModel.setRowCount(0);
             currentSheet.clear();
             statusLabel.setText("⚠ Không thể điểm danh cho buổi học chưa diễn ra.");
-            // Disable nút lưu & đánh dấu — enable lại khi chọn ngày hợp lệ
             btnSave.setEnabled(false);
             btnMarkAll.setEnabled(false);
             updateStats();
             return;
         }
-        // Ngày hợp lệ → enable lại
         btnSave.setEnabled(true);
         btnMarkAll.setEnabled(true);
 
         try {
-            // Dùng service query trong 1 transaction riêng — tránh lazy load trên detached entity
             List<Student> enrolled = classService.findEnrolledStudents(selectedClass.getClassId());
 
             if (enrolled.isEmpty()) {
@@ -493,10 +447,8 @@ public class AttendanceTeacherPanel extends JPanel {
                 return;
             }
 
-            // Chuẩn bị sheet: load existing hoặc tạo mới Present
             currentSheet = attendanceService.prepareAttendanceSheet(selectedClass, date, enrolled);
 
-            // Render vào table
             tableModel.setRowCount(0);
             for (int i = 0; i < currentSheet.size(); i++) {
                 Attendance a = currentSheet.get(i);
@@ -517,10 +469,8 @@ public class AttendanceTeacherPanel extends JPanel {
         }
     }
 
-
     private void markAll(String status) {
         if (currentSheet.isEmpty()) return;
-        // Commit editing đang dở
         if (table.isEditing()) table.getCellEditor().stopCellEditing();
         for (int i = 0; i < tableModel.getRowCount(); i++) {
             tableModel.setValueAt(status, i, 2);
@@ -533,10 +483,8 @@ public class AttendanceTeacherPanel extends JPanel {
             showWarning("Không có dữ liệu để lưu. Hãy tải danh sách trước.");
             return;
         }
-        // Commit editing đang dở
         if (table.isEditing()) table.getCellEditor().stopCellEditing();
 
-        // Đồng bộ lại status + note từ table vào currentSheet
         for (int i = 0; i < currentSheet.size(); i++) {
             Attendance a = currentSheet.get(i);
             String status = (String) tableModel.getValueAt(i, 2);
@@ -549,7 +497,6 @@ public class AttendanceTeacherPanel extends JPanel {
             attendanceService.saveAll(currentSheet);
             showSuccess("Đã lưu điểm danh thành công ("
                     + currentSheet.size() + " học viên).");
-            // Reload để lấy ID mới từ DB (cho các record vừa insert)
             loadAttendanceSheet();
         } catch (Exception e) {
             showError("Lỗi khi lưu: " + e.getMessage());
@@ -576,7 +523,7 @@ public class AttendanceTeacherPanel extends JPanel {
                 java.sql.Date.valueOf(initial), null, null, java.util.Calendar.DAY_OF_MONTH);
         JSpinner sp = new JSpinner(model);
         sp.setEditor(new JSpinner.DateEditor(sp, "dd/MM/yyyy"));
-        sp.setFont(FONT_MAIN);
+        sp.setFont(Theme.FONT_PLAIN);
         sp.setPreferredSize(new Dimension(120, 32));
         return sp;
     }
@@ -588,50 +535,12 @@ public class AttendanceTeacherPanel extends JPanel {
 
     private JLabel statBadge(String text, Color color) {
         JLabel lbl = new JLabel(text);
-        lbl.setFont(FONT_BOLD);
+        lbl.setFont(Theme.FONT_BOLD);
         lbl.setForeground(Color.WHITE);
         lbl.setBackground(color);
         lbl.setOpaque(true);
         lbl.setBorder(new EmptyBorder(3, 10, 3, 10));
         return lbl;
-    }
-
-    private JButton createPrimaryButton(String text) {
-        JButton btn = new JButton(text);
-        btn.setFont(FONT_BOLD);
-        btn.setForeground(Color.WHITE);
-        btn.setBackground(PRIMARY);
-        btn.setBorder(new EmptyBorder(7, 16, 7, 16));
-        btn.setFocusPainted(false);
-        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        btn.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseEntered(java.awt.event.MouseEvent e) { btn.setBackground(PRIMARY_H); }
-            public void mouseExited (java.awt.event.MouseEvent e) { btn.setBackground(PRIMARY);   }
-        });
-        return btn;
-    }
-
-    private JButton createSecondaryButton(String text) {
-        JButton btn = new JButton(text);
-        btn.setFont(FONT_MAIN);
-        btn.setForeground(TEXT_MAIN);
-        btn.setBackground(BG_CARD);
-        btn.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(BORDER_COL),
-                new EmptyBorder(6, 14, 6, 14)));
-        btn.setFocusPainted(false);
-        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        return btn;
-    }
-
-    private static Color statusColor(String s) {
-        if (s == null) return TEXT_MUTED;
-        return switch (s) {
-            case "Open", "Ongoing" -> GREEN;
-            case "Planned"         -> new Color(59, 130, 246);
-            case "Cancelled"       -> RED;
-            default                -> TEXT_MUTED;
-        };
     }
 
     private void showSuccess(String msg) {

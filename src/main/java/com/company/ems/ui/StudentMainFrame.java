@@ -2,6 +2,7 @@ package com.company.ems.ui;
 
 import com.company.ems.model.Student;
 import com.company.ems.service.*;
+import com.company.ems.ui.common.Theme;
 import com.company.ems.ui.panels.attendance.AttendanceStudentPanel;
 import com.company.ems.ui.panels.student.ResultStudentPanel;
 import com.company.ems.ui.panels.student.ScheduleStudentPanel;
@@ -67,16 +68,16 @@ public class StudentMainFrame extends JFrame {
 
         JPanel headerPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 20, 20));
         headerPanel.setBackground(Color.WHITE);
-        headerPanel.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(226, 232, 240)));
+        headerPanel.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, Theme.BORDER));
         headerTitle = new JLabel("Hồ sơ Cá nhân");
         headerTitle.setFont(new Font("Segoe UI", Font.BOLD, 22));
-        headerTitle.setForeground(new Color(15, 23, 42));
+        headerTitle.setForeground(Theme.TEXT_MAIN);
         headerPanel.add(headerTitle);
         mainArea.add(headerPanel, BorderLayout.NORTH);
 
         cardLayout   = new CardLayout();
         contentPanel = new JPanel(cardLayout);
-        contentPanel.setBackground(new Color(248, 250, 252));
+        contentPanel.setBackground(Theme.BG_PAGE);
 
         // ── Khởi tạo & đăng ký các tab ──────────────────────────────────
         Student currentStudent = studentService.findById(loggedInStudentId);
@@ -160,7 +161,7 @@ public class StudentMainFrame extends JFrame {
             JToggleButton btn = new JToggleButton(m[0]);
             btn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 45));
             btn.setHorizontalAlignment(SwingConstants.LEFT);
-            btn.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+            btn.setFont(Theme.FONT_PLAIN);
             btn.setFocusPainted(false);
             btn.setBackground(new Color(15, 23, 42));
             btn.setForeground(new Color(203, 213, 225));
@@ -191,7 +192,7 @@ public class StudentMainFrame extends JFrame {
         JButton btnLogout = new JButton("Đăng xuất");
         btnLogout.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
         btnLogout.setForeground(Color.WHITE);
-        btnLogout.setBackground(new Color(220, 38, 38));
+        btnLogout.setBackground(Theme.DANGER);
         btnLogout.setFocusPainted(false);
         btnLogout.setBorderPainted(false);
         btnLogout.setCursor(new Cursor(Cursor.HAND_CURSOR));
@@ -214,7 +215,7 @@ public class StudentMainFrame extends JFrame {
 
     private JPanel buildProfilePanel(Student s) {
         JPanel pnl = new JPanel(new FlowLayout(FlowLayout.LEFT, 30, 30));
-        pnl.setBackground(new Color(248, 250, 252));
+        pnl.setBackground(Theme.BG_PAGE);
 
         if (s == null) {
             pnl.add(new JLabel("Không tìm thấy dữ liệu học viên!"));
@@ -224,12 +225,12 @@ public class StudentMainFrame extends JFrame {
         JPanel card = new JPanel(new GridLayout(7, 2, 20, 20));
         card.setBackground(Color.WHITE);
         card.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(226, 232, 240)),
+                BorderFactory.createLineBorder(Theme.BORDER),
                 BorderFactory.createEmptyBorder(30, 40, 30, 40)));
 
-        Font lblFont = new Font("Segoe UI", Font.BOLD,  14);
-        Font valFont = new Font("Segoe UI", Font.PLAIN, 15);
-        Color muted  = new Color(100, 116, 139);
+        Font lblFont = Theme.FONT_BOLD;
+        Font valFont = Theme.FONT_PLAIN;
+        Color muted  = Theme.TEXT_MUTED;
 
         String[][] data = {
             {"Mã Học viên:",   "HV" + String.format("%04d", s.getStudentId())},

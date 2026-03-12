@@ -1,27 +1,16 @@
 package com.company.ems.ui;
 
-import com.formdev.flatlaf.FlatLightLaf;
 import javax.swing.*;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.TableCellRenderer;
 import java.awt.*;
 
+/**
+ * Tiện ích UI — helper cho JTable (căn cột, tự động độ rộng).
+ */
 public final class UI {
     private UI() {}
 
-    public static void initLookAndFeel() {
-        try {
-            FlatLightLaf.setup();
-            UIManager.put("Button.arc", 6);
-            UIManager.put("Component.arc", 6);
-            UIManager.put("TextComponent.arc", 6);
-            UIManager.put("ScrollBar.thumbArc", 999);
-            UIManager.put("ScrollBar.width", 8);
-        } catch (Exception e) {
-            try { UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName()); }
-            catch (Exception ignored) {}
-        }
-    }
 
     /**
      * Căn lề cho cột dữ liệu trong bảng.

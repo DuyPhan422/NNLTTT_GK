@@ -4,6 +4,8 @@ import com.company.ems.model.Course;
 import com.company.ems.model.enums.ActiveStatus;
 import com.company.ems.model.enums.CourseLevel;
 import com.company.ems.model.enums.DurationUnit;
+import com.company.ems.ui.common.ComponentFactory;
+import com.company.ems.ui.common.Theme;
 
 import javax.swing.*;
 import java.awt.*;
@@ -12,17 +14,7 @@ import java.math.BigDecimal;
 /**
  * Dialog Thêm / Sửa khóa học — tách khỏi CoursePanel (SRP).
  */
-public class CourseFormDialog extends JDialog {
-
-    private static final Color BG_CARD      = Color.WHITE;
-    private static final Color BORDER_COLOR = new Color(226, 232, 240);
-    private static final Color PRIMARY      = new Color(37, 99, 235);
-    private static final Color PRIMARY_HOVER= new Color(29, 78, 216);
-    private static final Color TEXT_MUTED   = new Color(100, 116, 139);
-    private static final Color TEXT_MAIN    = new Color(15, 23, 42);
-    private static final Font  FONT_MAIN    = new Font("Segoe UI", Font.PLAIN, 13);
-    private static final Font  FONT_BOLD    = new Font("Segoe UI", Font.BOLD, 13);
-    private static final Font  FONT_SMALL   = new Font("Segoe UI", Font.PLAIN, 12);
+public class CourseFormDialog extends BaseFormDialog<Course> {
 
     private final JTextField tfName;
     private final JTextArea  taDescription;
@@ -32,66 +24,50 @@ public class CourseFormDialog extends JDialog {
     private final JTextField tfFee;
     private final JComboBox<ActiveStatus> cbStatus;
 
-    private boolean saved = false;
     private final Course course;
 
     public CourseFormDialog(Frame owner, Course existing) {
-        super(owner, existing != null ? "Sửa khóa học" : "Thêm khóa học mới", true);
+        super(owner, existing != null ? "Sửa khóa học" : "Thêm khóa học mới");
         this.course = existing != null ? existing : new Course();
 
         boolean isEdit = existing != null;
 
-        tfName = createField(isEdit && existing.getCourseName() != null ? existing.getCourseName() : "");
+        tfName = ComponentFactory.formField();
+        taDescription = ComponentFactory.formTextArea(3);
+        tfDuration = ComponentFactory.formField();
+        tfFee = ComponentFactory.formField();
 
-        taDescription = new JTextArea(isEdit && existing.getDescription() != null ? existing.getDescription() : "");
-        taDescription.setFont(FONT_MAIN);
-        taDescription.setLineWrap(true);
-        taDescription.setWrapStyleWord(true);
-        taDescription.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(BORDER_COLOR),
-                BorderFactory.createEmptyBorder(4, 10, 4, 10)
-        ));
+        if (isEdit) {
+            if (existing.getCourseName() != null) tfName.setText(existing.getCourseName());
+            if (existing.getDescription() != null) taDescription.setText(existing.getDescription());
+            if (existing.getDuration() != null) tfDuration.setText(String.valueOf(existing.getDuration()));
+            if (existing.getFee() != null) tfFee.setText(existing.getFee().toPlainString());
+        }
 
         cbLevel = new JComboBox<>(CourseLevel.values());
-        cbLevel.setFont(FONT_MAIN);
+        cbLevel.setFont(Theme.FONT_PLAIN);
         if (isEdit && existing.getLevel() != null) {
             cbLevel.setSelectedItem(CourseLevel.fromValue(existing.getLevel()));
         }
 
-        tfDuration = createField(isEdit && existing.getDuration() != null
-                ? String.valueOf(existing.getDuration()) : "");
-
         cbDurationUnit = new JComboBox<>(DurationUnit.values());
-        cbDurationUnit.setFont(FONT_MAIN);
+        cbDurationUnit.setFont(Theme.FONT_PLAIN);
         if (isEdit && existing.getDurationUnit() != null) {
             cbDurationUnit.setSelectedItem(DurationUnit.fromValue(existing.getDurationUnit()));
         }
 
-        tfFee = createField(isEdit && existing.getFee() != null
-                ? existing.getFee().toPlainString() : "");
-
         cbStatus = new JComboBox<>(ActiveStatus.values());
-        cbStatus.setFont(FONT_MAIN);
+        cbStatus.setFont(Theme.FONT_PLAIN);
         if (isEdit && existing.getStatus() != null) {
             cbStatus.setSelectedItem(ActiveStatus.fromValue(existing.getStatus()));
         }
 
-        buildUI();
-        pack();
-        // Mở rộng chiều ngang để ô \"Mô tả\" thoáng hơn
-        if (getWidth() < 620) {
-            setSize(620, getHeight());
-        }
-        setResizable(false);
-        setLocationRelativeTo(owner);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+        initUI(620);
     }
 
-    private void buildUI() {
-        JPanel content = new JPanel(new BorderLayout());
-        content.setBackground(BG_CARD);
-        content.setBorder(BorderFactory.createEmptyBorder(24, 24, 16, 24));
-
+    @Override
+    protected JPanel buildForm() {
         JPanel form = new JPanel(new GridBagLayout());
         form.setOpaque(false);
         GridBagConstraints gbc = new GridBagConstraints();
@@ -100,12 +76,10 @@ public class CourseFormDialog extends JDialog {
 
         addRow(form, gbc, 0, "Tên khóa học *", tfName);
 
+        // Mô tả - multi-line
         gbc.gridy  = 2;
         gbc.insets = new Insets(10, 0, 2, 0);
-        JLabel lblDesc = new JLabel("Mô tả");
-        lblDesc.setFont(FONT_SMALL);
-        lblDesc.setForeground(TEXT_MUTED);
-        form.add(lblDesc, gbc);
+        form.add(ComponentFactory.formLabel("Mô tả"), gbc);
 
         gbc.gridy  = 3;
         gbc.insets = new Insets(0, 0, 0, 0);
@@ -119,140 +93,93 @@ public class CourseFormDialog extends JDialog {
         addRow(form, gbc, 7, "Học phí", tfFee);
         addRow(form, gbc, 8, "Trạng thái", cbStatus);
 
-        content.add(form, BorderLayout.CENTER);
-
-        JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
-        btnPanel.setOpaque(false);
-        btnPanel.setBorder(BorderFactory.createEmptyBorder(16, 0, 0, 0));
-
-        JButton cancelBtn = createSecondaryButton("Hủy");
-        cancelBtn.addActionListener(e -> dispose());
-
-        JButton saveBtn = createPrimaryButton(course.getCourseId() != null ? "Lưu thay đổi" : "Thêm mới");
-        saveBtn.addActionListener(e -> onSave());
-
-        btnPanel.add(cancelBtn);
-        btnPanel.add(saveBtn);
-        content.add(btnPanel, BorderLayout.SOUTH);
-
-        setContentPane(content);
+        return form;
     }
 
-    private void onSave() {
+    @Override
+    protected boolean validateForm() {
         String name = tfName.getText().trim();
         if (name.isEmpty()) {
-            showWarning("Tên khóa học không được để trống.");
+            setError("Tên khóa học không được để trống.");
             tfName.requestFocus();
-            return;
+            return false;
         }
+
+        if (!tfDuration.getText().trim().isEmpty()) {
+            try {
+                int duration = Integer.parseInt(tfDuration.getText().trim());
+                if (duration <= 0) {
+                    setError("Thời lượng phải là số dương.");
+                    tfDuration.requestFocus();
+                    return false;
+                }
+            } catch (NumberFormatException ex) {
+                setError("Thời lượng phải là số nguyên.");
+                tfDuration.requestFocus();
+                return false;
+            }
+        }
+
+        if (!tfFee.getText().trim().isEmpty()) {
+            try {
+                BigDecimal fee = new BigDecimal(tfFee.getText().trim());
+                if (fee.compareTo(BigDecimal.ZERO) < 0) {
+                    setError("Học phí không được âm.");
+                    tfFee.requestFocus();
+                    return false;
+                }
+            } catch (NumberFormatException ex) {
+                setError("Học phí không hợp lệ.");
+                tfFee.requestFocus();
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    @Override
+    protected void commitToEntity() {
+        course.setCourseName(tfName.getText().trim());
+        course.setDescription(taDescription.getText().trim().isEmpty() ? null : taDescription.getText().trim());
+        course.setLevel(((CourseLevel) cbLevel.getSelectedItem()).getValue());
 
         Integer duration = null;
         if (!tfDuration.getText().trim().isEmpty()) {
             try {
                 duration = Integer.parseInt(tfDuration.getText().trim());
-                if (duration <= 0) {
-                    showWarning("Thời lượng phải là số dương.");
-                    tfDuration.requestFocus();
-                    return;
-                }
-            } catch (NumberFormatException ex) {
-                showWarning("Thời lượng phải là số nguyên.");
-                tfDuration.requestFocus();
-                return;
-            }
+            } catch (NumberFormatException ignored) {}
         }
+        course.setDuration(duration);
+
+        course.setDurationUnit(((DurationUnit) cbDurationUnit.getSelectedItem()).getValue());
 
         BigDecimal fee = BigDecimal.ZERO;
         if (!tfFee.getText().trim().isEmpty()) {
             try {
                 fee = new BigDecimal(tfFee.getText().trim());
-                if (fee.compareTo(BigDecimal.ZERO) < 0) {
-                    showWarning("Học phí không được âm.");
-                    tfFee.requestFocus();
-                    return;
-                }
-            } catch (NumberFormatException ex) {
-                showWarning("Học phí không hợp lệ.");
-                tfFee.requestFocus();
-                return;
-            }
+            } catch (NumberFormatException ignored) {}
         }
-
-        course.setCourseName(name);
-        course.setDescription(taDescription.getText().trim().isEmpty() ? null : taDescription.getText().trim());
-        course.setLevel(((CourseLevel) cbLevel.getSelectedItem()).getValue());
-        course.setDuration(duration);
-        course.setDurationUnit(((DurationUnit) cbDurationUnit.getSelectedItem()).getValue());
         course.setFee(fee);
-        course.setStatus(((ActiveStatus) cbStatus.getSelectedItem()).getValue());
 
-        saved = true;
-        dispose();
+        course.setStatus(((ActiveStatus) cbStatus.getSelectedItem()).getValue());
     }
 
-    public boolean isSaved()  { return saved; }
-    public Course getCourse() { return course; }
+    @Override
+    public Course getEntity() {
+        return course;
+    }
 
     private void addRow(JPanel panel, GridBagConstraints gbc, int row, String label, JComponent field) {
         int base = row * 2 + 2; // tránh đè vùng mô tả
         gbc.gridy  = base;
         gbc.insets = new Insets(row == 0 ? 0 : 10, 0, 2, 0);
-        JLabel lbl = new JLabel(label);
-        lbl.setFont(FONT_SMALL);
-        lbl.setForeground(TEXT_MUTED);
-        panel.add(lbl, gbc);
+        panel.add(ComponentFactory.formLabel(label), gbc);
 
         gbc.gridy  = base + 1;
         gbc.insets = new Insets(0, 0, 0, 0);
         field.setPreferredSize(new Dimension(150, 36));
         panel.add(field, gbc);
-    }
-
-    private JTextField createField(String value) {
-        JTextField tf = new JTextField(value);
-        tf.setFont(FONT_MAIN);
-        tf.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(BORDER_COLOR),
-                BorderFactory.createEmptyBorder(4, 10, 4, 10)
-        ));
-        return tf;
-    }
-
-    private JButton createPrimaryButton(String text) {
-        JButton btn = new JButton(text);
-        btn.setFont(FONT_BOLD);
-        btn.setForeground(Color.WHITE);
-        btn.setBackground(PRIMARY);
-        btn.setBorder(BorderFactory.createEmptyBorder(8, 18, 8, 18));
-        btn.setFocusPainted(false);
-        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        btn.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseEntered(java.awt.event.MouseEvent e) { btn.setBackground(PRIMARY_HOVER); }
-            public void mouseExited (java.awt.event.MouseEvent e) { btn.setBackground(PRIMARY); }
-        });
-        return btn;
-    }
-
-    private JButton createSecondaryButton(String text) {
-        JButton btn = new JButton(text);
-        btn.setFont(FONT_MAIN);
-        btn.setForeground(TEXT_MAIN);
-        btn.setBackground(Color.WHITE);
-        btn.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(BORDER_COLOR),
-                BorderFactory.createEmptyBorder(7, 16, 7, 16)
-        ));
-        btn.setFocusPainted(false);
-        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        btn.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseEntered(java.awt.event.MouseEvent e) { btn.setBackground(new Color(241, 245, 249)); }
-            public void mouseExited (java.awt.event.MouseEvent e)  { btn.setBackground(Color.WHITE); }
-        });
-        return btn;
-    }
-
-    private void showWarning(String msg) {
-        JOptionPane.showMessageDialog(this, msg, "Cảnh báo", JOptionPane.WARNING_MESSAGE);
     }
 }
 

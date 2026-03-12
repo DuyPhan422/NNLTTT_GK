@@ -4,12 +4,14 @@ import com.company.ems.model.Result;
 import com.company.ems.model.Student;
 import com.company.ems.service.ResultService;
 import com.company.ems.service.ResultService.RankedResult;
+import com.company.ems.ui.common.ComponentFactory;
+import com.company.ems.ui.common.TableStyler;
+import com.company.ems.ui.common.Theme;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.MatteBorder;
 import javax.swing.table.DefaultTableModel;
-import javax.swing.table.JTableHeader;
 import java.awt.*;
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -27,29 +29,6 @@ import java.util.List;
  * └─────────────────────────────────────────────────────────────────────┘
  */
 public class ResultStudentPanel extends JPanel {
-
-    // ── Design tokens ─────────────────────────────────────────────────────
-    private static final Color BG_PAGE    = new Color(248, 250, 252);
-    private static final Color BG_CARD    = Color.WHITE;
-    private static final Color BORDER_COL = new Color(226, 232, 240);
-    private static final Color PRIMARY    = new Color(37,  99,  235);
-    private static final Color GREEN      = new Color(22,  163, 74);
-    private static final Color AMBER      = new Color(217, 119, 6);
-    private static final Color RED        = new Color(220, 38,  38);
-    private static final Color BLUE       = new Color(59,  130, 246);
-    private static final Color PURPLE     = new Color(124, 58,  237);
-    private static final Color TEXT_MAIN  = new Color(15,  23,  42);
-    private static final Color TEXT_MUTED = new Color(100, 116, 139);
-    private static final Color ROW_EVEN   = Color.WHITE;
-    private static final Color ROW_ODD    = new Color(248, 250, 252);
-    private static final Color ROW_SELECT = new Color(219, 234, 254);
-
-    private static final Font FONT_MAIN   = new Font("Segoe UI", Font.PLAIN,  13);
-    private static final Font FONT_BOLD   = new Font("Segoe UI", Font.BOLD,   13);
-    private static final Font FONT_SMALL  = new Font("Segoe UI", Font.PLAIN,  12);
-    private static final Font FONT_HEADER = new Font("Segoe UI", Font.BOLD,   15);
-    private static final Font FONT_KPI_V  = new Font("Segoe UI", Font.BOLD,   26);
-    private static final Font FONT_KPI_L  = new Font("Segoe UI", Font.PLAIN,  11);
 
     // COL indices
     private static final int C_STT     = 0;
@@ -92,25 +71,25 @@ public class ResultStudentPanel extends JPanel {
         this.resultService  = resultService;
         this.currentStudent = currentStudent;
 
-        kpiClasses = kpiVal("—");
-        kpiScored  = kpiVal("—");
-        kpiGpa     = kpiVal("—");
-        kpiPass    = kpiVal("—");
+        kpiClasses = ComponentFactory.kpiValueLabel();
+        kpiScored  = ComponentFactory.kpiValueLabel();
+        kpiGpa     = ComponentFactory.kpiValueLabel();
+        kpiPass    = ComponentFactory.kpiValueLabel();
 
         tableModel = buildTableModel();
         table      = buildTable();
         lblStatus  = new JLabel(" ");
-        lblStatus.setFont(FONT_SMALL);
-        lblStatus.setForeground(TEXT_MUTED);
+        lblStatus.setFont(Theme.FONT_SMALL);
+        lblStatus.setForeground(Theme.TEXT_MUTED);
         lblStatus.setBorder(new EmptyBorder(8, 0, 0, 0));
 
         setLayout(new BorderLayout(0, 16));
-        setBackground(BG_PAGE);
+        setBackground(Theme.BG_PAGE);
         setBorder(new EmptyBorder(20, 24, 20, 24));
 
-        add(buildHeader(),   BorderLayout.NORTH);
+        add(buildHeader(),    BorderLayout.NORTH);
         add(buildTableCard(), BorderLayout.CENTER);
-        add(lblStatus,       BorderLayout.SOUTH);
+        add(lblStatus,        BorderLayout.SOUTH);
 
         loadData();
     }
@@ -126,25 +105,15 @@ public class ResultStudentPanel extends JPanel {
         titleRow.setOpaque(false);
 
         JLabel title = new JLabel("📊 Bảng điểm của tôi");
-        title.setFont(FONT_HEADER);
-        title.setForeground(TEXT_MAIN);
+        title.setFont(Theme.FONT_HEADER);
+        title.setForeground(Theme.TEXT_MAIN);
         titleRow.add(title, BorderLayout.WEST);
 
-        JButton btnRefresh = new JButton("↻ Làm mới");
-        btnRefresh.setFont(FONT_SMALL);
-        btnRefresh.setForeground(PRIMARY);
-        btnRefresh.setBackground(BG_CARD);
-        btnRefresh.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(BORDER_COL),
-                new EmptyBorder(4, 12, 4, 12)));
-        btnRefresh.setFocusPainted(false);
-        btnRefresh.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        JButton btnRefresh = ComponentFactory.navButton("↻ Làm mới");
         btnRefresh.addActionListener(e -> loadData());
         titleRow.add(btnRefresh, BorderLayout.EAST);
 
-        wrapper.add(titleRow, BorderLayout.NORTH);
-
-        // KPI row
+        wrapper.add(titleRow,    BorderLayout.NORTH);
         wrapper.add(buildKpiRow(), BorderLayout.SOUTH);
         return wrapper;
     }
@@ -152,78 +121,43 @@ public class ResultStudentPanel extends JPanel {
     private JPanel buildKpiRow() {
         JPanel row = new JPanel(new GridLayout(1, 4, 12, 0));
         row.setOpaque(false);
-        row.add(buildKpiCard("Tổng lớp đã học",   kpiClasses, PRIMARY));
-        row.add(buildKpiCard("Đã có điểm",         kpiScored,  BLUE));
-        row.add(buildKpiCard("GPA trung bình",      kpiGpa,     GREEN));
-        row.add(buildKpiCard("Đạt / Chưa đạt",     kpiPass,    AMBER));
+        row.add(ComponentFactory.kpiCard("Tổng lớp đã học", kpiClasses, Theme.PRIMARY));
+        row.add(ComponentFactory.kpiCard("Đã có điểm",      kpiScored,  Theme.BLUE));
+        row.add(ComponentFactory.kpiCard("GPA trung bình",  kpiGpa,     Theme.GREEN));
+        row.add(ComponentFactory.kpiCard("Đạt / Chưa đạt", kpiPass,    Theme.AMBER));
         return row;
-    }
-
-    private JPanel buildKpiCard(String label, JLabel valLabel, Color accent) {
-        JPanel card = new JPanel(new BorderLayout(0, 4));
-        card.setBackground(BG_CARD);
-        card.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(BORDER_COL),
-                new EmptyBorder(14, 18, 14, 18)));
-
-        JLabel lbl = new JLabel(label);
-        lbl.setFont(FONT_KPI_L);
-        lbl.setForeground(TEXT_MUTED);
-
-        valLabel.setFont(FONT_KPI_V);
-        valLabel.setForeground(accent);
-
-        card.add(lbl,      BorderLayout.NORTH);
-        card.add(valLabel, BorderLayout.CENTER);
-        return card;
-    }
-
-    private JLabel kpiVal(String v) {
-        JLabel l = new JLabel(v);
-        l.setFont(FONT_KPI_V);
-        return l;
     }
 
     // ── Table card ────────────────────────────────────────────────────────
 
     private JPanel buildTableCard() {
         JPanel card = new JPanel(new BorderLayout());
-        card.setBackground(BG_CARD);
-        card.setBorder(BorderFactory.createLineBorder(BORDER_COL));
+        card.setBackground(Theme.BG_CARD);
+        card.setBorder(BorderFactory.createLineBorder(Theme.BORDER));
 
         // Legend bar
         JPanel legendBar = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 8));
-        legendBar.setBackground(new Color(241, 245, 249));
-        legendBar.setBorder(new MatteBorder(0, 0, 1, 0, BORDER_COL));
+        legendBar.setBackground(Theme.BG_HEADER);
+        legendBar.setBorder(new MatteBorder(0, 0, 1, 0, Theme.BORDER));
 
         JLabel formula = new JLabel(
                 "<html><b>Công thức:</b> Điểm tổng = QT1×25% + QT2×25% + Cuối kỳ×50%</html>");
-        formula.setFont(FONT_SMALL);
-        formula.setForeground(TEXT_MUTED);
+        formula.setFont(Theme.FONT_SMALL);
+        formula.setForeground(Theme.TEXT_MUTED);
         legendBar.add(formula);
 
         legendBar.add(new JLabel("  |  "));
-        legendBar.add(gradeBadge("A+ ≥9.0", GREEN));
-        legendBar.add(gradeBadge("A ≥8.5",  new Color(34, 197, 94)));
-        legendBar.add(gradeBadge("B+ ≥7.0", BLUE));
-        legendBar.add(gradeBadge("C ≥5.0",  AMBER));
-        legendBar.add(gradeBadge("F <4.0",  RED));
+        legendBar.add(ComponentFactory.gradeBadge("A+ ≥9.0"));
+        legendBar.add(ComponentFactory.gradeBadge("A ≥8.5"));
+        legendBar.add(ComponentFactory.gradeBadge("B+ ≥7.0"));
+        legendBar.add(ComponentFactory.gradeBadge("C ≥5.0"));
+        legendBar.add(ComponentFactory.gradeBadge("F <4.0"));
 
         card.add(legendBar, BorderLayout.NORTH);
 
         table.setFillsViewportHeight(true);
-        JScrollPane scroll = new JScrollPane(table);
-        scroll.setBorder(null);
-        scroll.getViewport().setBackground(BG_CARD);
-        card.add(scroll, BorderLayout.CENTER);
+        card.add(TableStyler.scrollPaneNoBorder(table), BorderLayout.CENTER);
         return card;
-    }
-
-    private JLabel gradeBadge(String text, Color color) {
-        JLabel l = new JLabel(text);
-        l.setFont(new Font("Segoe UI", Font.BOLD, 11));
-        l.setForeground(color);
-        return l;
     }
 
     // ── Table model & table ───────────────────────────────────────────────
@@ -231,73 +165,22 @@ public class ResultStudentPanel extends JPanel {
     private DefaultTableModel buildTableModel() {
         return new DefaultTableModel(TABLE_COLS, 0) {
             @Override public boolean isCellEditable(int r, int c) { return false; }
-            @Override public java.lang.Class<?> getColumnClass(int c) { return String.class; }
+            @Override public Class<?> getColumnClass(int c) { return String.class; }
         };
     }
 
     private JTable buildTable() {
-        JTable t = new JTable(tableModel) {
-            @Override
-            public Component prepareRenderer(javax.swing.table.TableCellRenderer r, int row, int col) {
-                Component c = super.prepareRenderer(r, row, col);
-                boolean sel = isRowSelected(row);
-
-                // Column-based background tints
-                Color bg;
-                if (sel) {
-                    bg = ROW_SELECT;
-                } else if (col == C_QT1 || col == C_QT2) {
-                    bg = row % 2 == 0 ? new Color(255, 251, 235) : new Color(254, 243, 199);
-                } else if (col == C_CK) {
-                    bg = row % 2 == 0 ? new Color(240, 253, 244) : new Color(220, 252, 231);
-                } else if (col == C_TOTAL) {
-                    bg = row % 2 == 0 ? new Color(239, 246, 255) : new Color(219, 234, 254);
-                } else {
-                    bg = row % 2 == 0 ? ROW_EVEN : ROW_ODD;
-                }
-                c.setBackground(bg);
-                c.setForeground(TEXT_MAIN);
-
-                if (c instanceof JLabel lbl) {
-                    // Grade col
-                    if (col == C_GRADE) {
-                        lbl.setFont(FONT_BOLD);
-                        lbl.setHorizontalAlignment(SwingConstants.CENTER);
-                        lbl.setForeground(gradeColor(lbl.getText()));
-                    }
-                    // Total col bold + centered
-                    if (col == C_TOTAL) {
-                        lbl.setFont(FONT_BOLD);
-                        lbl.setHorizontalAlignment(SwingConstants.CENTER);
-                    }
-                    // Rank col
-                    if (col == C_RANK) {
-                        lbl.setHorizontalAlignment(SwingConstants.CENTER);
-                        lbl.setForeground(PURPLE);
-                        lbl.setFont(FONT_BOLD);
-                    }
-                    // Numeric score cols centered
-                    if (col == C_QT1 || col == C_QT2 || col == C_CK) {
-                        lbl.setHorizontalAlignment(SwingConstants.CENTER);
-                    }
-                }
-                return c;
-            }
-        };
-
-        t.setFont(FONT_MAIN);
+        JTable t = new JTable(tableModel);
+        TableStyler.applyDefaults(t);
         t.setRowHeight(42);
-        t.setShowGrid(false);
-        t.setIntercellSpacing(new Dimension(0, 0));
-        t.setBackground(BG_CARD);
-        t.setSelectionBackground(ROW_SELECT);
 
-        JTableHeader header = t.getTableHeader();
-        header.setFont(FONT_BOLD);
-        header.setBackground(new Color(241, 245, 249));
-        header.setForeground(TEXT_MUTED);
-        header.setPreferredSize(new Dimension(0, 44));
-        header.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, BORDER_COL));
+        // Column-specific renderers
+        t.getColumnModel().getColumn(C_QT1)  .setCellRenderer(TableStyler.centeredRenderer(Theme.COL_QT_EVEN,  Theme.COL_QT_ODD));
+        t.getColumnModel().getColumn(C_QT2)  .setCellRenderer(TableStyler.centeredRenderer(Theme.COL_QT_EVEN,  Theme.COL_QT_ODD));
+        t.getColumnModel().getColumn(C_CK)   .setCellRenderer(TableStyler.centeredRenderer(Theme.COL_CK_EVEN,  Theme.COL_CK_ODD));
+        t.getColumnModel().getColumn(C_TOTAL).setCellRenderer(TableStyler.centeredBoldRenderer(Theme.COL_TOT_EVEN, Theme.COL_TOT_ODD));
+        t.getColumnModel().getColumn(C_GRADE).setCellRenderer(TableStyler.gradeRenderer());
+        t.getColumnModel().getColumn(C_RANK) .setCellRenderer(TableStyler.rankRenderer());
 
         // Column widths
         t.getColumnModel().getColumn(C_STT)    .setPreferredWidth(42);  t.getColumnModel().getColumn(C_STT).setMaxWidth(50);
@@ -363,7 +246,6 @@ public class ResultStudentPanel extends JPanel {
                 .filter(rr -> rr.result().getScore() != null)
                 .count();
 
-        // GPA: trung bình các điểm tổng khác null
         double gpa = results.stream()
                 .filter(rr -> rr.result().getScore() != null)
                 .mapToDouble(rr -> rr.result().getScore().doubleValue())
@@ -387,17 +269,6 @@ public class ResultStudentPanel extends JPanel {
 
     private static String fmt(BigDecimal v) {
         return v != null ? v.stripTrailingZeros().toPlainString() : "—";
-    }
-
-    private Color gradeColor(String g) {
-        if (g == null || g.equals("—")) return TEXT_MUTED;
-        return switch (g) {
-            case "A+", "A", "A-" -> GREEN;
-            case "B+", "B", "B-" -> BLUE;
-            case "C"              -> AMBER;
-            case "D", "F"         -> RED;
-            default               -> TEXT_MUTED;
-        };
     }
 }
 

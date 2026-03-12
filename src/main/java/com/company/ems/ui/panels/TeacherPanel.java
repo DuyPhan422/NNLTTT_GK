@@ -84,8 +84,8 @@ public class TeacherPanel extends BaseCrudPanel<Teacher> {
         dlg.setVisible(true);
         if (!dlg.isSaved()) return;
         try {
-            if (existing != null) teacherService.update(dlg.getTeacher());
-            else                  teacherService.save(dlg.getTeacher());
+            if (existing != null) teacherService.update(dlg.getEntity());
+            else                  teacherService.save(dlg.getEntity());
             showSuccess(existing != null ? "Cập nhật thành công." : "Thêm mới thành công.");
             notifyChanged();
         } catch (Exception e) {

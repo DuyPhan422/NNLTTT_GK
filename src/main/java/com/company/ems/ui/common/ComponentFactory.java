@@ -3,7 +3,6 @@ package com.company.ems.ui.common;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
-import java.util.function.Consumer;
 
 /**
  * Factory tạo các Swing component tái sử dụng theo chuẩn design system.
@@ -202,6 +201,55 @@ public final class ComponentFactory {
         tf.putClientProperty("JTextField.placeholderText", placeholder);
         return tf;
     }
+
+    // ══════════════════════════════════════════════════════════════════════
+    //  FORM COMPONENTS
+    // ══════════════════════════════════════════════════════════════════════
+
+    /**
+     * JTextField cho form nhập liệu với placeholder.
+     */
+    public static JTextField formField(String placeholder) {
+        JTextField tf = new JTextField();
+        tf.setFont(Theme.FONT_PLAIN);
+        tf.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(Theme.BORDER),
+                new EmptyBorder(6, 10, 6, 10)));
+        tf.putClientProperty("JTextField.placeholderText", placeholder);
+        return tf;
+    }
+
+    /**
+     * JTextField cho form nhập liệu không có placeholder.
+     */
+    public static JTextField formField() {
+        return formField("");
+    }
+
+    /**
+     * JLabel nhãn cho field trong form.
+     */
+    public static JLabel formLabel(String text) {
+        JLabel lbl = new JLabel(text);
+        lbl.setFont(Theme.FONT_SMALL_BOLD);
+        lbl.setForeground(Theme.TEXT_MUTED);
+        return lbl;
+    }
+
+    /**
+     * JTextArea cho form nhập liệu nhiều dòng.
+     */
+    public static JTextArea formTextArea(int rows) {
+        JTextArea ta = new JTextArea(rows, 0);
+        ta.setFont(Theme.FONT_PLAIN);
+        ta.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(Theme.BORDER),
+                new EmptyBorder(6, 10, 6, 10)));
+        ta.setLineWrap(true);
+        ta.setWrapStyleWord(true);
+        return ta;
+    }
+
 
     // ══════════════════════════════════════════════════════════════════════
     //  SIDEBAR CLASS ITEM

@@ -54,6 +54,15 @@ public final class Theme {
     public static final Color RED        = new Color(220, 38,  38);
     public static final Color PURPLE     = new Color(124, 58,  237);
 
+    /** Nền row tổng cộng — vàng nhạt */
+    public static final Color AMBER_TINT   = new Color(255, 247, 237);
+    /** Viền bảng chờ thanh toán — cam nhạt */
+    public static final Color AMBER_BORDER = new Color(254, 215, 170);
+    /** Viền bảng lịch sử đã thanh toán — xanh lá nhạt */
+    public static final Color GREEN_BORDER = new Color(187, 247, 208);
+    /** Màu chú thích phụ trên header dialog (slate-400) */
+    public static final Color TEXT_SUB     = new Color(148, 163, 184);
+
     // ══════════════════════════════════════════════════════════════════════
     //  TEXT
     // ══════════════════════════════════════════════════════════════════════
@@ -111,10 +120,11 @@ public final class Theme {
     //  FONTS
     // ══════════════════════════════════════════════════════════════════════
 
-    public static final Font FONT_PLAIN   = new Font("Segoe UI", Font.PLAIN, 13);
-    public static final Font FONT_BOLD    = new Font("Segoe UI", Font.BOLD,  13);
-    public static final Font FONT_SMALL   = new Font("Segoe UI", Font.PLAIN, 12);
-    public static final Font FONT_HEADER  = new Font("Segoe UI", Font.BOLD,  14);
+    public static final Font FONT_PLAIN      = new Font("Segoe UI", Font.PLAIN, 13);
+    public static final Font FONT_BOLD       = new Font("Segoe UI", Font.BOLD,  13);
+    public static final Font FONT_SMALL      = new Font("Segoe UI", Font.PLAIN, 12);
+    public static final Font FONT_SMALL_BOLD = new Font("Segoe UI", Font.BOLD,  12);
+    public static final Font FONT_HEADER     = new Font("Segoe UI", Font.BOLD,  14);
     public static final Font FONT_TITLE   = new Font("Segoe UI", Font.BOLD,  15);
     public static final Font FONT_SECTION = new Font("Segoe UI", Font.BOLD,  15);
     public static final Font FONT_KPI_VAL = new Font("Segoe UI", Font.BOLD,  26);

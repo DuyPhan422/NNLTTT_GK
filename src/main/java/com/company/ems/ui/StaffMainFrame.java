@@ -1,6 +1,7 @@
 package com.company.ems.ui;
 
 import com.company.ems.service.*;
+import com.company.ems.ui.common.Theme;
 import com.company.ems.ui.components.HeaderPanel;
 import com.company.ems.ui.components.SidebarPanel;
 import com.company.ems.ui.panels.*;
@@ -84,7 +85,7 @@ public class StaffMainFrame extends JFrame {
         add(sidebar, BorderLayout.WEST);
 
         JPanel rightPanel = new JPanel(new BorderLayout());
-        rightPanel.setBackground(new Color(248, 250, 252));
+        rightPanel.setBackground(Theme.BG_PAGE);
 
         headerPanel = new HeaderPanel("Quản lý Học viên", "Danh sách toàn bộ học viên");
         headerPanel.setUserInfo("Nhân viên");
@@ -92,7 +93,7 @@ public class StaffMainFrame extends JFrame {
 
         cardLayout = new CardLayout();
         contentPanel = new JPanel(cardLayout);
-        contentPanel.setBackground(new Color(248, 250, 252));
+        contentPanel.setBackground(Theme.BG_PAGE);
 
         // ── Panels mà Staff được phép truy cập ──────────────────────────
         studentPanel    = new StudentPanel(studentService);

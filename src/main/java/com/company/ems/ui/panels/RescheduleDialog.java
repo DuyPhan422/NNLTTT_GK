@@ -4,6 +4,8 @@ import com.company.ems.model.Room;
 import com.company.ems.model.Schedule;
 import com.company.ems.service.RoomService;
 import com.company.ems.service.ScheduleService;
+import com.company.ems.ui.common.ComponentFactory;
+import com.company.ems.ui.common.Theme;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -28,21 +30,9 @@ import java.util.stream.Collectors;
  */
 public class RescheduleDialog extends JDialog {
 
-    // ── Design tokens ─────────────────────────────────────────────────────
-    private static final Color BG_CARD      = Color.WHITE;
-    private static final Color BORDER_COLOR = new Color(226, 232, 240);
-    private static final Color PRIMARY      = new Color(37, 99, 235);
-    private static final Color PRIMARY_H    = new Color(29, 78, 216);
-    private static final Color SUCCESS      = new Color(22, 163, 74);
-    private static final Color WARN_BG      = new Color(254, 252, 232);
-    private static final Color WARN_BORDER  = new Color(253, 224, 71);
-    private static final Color TEXT_MAIN    = new Color(15, 23, 42);
-    private static final Color TEXT_MUTED   = new Color(100, 116, 139);
-    private static final Color DANGER       = new Color(220, 38, 38);
-
-    private static final Font FONT_MAIN  = new Font("Segoe UI", Font.PLAIN, 13);
-    private static final Font FONT_BOLD  = new Font("Segoe UI", Font.BOLD,  13);
-    private static final Font FONT_SMALL = new Font("Segoe UI", Font.PLAIN, 12);
+    // ── Design tokens → Theme / ComponentFactory ──────────────────────────
+    private static final Color WARN_BG     = new Color(254, 252, 232);
+    private static final Color WARN_BORDER = new Color(253, 224, 71);
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm");
 
@@ -76,18 +66,18 @@ public class RescheduleDialog extends JDialog {
         spinnerEnd   = buildTimeSpinner(schedule.getEndTime());
 
         cbRoom = new JComboBox<>();
-        cbRoom.setFont(FONT_MAIN);
+        cbRoom.setFont(Theme.FONT_PLAIN);
         cbRoom.setEnabled(false); // enabled after "Tìm phòng trống"
 
         lblStatus = new JLabel(" ");
-        lblStatus.setFont(FONT_SMALL);
+        lblStatus.setFont(Theme.FONT_SMALL);
 
         btnFindRooms = buildPrimaryBtn("🔍 Tìm phòng trống");
         btnFindRooms.addActionListener(e -> findAvailableRooms());
 
         btnConfirm = buildPrimaryBtn("✅ Xác nhận dời lịch");
         btnConfirm.setEnabled(false);
-        btnConfirm.setBackground(SUCCESS);
+        btnConfirm.setBackground(Theme.GREEN);
         btnConfirm.addActionListener(e -> doReschedule());
 
         buildUI();
@@ -102,7 +92,7 @@ public class RescheduleDialog extends JDialog {
 
     private void buildUI() {
         JPanel root = new JPanel(new BorderLayout(0, 16));
-        root.setBackground(BG_CARD);
+        root.setBackground(Theme.BG_CARD);
         root.setBorder(new EmptyBorder(24, 28, 20, 28));
 
         // ── Warning banner ────────────────────────────────────────────────
@@ -120,7 +110,7 @@ public class RescheduleDialog extends JDialog {
                 + " &nbsp;|&nbsp; Phòng: "
                 + (originalSchedule.getRoom() != null ? originalSchedule.getRoom().getRoomName() : "Chưa có")
                 + "</span></html>");
-        warnLbl.setFont(FONT_SMALL);
+        warnLbl.setFont(Theme.FONT_SMALL);
         warn.add(warnLbl, BorderLayout.CENTER);
         root.add(warn, BorderLayout.NORTH);
 
@@ -161,14 +151,7 @@ public class RescheduleDialog extends JDialog {
         JPanel btnRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         btnRow.setOpaque(false);
 
-        JButton btnCancel = new JButton("Hủy");
-        btnCancel.setFont(FONT_MAIN);
-        btnCancel.setForeground(TEXT_MAIN);
-        btnCancel.setBackground(Color.WHITE);
-        btnCancel.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(BORDER_COLOR),
-                new EmptyBorder(7, 16, 7, 16)));
-        btnCancel.setFocusPainted(false);
+        JButton btnCancel = ComponentFactory.secondaryButton("Hủy");
         btnCancel.addActionListener(e -> dispose());
 
         btnRow.add(btnCancel);
@@ -186,7 +169,7 @@ public class RescheduleDialog extends JDialog {
         LocalTime  end   = spinnerToLocalTime(spinnerEnd);
 
         if (!end.isAfter(start)) {
-            showStatus("⚠ Giờ kết thúc phải sau giờ bắt đầu.", DANGER);
+            showStatus("⚠ Giờ kết thúc phải sau giờ bắt đầu.", Theme.DANGER);
             return;
         }
 
@@ -206,7 +189,7 @@ public class RescheduleDialog extends JDialog {
 
             cbRoom.removeAllItems();
             if (availableRooms.isEmpty()) {
-                showStatus("❌ Không có phòng trống trong khung giờ này.", DANGER);
+                showStatus("❌ Không có phòng trống trong khung giờ này.", Theme.DANGER);
                 cbRoom.setEnabled(false);
                 btnConfirm.setEnabled(false);
             } else {
@@ -221,10 +204,10 @@ public class RescheduleDialog extends JDialog {
                 }
                 cbRoom.setEnabled(true);
                 btnConfirm.setEnabled(true);
-                showStatus("✅ Tìm thấy " + availableRooms.size() + " phòng trống.", SUCCESS);
+                showStatus("✅ Tìm thấy " + availableRooms.size() + " phòng trống.", Theme.GREEN);
             }
         } catch (Exception ex) {
-            showStatus("Lỗi khi tìm phòng: " + ex.getMessage(), DANGER);
+            showStatus("Lỗi khi tìm phòng: " + ex.getMessage(), Theme.DANGER);
         }
     }
 
@@ -235,7 +218,7 @@ public class RescheduleDialog extends JDialog {
         Room      newRoom  = (Room) cbRoom.getSelectedItem();
 
         if (!newEnd.isAfter(newStart)) {
-            showStatus("⚠ Giờ kết thúc phải sau giờ bắt đầu.", DANGER);
+            showStatus("⚠ Giờ kết thúc phải sau giờ bắt đầu.", Theme.DANGER);
             return;
         }
 
@@ -245,7 +228,7 @@ public class RescheduleDialog extends JDialog {
                     newRoom.getRoomId(), newDate, newStart, newEnd,
                     originalSchedule.getScheduleId());
             if (!conflicts.isEmpty()) {
-                showStatus("⚠ Phòng đã bị đặt sau khi tìm kiếm. Vui lòng tìm lại.", DANGER);
+                showStatus("⚠ Phòng đã bị đặt sau khi tìm kiếm. Vui lòng tìm lại.", Theme.DANGER);
                 btnConfirm.setEnabled(false);
                 return;
             }
@@ -260,7 +243,7 @@ public class RescheduleDialog extends JDialog {
             saved = true;
             dispose();
         } catch (Exception ex) {
-            showStatus("Lỗi khi lưu: " + ex.getMessage(), DANGER);
+            showStatus("Lỗi khi lưu: " + ex.getMessage(), Theme.DANGER);
         }
     }
 
@@ -274,7 +257,7 @@ public class RescheduleDialog extends JDialog {
                 null, null, java.util.Calendar.DAY_OF_MONTH);
         JSpinner sp = new JSpinner(m);
         sp.setEditor(new JSpinner.DateEditor(sp, "dd/MM/yyyy"));
-        sp.setFont(FONT_MAIN);
+        sp.setFont(Theme.FONT_PLAIN);
         sp.setPreferredSize(new Dimension(140, 34));
         return sp;
     }
@@ -289,7 +272,7 @@ public class RescheduleDialog extends JDialog {
                 cal.getTime(), null, null, java.util.Calendar.MINUTE);
         JSpinner sp = new JSpinner(m);
         sp.setEditor(new JSpinner.DateEditor(sp, "HH:mm"));
-        sp.setFont(FONT_MAIN);
+        sp.setFont(Theme.FONT_PLAIN);
         sp.setPreferredSize(new Dimension(80, 34));
         return sp;
     }
@@ -307,28 +290,13 @@ public class RescheduleDialog extends JDialog {
 
     private JLabel lbl(String text) {
         JLabel l = new JLabel(text);
-        l.setFont(FONT_SMALL);
-        l.setForeground(TEXT_MUTED);
+        l.setFont(Theme.FONT_SMALL);
+        l.setForeground(Theme.TEXT_MUTED);
         return l;
     }
 
     private JButton buildPrimaryBtn(String text) {
-        JButton btn = new JButton(text);
-        btn.setFont(FONT_BOLD);
-        btn.setForeground(Color.WHITE);
-        btn.setBackground(PRIMARY);
-        btn.setBorder(new EmptyBorder(7, 16, 7, 16));
-        btn.setFocusPainted(false);
-        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        btn.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseEntered(java.awt.event.MouseEvent e) {
-                if (btn.isEnabled()) btn.setBackground(btn.getBackground().darker());
-            }
-            public void mouseExited(java.awt.event.MouseEvent e) {
-                // color reset handled by enabled state
-            }
-        });
-        return btn;
+        return ComponentFactory.primaryButton(text);
     }
 
     private void showStatus(String msg, Color color) {

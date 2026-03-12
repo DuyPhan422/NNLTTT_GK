@@ -3,7 +3,6 @@ package com.company.ems.ui.panels;
 import com.company.ems.model.Student;
 import com.company.ems.service.StudentService;
 import com.company.ems.ui.UI;
-import com.company.ems.ui.panels.StudentFormDialog;
 
 import javax.swing.*;
 import java.time.format.DateTimeFormatter;
@@ -90,8 +89,8 @@ public class StudentPanel extends BaseCrudPanel<Student> {
         dlg.setVisible(true);
         if (!dlg.isSaved()) return;
         try {
-            if (existing != null) studentService.update(dlg.getStudent());
-            else                  studentService.save(dlg.getStudent());
+            if (existing != null) studentService.update(dlg.getEntity());
+            else                  studentService.save(dlg.getEntity());
             showSuccess(existing != null ? "Cập nhật thành công." : "Thêm mới thành công.");
             notifyChanged();
         } catch (Exception e) {

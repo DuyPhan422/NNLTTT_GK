@@ -105,8 +105,8 @@ public class RoomPanel extends BaseCrudPanel<Room> {
         dlg.setVisible(true);
         if (!dlg.isSaved()) return;
         try {
-            if (existing != null) roomService.update(dlg.getRoom());
-            else                  roomService.save(dlg.getRoom());
+            if (existing != null) roomService.update(dlg.getEntity());
+            else                  roomService.save(dlg.getEntity());
             showSuccess(existing != null ? "Cập nhật phòng học thành công." : "Thêm phòng học mới thành công.");
             notifyChanged();
         } catch (Exception e) {

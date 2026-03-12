@@ -2,15 +2,15 @@ package com.company.ems;
 
 import com.company.ems.repo.jpa.*;
 import com.company.ems.service.*;
+import com.company.ems.ui.AppConfig;
 import com.company.ems.ui.LoginFrame;
-import com.company.ems.ui.UI;
 
 import javax.swing.*;
 
 public class Main {
 
     public static void main(String[] args) {
-        UI.initLookAndFeel();
+        AppConfig.initLookAndFeel();
 
         // ── Khởi tạo toàn bộ Repositories & Services (Manual DI) ────────
         StudentService    studentService    = new StudentService(new JpaStudentRepository());

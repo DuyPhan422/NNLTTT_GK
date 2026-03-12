@@ -1,6 +1,7 @@
 package com.company.ems.ui;
 
 import com.company.ems.service.*;
+import com.company.ems.ui.common.Theme;
 import com.company.ems.ui.components.HeaderPanel;
 import com.company.ems.ui.components.SidebarPanel;
 import com.company.ems.ui.panels.*;
@@ -93,7 +94,7 @@ public class MainFrame extends JFrame {
         add(sidebar, BorderLayout.WEST);
 
         JPanel rightPanel = new JPanel(new BorderLayout());
-        rightPanel.setBackground(new Color(248, 250, 252));
+        rightPanel.setBackground(Theme.BG_PAGE);
 
         headerPanel = new HeaderPanel("Dashboard Doanh thu", "Tổng quan doanh thu & giao dịch");
         headerPanel.setUserInfo("Quản trị");
@@ -101,7 +102,7 @@ public class MainFrame extends JFrame {
 
         cardLayout = new CardLayout();
         contentPanel = new JPanel(cardLayout);
-        contentPanel.setBackground(new Color(248, 250, 252));
+        contentPanel.setBackground(Theme.BG_PAGE);
 
         // ── Khởi tạo panels ─────────────────────────────────────────────
         dashboardPanel  = new RevenueDashboardPanel(paymentService, invoiceService);
