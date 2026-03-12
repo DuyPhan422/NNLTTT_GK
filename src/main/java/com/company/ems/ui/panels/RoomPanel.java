@@ -26,6 +26,7 @@ public class RoomPanel extends BaseCrudPanel<Room> {
         super(COLUMNS);
         this.roomService  = roomService;
         this.filterStatus = (JComboBox<String>) buildExtraFilters()[0];
+        loadData();
     }
 
     // ── Abstract contract ─────────────────────────────────────────────────

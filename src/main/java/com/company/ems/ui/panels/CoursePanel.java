@@ -35,6 +35,7 @@ public class CoursePanel extends BaseCrudPanel<Course> {
         JComboBox[] extras = buildExtraFilters();
         this.filterLevel   = (JComboBox<String>) extras[0];
         this.filterStatus  = (JComboBox<String>) extras[1];
+        loadData();
     }
 
     // ── Abstract contract ─────────────────────────────────────────────────

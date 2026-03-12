@@ -26,6 +26,7 @@ public class StudentPanel extends BaseCrudPanel<Student> {
     public StudentPanel(StudentService studentService) {
         super(COLUMNS);
         this.studentService = studentService;
+        loadData();
     }
 
     // ── Abstract contract ─────────────────────────────────────────────────

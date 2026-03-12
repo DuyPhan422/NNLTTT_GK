@@ -113,7 +113,7 @@ public class ResultAdminPanel extends JPanel {
 
         kpiRow.add(buildKpiCard("📋  Tổng đã chấm điểm",  lblTotal,    PRIMARY));
         kpiRow.add(buildKpiCard("📈  Điểm trung bình",     lblAvg,      GREEN));
-        kpiRow.add(buildKpiCard("✅  Tỉ lệ đạt (≥ 5.0)",  lblPassRate, AMBER));
+        kpiRow.add(buildKpiCard("✅  Tỉ lệ đạt (≥ 5.0)",   lblPassRate, AMBER));
         kpiRow.add(buildKpiCard("❌  Không đạt (< 5.0)",  lblFailCnt,  RED));
 
         // Filter row
@@ -476,7 +476,7 @@ public class ResultAdminPanel extends JPanel {
 
         int row = 0;
         lc.gridy = fc.gridy = row++;
-        form.add(styledMutedLabel("Điểm (0 – 10) *:"), lc);
+        form.add(styledMutedLabel("Điểm (0.0 – 10.0) *:"), lc);
         form.add(tfScore, fc);
 
         lc.gridy = fc.gridy = row++;
@@ -503,14 +503,14 @@ public class ResultAdminPanel extends JPanel {
                 scoreVal = Double.parseDouble(raw);
             } catch (NumberFormatException ex) {
                 JOptionPane.showMessageDialog(dlg,
-                    "Điểm phải là số thực trong khoảng 0 đến 10.",
+                    "Điểm phải là số thực trong khoảng 0.0 đến 10.0.",
                     "Lỗi nhập liệu", JOptionPane.WARNING_MESSAGE);
                 tfScore.requestFocus();
                 return;
             }
             if (scoreVal < 0 || scoreVal > 10) {
                 JOptionPane.showMessageDialog(dlg,
-                    "Điểm phải nằm trong khoảng 0 đến 10.",
+                    "Điểm phải nằm trong khoảng 0.0 đến 10.0.",
                     "Lỗi nhập liệu", JOptionPane.WARNING_MESSAGE);
                 tfScore.requestFocus();
                 return;
