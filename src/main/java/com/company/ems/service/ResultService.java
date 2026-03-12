@@ -88,15 +88,15 @@ public class ResultService extends AbstractBaseService<Result, Long> {
     public static String autoGrade(double score) {
         record Threshold(double min, String grade) {}
         return java.util.stream.Stream.of(
-                new Threshold(9.0, "A+"),
-                new Threshold(8.5, "A"),
-                new Threshold(8.0, "A-"),
-                new Threshold(7.0, "B+"),
-                new Threshold(6.5, "B"),
-                new Threshold(6.0, "B-"),
-                new Threshold(5.0, "C"),
-                new Threshold(4.0, "D"),
-                new Threshold(0.0, "F"))
+                new Threshold(90.0, "A+"),
+                new Threshold(85.0, "A"),
+                new Threshold(80.0, "A-"),
+                new Threshold(70.0, "B+"),
+                new Threshold(65.0, "B"),
+                new Threshold(60.0, "B-"),
+                new Threshold(50.0, "C"),
+                new Threshold(40.0, "D"),
+                new Threshold(0.0,  "F"))
                 .filter(t -> score >= t.min())
                 .findFirst()
                 .map(Threshold::grade)

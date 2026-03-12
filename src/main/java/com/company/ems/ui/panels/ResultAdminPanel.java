@@ -113,8 +113,8 @@ public class ResultAdminPanel extends JPanel {
 
         kpiRow.add(buildKpiCard("📋  Tổng đã chấm điểm",  lblTotal,    PRIMARY));
         kpiRow.add(buildKpiCard("📈  Điểm trung bình",     lblAvg,      GREEN));
-        kpiRow.add(buildKpiCard("✅  Tỉ lệ đạt (≥ 5.0)",  lblPassRate, AMBER));
-        kpiRow.add(buildKpiCard("❌  Không đạt (< 5.0)",  lblFailCnt,  RED));
+        kpiRow.add(buildKpiCard("✅  Tỉ lệ đạt (≥ 50.0)",   lblPassRate, AMBER));
+        kpiRow.add(buildKpiCard("❌  Không đạt (< 50.0)",  lblFailCnt,  RED));
 
         // Filter row
         JPanel filterRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
@@ -348,11 +348,11 @@ public class ResultAdminPanel extends JPanel {
             .average();
 
         long passCount = results.stream()
-            .filter(r -> r.getScore() != null && r.getScore().doubleValue() >= 5.0)
+            .filter(r -> r.getScore() != null && r.getScore().doubleValue() >= 50.0)
             .count();
 
         long failCount = results.stream()
-            .filter(r -> r.getScore() != null && r.getScore().doubleValue() < 5.0)
+            .filter(r -> r.getScore() != null && r.getScore().doubleValue() < 50.0)
             .count();
 
         double passRate = totalGraded > 0 ? (passCount * 100.0 / totalGraded) : 0.0;
@@ -437,10 +437,10 @@ public class ResultAdminPanel extends JPanel {
             void update() {
                 try {
                     double v = Double.parseDouble(tfScore.getText().trim().replace(",", "."));
-                    if (v >= 0 && v <= 10) {
+                    if (v >= 0 && v <= 100) {
                         String g = ResultService.autoGrade(v);
                         lblComputedGrade.setText(g);
-                        lblComputedGrade.setForeground(v >= 5.0 ? GREEN : RED);
+                        lblComputedGrade.setForeground(v >= 50.0 ? GREEN : RED);
                     } else {
                         lblComputedGrade.setText("Ngoài khoảng");
                         lblComputedGrade.setForeground(RED);
@@ -476,7 +476,7 @@ public class ResultAdminPanel extends JPanel {
 
         int row = 0;
         lc.gridy = fc.gridy = row++;
-        form.add(styledMutedLabel("Điểm (0 – 10) *:"), lc);
+        form.add(styledMutedLabel("Điểm (0 – 100) *:"), lc);
         form.add(tfScore, fc);
 
         lc.gridy = fc.gridy = row++;
@@ -503,14 +503,14 @@ public class ResultAdminPanel extends JPanel {
                 scoreVal = Double.parseDouble(raw);
             } catch (NumberFormatException ex) {
                 JOptionPane.showMessageDialog(dlg,
-                    "Điểm phải là số thực trong khoảng 0 đến 10.",
+                    "Điểm phải là số thực trong khoảng 0 đến 100.",
                     "Lỗi nhập liệu", JOptionPane.WARNING_MESSAGE);
                 tfScore.requestFocus();
                 return;
             }
-            if (scoreVal < 0 || scoreVal > 10) {
+            if (scoreVal < 0 || scoreVal > 100) {
                 JOptionPane.showMessageDialog(dlg,
-                    "Điểm phải nằm trong khoảng 0 đến 10.",
+                    "Điểm phải nằm trong khoảng 0 đến 100.",
                     "Lỗi nhập liệu", JOptionPane.WARNING_MESSAGE);
                 tfScore.requestFocus();
                 return;
@@ -620,7 +620,7 @@ public class ResultAdminPanel extends JPanel {
 
     private static Color gradeColor(BigDecimal score) {
         if (score == null) return TEXT_MUTED;
-        return score.doubleValue() >= 5.0 ? GREEN : RED;
+        return score.doubleValue() >= 50.0 ? GREEN : RED;
     }
 
     // ──────────────────────────────────────────────────────────────────────

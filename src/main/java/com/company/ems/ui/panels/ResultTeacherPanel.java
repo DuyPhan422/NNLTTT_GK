@@ -288,10 +288,10 @@ public class ResultTeacherPanel extends JPanel {
 
         // Legend
         JLabel legendLbl = new JLabel(
-                "<html><span style='color:#22c55e;'>A+≥9.0</span> &nbsp;"
-                + "<span style='color:#3b82f6;'>A≥8.5</span> &nbsp;"
-                + "<span style='color:#f59e0b;'>B+≥7.0</span> &nbsp;"
-                + "<span style='color:#ef4444;'>D/F&lt;5.0</span></html>");
+                "<html><span style='color:#22c55e;'>A+≥90</span> &nbsp;"
+                + "<span style='color:#3b82f6;'>A≥85</span> &nbsp;"
+                + "<span style='color:#f59e0b;'>B+≥70</span> &nbsp;"
+                + "<span style='color:#ef4444;'>D/F&lt;50</span></html>");
         legendLbl.setFont(FONT_SMALL);
         left.add(Box.createHorizontalStrut(12));
         left.add(legendLbl);
