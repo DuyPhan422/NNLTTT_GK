@@ -395,6 +395,7 @@ public class LoginFrame extends JFrame {
                 StudentMainFrame frame = new StudentMainFrame(
                         studentService, invoiceService, paymentService,
                         enrollmentService, classService, attendanceService,
+                        scheduleService, resultService,
                         account.getStudent().getStudentId(), onLogoutStudent
                 );
                 frame.setVisible(true);

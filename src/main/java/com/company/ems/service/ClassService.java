@@ -56,5 +56,14 @@ public class ClassService extends AbstractBaseService<Class, Long> {
             throw new RuntimeException("Lỗi khi lấy danh sách học viên: " + e.getMessage(), e);
         }
     }
+
+    /** Lấy danh sách lớp mà một học viên đã đăng ký (Enrolled) */
+    public List<Class> findByStudentId(Long studentId) {
+        try {
+            return txManager.runInTransaction(em -> classRepository.findByStudentId(em, studentId));
+        } catch (Exception e) {
+            throw new RuntimeException("Lỗi khi lấy danh sách lớp của học viên: " + e.getMessage(), e);
+        }
+    }
 }
 
