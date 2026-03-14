@@ -54,6 +54,7 @@ public class ClassPanel extends BaseCrudPanel<Class> {
         this.enrollmentService = enrollmentService;
         this.invoiceService    = invoiceService;
         this.filterStatus      = (JComboBox<String>) buildExtraFilters()[0];
+        loadData();
     }
 
     // ── Abstract contract ─────────────────────────────────────────────────

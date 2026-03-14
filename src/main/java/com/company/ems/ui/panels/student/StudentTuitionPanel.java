@@ -207,39 +207,15 @@ public class StudentTuitionPanel extends JPanel {
         lblHeader.setForeground(new Color(30, 41, 59));
         card.add(lblHeader, BorderLayout.NORTH);
 
-        JPanel btnGrid = new JPanel(new GridLayout(1, 2, 10, 0));
-        btnGrid.setOpaque(false);
-        ButtonGroup bg = new ButtonGroup();
-        for (String m : new String[]{"Tiền mặt", "Chuyển khoản"}) {
-            JToggleButton btn = new JToggleButton(m);
-            btn.setFont(Theme.FONT_SMALL_BOLD);
-            btn.setFocusPainted(false);
-            btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-            boolean isCash = "Tiền mặt".equals(m);
-            btn.setSelected(isCash);
-            btn.setBackground(isCash ? Theme.ITEM_ACTIVE : Theme.BG_CARD);
-            btn.setForeground(isCash ? Theme.PRIMARY : Theme.TEXT_MAIN);
-            btn.setBorder(BorderFactory.createCompoundBorder(
-                    new LineBorder(isCash ? Theme.PRIMARY : Theme.BORDER, isCash ? 2 : 1, true),
-                    new EmptyBorder(6, 12, 6, 12)));
-            btn.addActionListener(ev -> {
-                selectedPaymentMethod = m;
-                for (int i = 0; i < btnGrid.getComponentCount(); i++) {
-                    JToggleButton b = (JToggleButton) btnGrid.getComponent(i);
-                    boolean sel = b.isSelected();
-                    b.setBackground(sel ? Theme.ITEM_ACTIVE : Theme.BG_CARD);
-                    b.setForeground(sel ? Theme.PRIMARY : Theme.TEXT_MAIN);
-                    b.setBorder(BorderFactory.createCompoundBorder(
-                            new LineBorder(sel ? Theme.PRIMARY : Theme.BORDER, sel ? 2 : 1, true),
-                            new EmptyBorder(6, 12, 6, 12)));
-                }
-            });
-            bg.add(btn);
-            btnGrid.add(btn);
-        }
+        JLabel lblMethod = new JLabel("🏦  Chuyển khoản ngân hàng");
+        lblMethod.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        lblMethod.setForeground(Theme.PRIMARY);
+        lblMethod.setBorder(BorderFactory.createCompoundBorder(
+                new LineBorder(Theme.PRIMARY, 2, true),
+                new EmptyBorder(8, 14, 8, 14)));
         JPanel center = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 4));
         center.setOpaque(false);
-        center.add(btnGrid);
+        center.add(lblMethod);
         card.add(center, BorderLayout.CENTER);
 
         boolean hasDebt = !pendingEnrollments.isEmpty();
@@ -338,11 +314,7 @@ public class StudentTuitionPanel extends JPanel {
                 return;
             }
             dialog.dispose();
-            if ("Chuyển khoản".equals(selectedPaymentMethod)) {
-                openBankTransferDialog(chosen);
-            } else {
-                processPayment(chosen);
-            }
+            openBankTransferDialog(chosen);
         });
 
         btnPanel.add(btnClose);
@@ -375,7 +347,10 @@ public class StudentTuitionPanel extends JPanel {
                 System.currentTimeMillis() % 1_000_000L);
         Window owner = SwingUtilities.getWindowAncestor(this);
         BankTransferDialog dlg = new BankTransferDialog(owner, total, code,
-                () -> processPayment(chosen));
+                () -> {
+                    selectedPaymentMethod = "Chuy\u1ec3n kho\u1ea3n";
+                    processPayment(chosen);
+                });
         dlg.setVisible(true);
     }
 
@@ -413,7 +388,7 @@ public class StudentTuitionPanel extends JPanel {
         p.setAmount(total);
         p.setPaymentMethod(selectedPaymentMethod);
         p.setPaymentDate(LocalDate.now().atStartOfDay());
-        p.setStatus("Completed");
+        p.setStatus("Đã thanh toán");
         paymentService.save(p);
 
         Set<Long> chosenIds = chosen.stream().map(Enrollment::getEnrollmentId).collect(Collectors.toSet());
@@ -443,11 +418,11 @@ public class StudentTuitionPanel extends JPanel {
             }
         }
 
-        if (onDataChanged != null) onDataChanged.run(); else loadData();
-        JOptionPane.showMessageDialog(this,
-                "✅  Thanh toán thành công!\nPhương thức: " + selectedPaymentMethod
-                + "\nSố tiền: " + String.format("%,.0f VND", total),
-                "Thành công", JOptionPane.INFORMATION_MESSAGE);
+        java.awt.Window owner = javax.swing.SwingUtilities.getWindowAncestor(this);
+        JOptionPane.showMessageDialog(owner,
+                "\u2705  Thanh to\u00e1n th\u00e0nh c\u00f4ng!\nPh\u01b0\u01a1ng th\u1ee9c: " + selectedPaymentMethod.toLowerCase()
+                + "\nS\u1ed1 ti\u1ec1n: " + String.format("%,.0f VND", total),
+                "Th\u00e0nh c\u00f4ng", JOptionPane.INFORMATION_MESSAGE);
     }
 
     // ══════════════════════════════════════════════════════════════════════════

@@ -3,16 +3,23 @@ package com.company.ems.ui.panels.student;
 import com.company.ems.ui.common.ComponentFactory;
 import com.company.ems.ui.common.Theme;
 
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 import javax.imageio.ImageIO;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.MatteBorder;
 import java.awt.*;
 import java.awt.image.BufferedImage;
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.math.BigDecimal;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.util.UUID;
 
 public class BankTransferDialog extends JDialog {
 
@@ -21,9 +28,17 @@ public class BankTransferDialog extends JDialog {
     private static final String ACCOUNT_NO   = "140704070008650";
     private static final String ACCOUNT_NAME = "PHAN NGOC DUY";
 
+    private static final String PARTNER_CODE = "MOMO";
+    private static final String ACCESS_KEY   = "F8BBA842ECF85";
+    private static final String SECRET_KEY   = "K951B6PE1waDMi640xX08PD3vg6EkVlz";
+    private static final String ENDPOINT     = "https://test-payment.momo.vn/v2/gateway/api";
+    private static final String DUMMY_URL    = "https://webhook.site/placeholder";
+
     private final BigDecimal        amount;
     private final String            paymentCode;
     private final Runnable          onConfirmed;
+    private final String            orderId;
+    private final String            requestId;
     private       javax.swing.Timer pollTimer;
     private       javax.swing.Timer countdownTimer;
     private       JLabel            lblStatus;
@@ -36,6 +51,8 @@ public class BankTransferDialog extends JDialog {
         this.amount      = amount;
         this.paymentCode = paymentCode;
         this.onConfirmed = onConfirmed;
+        this.orderId     = "EMS_" + paymentCode + "_" + (System.currentTimeMillis() % 1_000_000L);
+        this.requestId   = UUID.randomUUID().toString().replace("-", "").substring(0, 20);
 
         buildUI();
         loadVietQRAsync();
@@ -60,7 +77,7 @@ public class BankTransferDialog extends JDialog {
         topAccent.setPreferredSize(new Dimension(0, 5));
         root.add(topAccent, BorderLayout.NORTH);
 
-        // ── Centre wrapper so everything is horizontally centred
+        // Centre wrapper so everything is horizontally centred
         JPanel centre = new JPanel(new GridBagLayout());
         centre.setBackground(Theme.BG_CARD);
         centre.setBorder(new EmptyBorder(18, 28, 8, 28));
@@ -69,6 +86,7 @@ public class BankTransferDialog extends JDialog {
         JPanel body = new JPanel();
         body.setLayout(new BoxLayout(body, BoxLayout.Y_AXIS));
         body.setBackground(Theme.BG_CARD);
+        // fixed width so the info table never floats right
         body.setMaximumSize(new Dimension(416, Integer.MAX_VALUE));
         body.setPreferredSize(new Dimension(416, 0));
         centre.add(body);
@@ -103,7 +121,7 @@ public class BankTransferDialog extends JDialog {
         qrCard.setPreferredSize(new Dimension(276, 276));
 
         qrLabel = new JLabel("Đang tải mã QR...", SwingConstants.CENTER);
-        qrLabel.setFont(new Font("Segoe UI", Font.ITALIC, 12));
+        qrLabel.setFont(Theme.FONT_SMALL.deriveFont(Font.ITALIC));
         qrLabel.setForeground(Theme.TEXT_MUTED);
         qrLabel.setPreferredSize(new Dimension(260, 260));
         qrCard.add(qrLabel, BorderLayout.CENTER);
@@ -119,15 +137,16 @@ public class BankTransferDialog extends JDialog {
         infoPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 220));
         infoPanel.setBorder(BorderFactory.createLineBorder(Theme.BORDER, 1, true));
 
-        addRow(infoPanel, "Ngân hàng",        BANK_NAME,                         false, Theme.BG_PAGE);
-        addRow(infoPanel, "Chủ tài khoản",    ACCOUNT_NAME,                      false, Theme.BG_CARD);
-        addRow(infoPanel, "Số tài khoản",     ACCOUNT_NO,                        false, Theme.BG_PAGE);
-        addRow(infoPanel, "Số tiền",          String.format("%,.0f VND", amount), true,  Theme.BG_CARD);
-        addRow(infoPanel, "Nội dung CK",      paymentCode,                       false, Theme.BG_PAGE);
-        // highlight payment-code value label (component index 9 = value of last row)
+        addRow(infoPanel, "Ngân hàng",       BANK_NAME,                         false, Theme.BG_PAGE);
+        addRow(infoPanel, "Chủ tài khoản",   ACCOUNT_NAME,                      false, Theme.BG_CARD);
+        addRow(infoPanel, "Số tài khoản",    ACCOUNT_NO,                        false, Theme.BG_PAGE);
+        addRow(infoPanel, "Số tiền",         String.format("%,.0f VND", amount), true,  Theme.BG_CARD);
+        addRow(infoPanel, "Nội dung CK",     paymentCode,                       false, Theme.BG_PAGE);
+
+        // Highlight payment-code value label (component index 9 = value cell of last row)
         Component payCodeVal = infoPanel.getComponent(9);
         payCodeVal.setForeground(Theme.PRIMARY);
-        payCodeVal.setFont(Theme.FONT_BOLD);
+        ((JLabel) payCodeVal).setFont(Theme.FONT_BOLD);
 
         body.add(infoPanel);
         body.add(Box.createVerticalStrut(12));
@@ -244,5 +263,66 @@ public class BankTransferDialog extends JDialog {
         });
         t.setRepeats(false);
         t.start();
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    //  NETWORK / CRYPTO HELPERS (MoMo integration)
+    // ════════════════════════════════════════════════════════════════════════
+
+    private static String postJson(String urlStr, String jsonBody) {
+        try {
+            HttpURLConnection conn =
+                    (HttpURLConnection) URI.create(urlStr).toURL().openConnection();
+            conn.setRequestMethod("POST");
+            conn.setDoOutput(true);
+            conn.setConnectTimeout(8000);
+            conn.setReadTimeout(8000);
+            conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
+            byte[] out = jsonBody.getBytes(StandardCharsets.UTF_8);
+            conn.setFixedLengthStreamingMode(out.length);
+            try (OutputStream os = conn.getOutputStream()) { os.write(out); }
+            int code = conn.getResponseCode();
+            InputStream is = (code < 400) ? conn.getInputStream() : conn.getErrorStream();
+            if (is == null) return null;
+            StringBuilder sb = new StringBuilder();
+            try (BufferedReader br = new BufferedReader(
+                    new InputStreamReader(is, StandardCharsets.UTF_8))) {
+                String line;
+                while ((line = br.readLine()) != null) sb.append(line);
+            }
+            return sb.toString();
+        } catch (Exception ignored) { return null; }
+    }
+
+    private static String hmacSha256(String key, String data)
+            throws java.security.NoSuchAlgorithmException,
+            java.security.InvalidKeyException {
+        Mac mac = Mac.getInstance("HmacSHA256");
+        mac.init(new SecretKeySpec(key.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+        byte[] hash = mac.doFinal(data.getBytes(StandardCharsets.UTF_8));
+        StringBuilder hex = new StringBuilder(hash.length * 2);
+        for (byte b : hash) hex.append(String.format("%02x", b));
+        return hex.toString();
+    }
+
+    private static int extractInt(String json, String key) {
+        String search = "\"" + key + "\":";
+        int i = json.indexOf(search);
+        if (i < 0) return -1;
+        i += search.length();
+        while (i < json.length() && json.charAt(i) == ' ') i++;
+        int j = i;
+        while (j < json.length()
+                && (Character.isDigit(json.charAt(j)) || json.charAt(j) == '-')) j++;
+        try { return Integer.parseInt(json.substring(i, j)); } catch (Exception e) { return -1; }
+    }
+
+    private static String extractStr(String json, String key) {
+        String search = "\"" + key + "\":\"";
+        int i = json.indexOf(search);
+        if (i < 0) return null;
+        i += search.length();
+        int j = json.indexOf('"', i);
+        return j < 0 ? null : json.substring(i, j);
     }
 }

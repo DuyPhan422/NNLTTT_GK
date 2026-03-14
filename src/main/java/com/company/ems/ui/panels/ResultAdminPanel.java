@@ -25,6 +25,9 @@ import java.util.stream.Collectors;
 
 /**
  * Panel hiển thị & quản lý kết quả học tập của toàn bộ học viên.
+ * <p>
+ * – readOnly = false (Admin) : có thể sửa điểm trực tiếp qua dialog.<br>
+ * – readOnly = true  (Staff) : chỉ xem, không được chỉnh sửa.
  */
 public class ResultAdminPanel extends JPanel {
 
@@ -109,9 +112,11 @@ public class ResultAdminPanel extends JPanel {
         JLabel lbl1 = styledMutedLabel("Lọc theo lớp:");
         JLabel lbl2 = styledMutedLabel("Tìm kiếm:");
 
-        filterRow.add(lbl1); filterRow.add(cbClass);
+        filterRow.add(lbl1);
+        filterRow.add(cbClass);
         filterRow.add(Box.createHorizontalStrut(8));
-        filterRow.add(lbl2); filterRow.add(tfSearch);
+        filterRow.add(lbl2);
+        filterRow.add(tfSearch);
         filterRow.add(Box.createHorizontalStrut(8));
         filterRow.add(btnRefresh);
 
@@ -129,7 +134,8 @@ public class ResultAdminPanel extends JPanel {
             @Override public boolean isCellEditable(int r, int c) { return false; }
         };
         table = new JTable(tableModel) {
-            @Override public Component prepareRenderer(javax.swing.table.TableCellRenderer r, int row, int col) {
+            @Override
+            public Component prepareRenderer(javax.swing.table.TableCellRenderer r, int row, int col) {
                 Component c = super.prepareRenderer(r, row, col);
                 c.setBackground(isRowSelected(row) ? Theme.ROW_SELECT
                         : row % 2 == 0 ? Theme.ROW_EVEN : Theme.ROW_ODD);
@@ -388,7 +394,9 @@ public class ResultAdminPanel extends JPanel {
 
         int row = 0;
         lc.gridy = fc.gridy = row++;
-        form.add(styledMutedLabel("Điểm (0 – 10) *:"), lc); form.add(tfScore, fc);
+        form.add(styledMutedLabel("Điểm (0.0 – 10.0) *:"), lc);
+        form.add(tfScore, fc);
+
         lc.gridy = fc.gridy = row++;
         form.add(styledMutedLabel("Xếp loại tự động:"), lc); form.add(lblComputedGrade, fc);
         lc.gridy = fc.gridy = row;
@@ -406,12 +414,12 @@ public class ResultAdminPanel extends JPanel {
             double scoreVal;
             try { scoreVal = Double.parseDouble(raw); }
             catch (NumberFormatException ex) {
-                JOptionPane.showMessageDialog(dlg, "Điểm phải là số thực trong khoảng 0 đến 10.",
+                JOptionPane.showMessageDialog(dlg, "Điểm phải là số thực trong khoảng 0.0 đến 10.0",
                         "Lỗi nhập liệu", JOptionPane.WARNING_MESSAGE);
                 tfScore.requestFocus(); return;
             }
             if (scoreVal < 0 || scoreVal > 10) {
-                JOptionPane.showMessageDialog(dlg, "Điểm phải nằm trong khoảng 0 đến 10.",
+                JOptionPane.showMessageDialog(dlg, "Điểm phải nằm trong khoảng 0.0 đến 10.0",
                         "Lỗi nhập liệu", JOptionPane.WARNING_MESSAGE);
                 tfScore.requestFocus(); return;
             }

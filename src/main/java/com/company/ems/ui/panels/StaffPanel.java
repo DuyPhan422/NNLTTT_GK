@@ -26,6 +26,7 @@ public class StaffPanel extends BaseCrudPanel<Staff> {
         super(COLUMNS);
         this.staffService = staffService;
         this.filterRole   = (JComboBox<String>) buildExtraFilters()[0];
+        loadData();
     }
 
     // ── Abstract contract ─────────────────────────────────────────────────

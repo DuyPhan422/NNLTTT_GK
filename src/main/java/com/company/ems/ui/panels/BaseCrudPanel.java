@@ -69,7 +69,8 @@ public abstract class BaseCrudPanel<T> extends JPanel {
         add(buildTableCard(), BorderLayout.CENTER);
         add(buildActionBar(), BorderLayout.SOUTH);
 
-        loadData();
+        // loadData() được gọi sau khi subclass đã gán xong các field service.
+        // Subclass phải tự gọi loadData() cuối constructor của mình.
     }
 
     // ══════════════════════════════════════════════════════════════════════
