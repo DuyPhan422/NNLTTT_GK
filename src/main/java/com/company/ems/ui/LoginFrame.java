@@ -4,6 +4,10 @@ import com.company.ems.model.UserAccount;
 import com.company.ems.service.*;
 import com.company.ems.ui.common.Theme;
 import com.company.ems.ui.common.ComponentFactory;
+import com.company.ems.ui.mainframe.MainFrame;
+import com.company.ems.ui.mainframe.StaffMainFrame;
+import com.company.ems.ui.mainframe.StudentMainFrame;
+import com.company.ems.ui.mainframe.TeacherMainFrame;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
