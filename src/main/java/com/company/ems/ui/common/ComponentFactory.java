@@ -26,14 +26,9 @@ public final class ComponentFactory {
      * Nút chính (xanh dương đậm, chữ trắng) — dùng cho hành động lưu / xác nhận.
      */
     public static JButton primaryButton(String text) {
-        JButton btn = new JButton(text);
+        JButton btn = new ModernButton(text, Theme.PRIMARY, Theme.PRIMARY_H, Color.WHITE, false);
         btn.setFont(Theme.FONT_BOLD);
-        btn.setForeground(Color.WHITE);
-        btn.setBackground(Theme.PRIMARY);
-        btn.setBorder(new EmptyBorder(7, 16, 7, 16));
-        btn.setFocusPainted(false);
-        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        btn.addMouseListener(hoverListener(btn, Theme.PRIMARY, Theme.PRIMARY_H));
+        btn.setBorder(new EmptyBorder(8, 18, 8, 18));
         return btn;
     }
 
@@ -41,15 +36,9 @@ public final class ComponentFactory {
      * Nút phụ (viền, nền trắng) — dùng cho xóa trắng / huỷ bỏ không nguy hiểm.
      */
     public static JButton secondaryButton(String text) {
-        JButton btn = new JButton(text);
+        JButton btn = new ModernButton(text, Theme.BG_CARD, Theme.BG_PAGE, Theme.TEXT_MAIN, true);
         btn.setFont(Theme.FONT_PLAIN);
-        btn.setForeground(Theme.TEXT_MAIN);
-        btn.setBackground(Theme.BG_CARD);
-        btn.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(Theme.BORDER),
-                new EmptyBorder(6, 14, 6, 14)));
-        btn.setFocusPainted(false);
-        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btn.setBorder(new EmptyBorder(8, 18, 8, 18));
         return btn;
     }
 
@@ -57,14 +46,9 @@ public final class ComponentFactory {
      * Nút nguy hiểm (đỏ) — dùng cho xóa / hủy lớp.
      */
     public static JButton dangerButton(String text) {
-        JButton btn = new JButton(text);
+        JButton btn = new ModernButton(text, Theme.DANGER, Theme.DANGER_H, Color.WHITE, false);
         btn.setFont(Theme.FONT_BOLD);
-        btn.setForeground(Color.WHITE);
-        btn.setBackground(Theme.DANGER);
-        btn.setBorder(new EmptyBorder(7, 16, 7, 16));
-        btn.setFocusPainted(false);
-        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        btn.addMouseListener(hoverListener(btn, Theme.DANGER, Theme.DANGER_H));
+        btn.setBorder(new EmptyBorder(8, 18, 8, 18));
         return btn;
     }
 
@@ -380,6 +364,65 @@ public final class ComponentFactory {
             @Override public void mouseEntered(java.awt.event.MouseEvent e) { btn.setBackground(hover); }
             @Override public void mouseExited (java.awt.event.MouseEvent e) { btn.setBackground(normal); }
         };
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    //  CUSTOM MODERN BUTTON CLASS
+    // ══════════════════════════════════════════════════════════════════════
+
+    private static class ModernButton extends JButton {
+        private final Color bgNormal;
+        private final Color bgHover;
+        private boolean isHovered = false;
+        private final boolean outline;
+
+        public ModernButton(String text, Color bgNormal, Color bgHover, Color fgColor, boolean outline) {
+            super(text);
+            this.bgNormal = bgNormal;
+            this.bgHover = bgHover;
+            this.outline = outline;
+            
+            setForeground(fgColor);
+            setOpaque(false);
+            setContentAreaFilled(false);
+            setBorderPainted(false);
+            setFocusPainted(false);
+            setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            
+            addMouseListener(new java.awt.event.MouseAdapter() {
+                @Override public void mouseEntered(java.awt.event.MouseEvent e) {
+                    isHovered = true; repaint();
+                }
+                @Override public void mouseExited(java.awt.event.MouseEvent e) {
+                    isHovered = false; repaint();
+                }
+            });
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            
+            if (isHovered && !outline) {
+                g2.setColor(new Color(0, 0, 0, 25));
+                g2.fillRoundRect(2, 4, getWidth() - 4, getHeight() - 4, 10, 10);
+            }
+            
+            int yOffset = (isHovered && !outline) ? -1 : 0;
+            g2.translate(0, yOffset);
+            
+            g2.setColor(isHovered ? bgHover : bgNormal);
+            g2.fillRoundRect(0, 0, getWidth(), getHeight() - (isHovered && !outline ? 2 : 0), 10, 10);
+            
+            if (outline) {
+                g2.setColor(Theme.BORDER);
+                g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 10, 10);
+            }
+            
+            super.paintComponent(g2);
+            g2.dispose();
+        }
     }
 }
 

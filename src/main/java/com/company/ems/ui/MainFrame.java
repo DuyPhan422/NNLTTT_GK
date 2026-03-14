@@ -78,8 +78,13 @@ public class MainFrame extends JFrame {
                      ResultService resultService,
                      UserAccountService userAccountService,
                      Runnable onLogout) {
-
         setTitle("Language Center Management System - ADMIN");
+        
+        // Auto-sync class statuses on startup
+        if (classService != null) {
+            classService.syncAutoClassStatuses();
+        }
+
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(1280, 760);
         setMinimumSize(new Dimension(1024, 600));
@@ -125,7 +130,7 @@ public class MainFrame extends JFrame {
         contentPanel.add(enrollmentPanel, "enrollments");
         contentPanel.add(tuitionPanel,    "payments");
         contentPanel.add(new RoomPanel(roomService), "rooms");
-        contentPanel.add(new ScheduleManagerPanel(classService, scheduleService, roomService), "schedules");
+        contentPanel.add(new ScheduleManagerPanel(classService, courseService, scheduleService, roomService), "schedules");
         contentPanel.add(staffPanel, "staffs");
         contentPanel.add(new AttendanceAdminPanel(attendanceService, classService, studentService), "attendances");
         contentPanel.add(resultPanel, "results");

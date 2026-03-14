@@ -297,7 +297,7 @@ public class ScheduleStudentPanel extends JPanel {
 
     public void loadData() {
         try {
-            List<Class> studentClasses = classService.findByStudentId(currentStudent.getStudentId());
+            List<Class> studentClasses = classService.findPaidClassesByStudentId(currentStudent.getStudentId());
 
             classColorMap.clear();
             int[] idx = {0};

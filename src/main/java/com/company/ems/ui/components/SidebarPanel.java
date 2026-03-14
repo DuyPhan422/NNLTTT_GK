@@ -27,16 +27,16 @@ public class SidebarPanel extends JPanel {
 
     // Menu đầy đủ (dành cho Admin) — dùng làm mặc định
     public static final String[][] DEFAULT_MENU_ITEMS = {
-        {"👥",  "Học viên",   "students"},
-        {"👨", "Giáo viên",  "teachers"},
-        {"🧑", "Nhân viên",  "staffs"},
-        {"📚",  "Khóa học",   "courses"},
-        {"🏫",  "Lớp học",    "classes"},
-        {"📋",  "Đăng ký",    "enrollments"},
-        {"💰",  "Thanh toán", "payments"},
-        {"🗓️", "Lịch học",   "schedules"},
-        {"✅",  "Điểm danh",  "attendances"},
-        {"🚪",  "Phòng học",  "rooms"},
+        {"", "Học viên",   "students"},
+        {"", "Giáo viên",  "teachers"},
+        {"", "Nhân viên",  "staffs"},
+        {"", "Khóa học",   "courses"},
+        {"", "Lớp học",    "classes"},
+        {"", "Đăng ký",    "enrollments"},
+        {"", "Thanh toán", "payments"},
+        {"", "Lịch học",   "schedules"},
+        {"", "Điểm danh",  "attendances"},
+        {"", "Phòng học",  "rooms"},
     };
 
     /** Constructor dùng menu mặc định (backward-compatible). */
@@ -106,52 +106,77 @@ public class SidebarPanel extends JPanel {
     }
 
     private JPanel createMenuItem(String icon, String label, String panelName) {
-        JPanel item = new JPanel(new BorderLayout());
+        JPanel item = new JPanel(new BorderLayout()) {
+            private boolean hovered = false;
+            {
+                addMouseListener(new MouseAdapter() {
+                    @Override public void mouseClicked(MouseEvent e) {
+                        setActiveItem(panelName);
+                        onNavigate.accept(panelName);
+                    }
+                    @Override public void mouseEntered(MouseEvent e) {
+                        hovered = true; repaint();
+                    }
+                    @Override public void mouseExited(MouseEvent e) {
+                        hovered = false; repaint();
+                    }
+                });
+            }
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                if (panelName.equals(activeItem)) {
+                    g2.setColor(new Color(37, 99, 235, 45));
+                    g2.fillRoundRect(12, 2, getWidth() - 24, getHeight() - 4, 12, 12);
+                } else if (hovered) {
+                    g2.setColor(ITEM_HOVER);
+                    g2.fillRoundRect(12, 2, getWidth() - 24, getHeight() - 4, 12, 12);
+                }
+                g2.dispose();
+            }
+        };
         item.setMaximumSize(new Dimension(Integer.MAX_VALUE, 44));
-        item.setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));
+        item.setBorder(BorderFactory.createEmptyBorder(0, 16, 0, 16));
         item.setBackground(BG_COLOR);
+        item.setOpaque(false); // To let parent background show
         item.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
-        JPanel inner = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
+        JPanel inner = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 10));
         inner.setOpaque(false);
 
-        JLabel iconLabel = new JLabel(icon);
-        iconLabel.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 16));
+        if (icon != null && !icon.isEmpty()) {
+            JLabel iconLabel = new JLabel(icon);
+            iconLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
+            iconLabel.setForeground(panelName.equals(activeItem) ? TEXT_ACTIVE : TEXT_COLOR);
+            inner.add(iconLabel);
+        }
 
         JLabel textLabel = new JLabel(label);
-        textLabel.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        textLabel.setFont(new Font("Segoe UI", panelName.equals(activeItem) ? Font.BOLD : Font.PLAIN, 14));
         textLabel.setForeground(panelName.equals(activeItem) ? TEXT_ACTIVE : TEXT_COLOR);
 
-        inner.add(iconLabel);
         inner.add(textLabel);
         item.add(inner, BorderLayout.CENTER);
 
-        JPanel indicator = new JPanel();
-        indicator.setPreferredSize(new Dimension(4, 0));
-        indicator.setBackground(panelName.equals(activeItem) ? ITEM_ACTIVE : BG_COLOR);
+        JPanel indicator = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                if (panelName.equals(activeItem)) {
+                    Graphics2D g2 = (Graphics2D) g.create();
+                    g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                    g2.setColor(ITEM_ACTIVE);
+                    g2.fillRoundRect(0, 10, 4, getHeight() - 20, 4, 4);
+                    g2.dispose();
+                }
+            }
+        };
+        indicator.setPreferredSize(new Dimension(8, 0));
+        indicator.setOpaque(false);
         item.add(indicator, BorderLayout.WEST);
 
-        if (panelName.equals(activeItem)) item.setBackground(new Color(37, 99, 235, 30));
-
-        item.addMouseListener(new MouseAdapter() {
-            @Override public void mouseClicked(MouseEvent e) {
-                setActiveItem(panelName);
-                onNavigate.accept(panelName);
-            }
-            @Override public void mouseEntered(MouseEvent e) {
-                if (!panelName.equals(activeItem)) {
-                    item.setBackground(ITEM_HOVER);
-                    inner.setBackground(ITEM_HOVER);
-                }
-            }
-            @Override public void mouseExited(MouseEvent e) {
-                if (!panelName.equals(activeItem)) {
-                    item.setBackground(BG_COLOR);
-                    inner.setBackground(new Color(0, 0, 0, 0));
-                    inner.setOpaque(false);
-                }
-            }
-        });
         return item;
     }
 

@@ -27,17 +27,6 @@ public class Main {
         ResultService     resultService     = new ResultService(new JpaResultRepository());
         UserAccountService userAccountService = new UserAccountService(new JpaUserAccountRepository());
 
-        // ── [TẠM THỜI] In BCrypt hash để update vào DB ──────────────────
-        // XÓA ĐOẠN NÀY SAU KHI ĐÃ UPDATE DB XONG
-        System.out.println("=== COPY CÁC HASH NÀY ĐỂ UPDATE DB ===");
-        System.out.println("admin123   -> " + UserAccountService.hashPassword("admin123"));
-        System.out.println("teacher123 -> " + UserAccountService.hashPassword("teacher123"));
-        System.out.println("student123 -> " + UserAccountService.hashPassword("student123"));
-        System.out.println("staff123   -> " + UserAccountService.hashPassword("staff123"));
-        System.out.println("=========================================");
-        // LƯU Ý: BCrypt tạo hash KHÁC NHAU mỗi lần chạy — đó là bình thường.
-        // Chỉ cần chạy MỘT LẦN, copy hash rồi update DB, đừng chạy lại.
-
         // ── Mở LoginFrame — điểm vào duy nhất của ứng dụng ─────────────
         SwingUtilities.invokeLater(() -> {
             LoginFrame login = new LoginFrame(

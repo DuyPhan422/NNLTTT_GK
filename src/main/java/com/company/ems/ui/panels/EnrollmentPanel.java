@@ -9,6 +9,7 @@ import com.company.ems.service.InvoiceService;
 import com.company.ems.service.StudentService;
 import com.company.ems.ui.UI;
 import com.company.ems.ui.common.ComponentFactory;
+import com.company.ems.ui.common.TableStyler;
 import com.company.ems.ui.common.Theme;
 
 import javax.swing.*;
@@ -148,7 +149,7 @@ public class EnrollmentPanel extends JPanel {
         t.setRowHeight(40);
         t.setShowGrid(false);
         t.setIntercellSpacing(new Dimension(0, 0));
-        t.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+        TableStyler.fitTableColumns(t);
         t.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         t.setBackground(Theme.BG_CARD);
 

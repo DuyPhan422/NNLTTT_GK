@@ -86,7 +86,7 @@ public class TeacherMainFrame extends JFrame {
         contentPanel.add(resultPanel, "results");
 
         // 4. Lớp số — placeholder
-        contentPanel.add(buildPlaceholder("🚧 Lớp học số — đang phát triển"), "my_classes");
+//        contentPanel.add(buildPlaceholder("🚧 Lớp học số — đang phát triển"), "my_classes");
 
         rightPanel.add(contentPanel, BorderLayout.CENTER);
 
@@ -139,7 +139,7 @@ public class TeacherMainFrame extends JFrame {
             {"📅  Lịch dạy",     "schedule",   "Lịch dạy"},
             {"✅  Điểm danh",    "attendance", "Điểm danh"},
             {"⭐  Nhập điểm",    "results",    "Nhập kết quả học tập"},
-            {"💻  Lớp học số",   "my_classes", "Lớp học số"},
+//            {"💻  Lớp học số",   "my_classes", "Lớp học số"},
         };
 
         ButtonGroup group = new ButtonGroup();

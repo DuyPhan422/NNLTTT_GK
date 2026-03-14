@@ -304,10 +304,21 @@ public class ScheduleTeacherPanel extends JPanel {
         popup.add(info);
         popup.addSeparator();
 
-        JMenuItem rescheduleItem = new JMenuItem("📅  Dời lịch buổi này...");
-        rescheduleItem.setFont(Theme.FONT_PLAIN);
-        rescheduleItem.addActionListener(ae -> openRescheduleDialog(sch));
-        popup.add(rescheduleItem);
+        // Chỉ hiện "Dời lịch" nếu lớp chưa Hoàn thành/Hủy
+        String status = sch.getClazz().getStatus();
+        com.company.ems.model.enums.ClassStatus cs = com.company.ems.model.enums.ClassStatus.fromValue(status);
+        if (cs != com.company.ems.model.enums.ClassStatus.HOAN_THANH
+                && cs != com.company.ems.model.enums.ClassStatus.HUY_LOP) {
+            JMenuItem rescheduleItem = new JMenuItem("📅  Dời lịch buổi này...");
+            rescheduleItem.setFont(Theme.FONT_PLAIN);
+            rescheduleItem.addActionListener(ae -> openRescheduleDialog(sch));
+            popup.add(rescheduleItem);
+        } else {
+            JMenuItem readOnly = new JMenuItem("📋  Lịch sử (chỉ xem)");
+            readOnly.setEnabled(false);
+            readOnly.setFont(Theme.FONT_SMALL);
+            popup.add(readOnly);
+        }
 
         popup.show(bloc, e.getX(), e.getY());
     }

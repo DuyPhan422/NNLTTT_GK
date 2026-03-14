@@ -1,7 +1,9 @@
 package com.company.ems.ui.panels.student;
 
+import com.company.ems.model.Class;
 import com.company.ems.model.Result;
 import com.company.ems.model.Student;
+import com.company.ems.service.ClassService;
 import com.company.ems.service.ResultService;
 import com.company.ems.service.ResultService.RankedResult;
 import com.company.ems.ui.common.ComponentFactory;
@@ -16,6 +18,8 @@ import java.awt.*;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Bảng điểm cá nhân của Student.
@@ -51,6 +55,7 @@ public class ResultStudentPanel extends JPanel {
 
     // ── Services ──────────────────────────────────────────────────────────
     private final ResultService resultService;
+    private final ClassService  classService;
     private final Student       currentStudent;
 
     // ── KPI labels ────────────────────────────────────────────────────────
@@ -67,8 +72,9 @@ public class ResultStudentPanel extends JPanel {
     // ── Data ──────────────────────────────────────────────────────────────
     private List<RankedResult> results = new ArrayList<>();
 
-    public ResultStudentPanel(ResultService resultService, Student currentStudent) {
+    public ResultStudentPanel(ResultService resultService, ClassService classService, Student currentStudent) {
         this.resultService  = resultService;
+        this.classService   = classService;
         this.currentStudent = currentStudent;
 
         kpiClasses = ComponentFactory.kpiValueLabel();
@@ -165,7 +171,7 @@ public class ResultStudentPanel extends JPanel {
     private DefaultTableModel buildTableModel() {
         return new DefaultTableModel(TABLE_COLS, 0) {
             @Override public boolean isCellEditable(int r, int c) { return false; }
-            @Override public Class<?> getColumnClass(int c) { return String.class; }
+            @Override public  java.lang.Class<?> getColumnClass(int c) { return String.class; }
         };
     }
 
@@ -201,7 +207,14 @@ public class ResultStudentPanel extends JPanel {
 
     public void loadData() {
         try {
-            results = resultService.findByStudentIdWithRanking(currentStudent.getStudentId());
+            // Chỉ hiện kết quả của lớp đã thanh toán
+            Set<Long> paidClassIds = classService.findPaidClassesByStudentId(currentStudent.getStudentId())
+                    .stream().map(Class::getClassId).collect(Collectors.toSet());
+
+            results = resultService.findByStudentIdWithRanking(currentStudent.getStudentId()).stream()
+                    .filter(rr -> rr.result().getClazz() != null
+                            && paidClassIds.contains(rr.result().getClazz().getClassId()))
+                    .toList();
             renderTable();
             updateKpi();
         } catch (Exception e) {

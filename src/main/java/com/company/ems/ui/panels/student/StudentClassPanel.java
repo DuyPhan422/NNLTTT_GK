@@ -87,7 +87,7 @@ public class StudentClassPanel extends JPanel {
 
         table = new JTable(tableModel);
         TableStyler.applyDefaults(table);
-        table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+        TableStyler.fitTableColumns(table);
         TableStyler.hideColumn(table, 0);
 
         UI.alignColumn(table, 1, SwingConstants.LEFT);
@@ -237,7 +237,7 @@ public class StudentClassPanel extends JPanel {
         JTable courseTbl = new JTable(courseModel);
         TableStyler.applyDefaults(courseTbl);
         courseTbl.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        courseTbl.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
+        TableStyler.fitTableColumns(courseTbl);
         TableStyler.hideColumn(courseTbl, 0);
 
         JPanel leftHeader = buildSectionHeader("📚  Khóa học",
@@ -257,7 +257,7 @@ public class StudentClassPanel extends JPanel {
         JTable classTbl = new JTable(classModel);
         TableStyler.applyDefaults(classTbl);
         classTbl.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        classTbl.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
+        TableStyler.fitTableColumns(classTbl);
         TableStyler.hideColumn(classTbl, 0);
 
         JPanel rightCards = new JPanel(new CardLayout());

@@ -18,5 +18,8 @@ public interface ClassRepository extends BaseRepository<Class, Long> {
 
     /** Lấy danh sách lớp mà học viên đã đăng ký */
     List<Class> findByStudentId(EntityManager em, Long studentId);
+
+    /** Lấy danh sách lớp mà học viên đã thanh toán (enrollment status = 'Đã thanh toán') */
+    List<Class> findPaidClassesByStudentId(EntityManager em, Long studentId);
 }
 

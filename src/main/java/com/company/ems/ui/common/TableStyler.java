@@ -1,6 +1,7 @@
 package com.company.ems.ui.common;
 
 import javax.swing.*;
+import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableRowSorter;
@@ -20,7 +21,7 @@ public final class TableStyler {
     /** Áp dụng toàn bộ style mặc định: font, rowHeight, grid, colors, header. */
     public static void applyDefaults(JTable table) {
         table.setFont(Theme.FONT_PLAIN);
-        table.setRowHeight(40);
+        table.setRowHeight(44); // Tăng khoảng trống dòng để "thở" hơn
         table.setShowGrid(false);
         table.setIntercellSpacing(new Dimension(0, 0));
         table.setBackground(Theme.BG_CARD);
@@ -29,12 +30,84 @@ public final class TableStyler {
         table.setFillsViewportHeight(true);
 
         var header = table.getTableHeader();
-        header.setFont(Theme.FONT_BOLD);
-        header.setBackground(Theme.BG_HEADER);
+        header.setFont(Theme.FONT_SMALL_BOLD);
+        header.setBackground(Theme.BG_PAGE); // Nền xám nhạt hiện đại hơn
         header.setForeground(Theme.TEXT_MUTED);
-        header.setPreferredSize(new Dimension(0, 42));
+        header.setPreferredSize(new Dimension(0, 48)); // Header rộng rãi
         header.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, Theme.BORDER));
         header.setReorderingAllowed(false);
+    }
+
+    /**
+     * Tự động dãn cột để lấp đầy JScrollPane (nếu tổng bảng nhỏ hơn viewport).
+     * Thuật toán sẽ phân bổ pixel dư vào các cột có nội dung dài (cột linh hoạt).
+     */
+    public static void fitTableColumns(JTable table) {
+        table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+        
+        table.addHierarchyListener(e -> {
+            if ((e.getChangeFlags() & java.awt.event.HierarchyEvent.PARENT_CHANGED) != 0) {
+                if (table.getParent() instanceof JViewport viewport) {
+                    viewport.addComponentListener(new java.awt.event.ComponentAdapter() {
+                        @Override
+                        public void componentResized(java.awt.event.ComponentEvent evt) {
+                            resizeToFit(table, viewport);
+                        }
+                    });
+                    SwingUtilities.invokeLater(() -> resizeToFit(table, viewport));
+                }
+            }
+        });
+    }
+
+    private static void resizeToFit(JTable table, JViewport viewport) {
+        int width = viewport.getWidth();
+        var cm = table.getColumnModel();
+        int totalPref = 0;
+        int stretchCols = 0;
+
+        for (int i = 0; i < cm.getColumnCount(); i++) {
+            var col = cm.getColumn(i);
+            if (col.getMinWidth() == 0 && col.getMaxWidth() == 0) continue; // Cột ID ẩn
+
+            Object origObj = table.getClientProperty("prefW_" + i);
+            int orig;
+            if (origObj instanceof Integer io) {
+                orig = io;
+            } else {
+                orig = col.getPreferredWidth();
+                table.putClientProperty("prefW_" + i, orig);
+            }
+
+            totalPref += orig;
+            if (col.getMaxWidth() >= 1000) stretchCols++;
+        }
+
+        if (width > totalPref && stretchCols > 0) {
+            int extra = (width - totalPref) / stretchCols;
+            for (int i = 0; i < cm.getColumnCount(); i++) {
+                var col = cm.getColumn(i);
+                if (col.getMinWidth() == 0 && col.getMaxWidth() == 0) continue;
+
+                Object origObj = table.getClientProperty("prefW_" + i);
+                int orig = (origObj instanceof Integer io) ? io : col.getPreferredWidth();
+
+                if (col.getMaxWidth() >= 1000) {
+                    col.setPreferredWidth(orig + extra);
+                } else {
+                    col.setPreferredWidth(orig);
+                }
+            }
+        } else {
+            // Restore originals
+            for (int i = 0; i < cm.getColumnCount(); i++) {
+                var col = cm.getColumn(i);
+                Object origObj = table.getClientProperty("prefW_" + i);
+                if (origObj instanceof Integer orig && orig > 0) {
+                    col.setPreferredWidth(orig);
+                }
+            }
+        }
     }
 
     /**
@@ -51,8 +124,6 @@ public final class TableStyler {
 
     /**
      * Gắn TableRowSorter và trả về để caller dùng cho setRowFilter.
-     *
-     * @param unsortableCols các cột không cho sort (vd: STT, cột ẩn)
      */
     public static TableRowSorter<DefaultTableModel> attachSorter(
             JTable table, DefaultTableModel model, int... unsortableCols) {
@@ -84,7 +155,6 @@ public final class TableStyler {
 
     /**
      * Renderer row-striping chuẩn (even/odd + select highlight).
-     * Dùng cho bảng CRUD thông thường không có column tint đặc biệt.
      */
     public static DefaultTableCellRenderer stripedRenderer() {
         return new DefaultTableCellRenderer() {
@@ -94,13 +164,14 @@ public final class TableStyler {
                 super.getTableCellRendererComponent(t, v, sel, focus, row, col);
                 setBackground(sel ? Theme.ROW_SELECT : (row % 2 == 0 ? Theme.ROW_EVEN : Theme.ROW_ODD));
                 setForeground(Theme.TEXT_MAIN);
+                setBorder(new EmptyBorder(0, 10, 0, 10)); // Thêm khoảng trắng viền
                 return this;
             }
         };
     }
 
     /**
-     * Renderer cho cột Xếp loại — in đậm, tô màu theo grade, căn giữa.
+     * Renderer cho cột Xếp loại.
      */
     public static DefaultTableCellRenderer gradeRenderer() {
         return new DefaultTableCellRenderer() {
@@ -112,13 +183,14 @@ public final class TableStyler {
                 setFont(Theme.FONT_BOLD);
                 setBackground(sel ? Theme.ROW_SELECT : (row % 2 == 0 ? Theme.ROW_EVEN : Theme.ROW_ODD));
                 setForeground(sel ? Theme.TEXT_MAIN : Theme.gradeColor(v != null ? v.toString() : ""));
+                setBorder(new EmptyBorder(0, 10, 0, 10));
                 return this;
             }
         };
     }
 
     /**
-     * Renderer căn giữa + in đậm với màu nền riêng — dùng cho cột Điểm tổng.
+     * Renderer căn giữa + in đậm với màu nền riêng.
      */
     public static DefaultTableCellRenderer centeredBoldRenderer(Color evenBg, Color oddBg) {
         return new DefaultTableCellRenderer() {
@@ -130,13 +202,14 @@ public final class TableStyler {
                 setFont(Theme.FONT_BOLD);
                 setBackground(sel ? Theme.ROW_SELECT : (row % 2 == 0 ? evenBg : oddBg));
                 setForeground(Theme.TEXT_MAIN);
+                setBorder(new EmptyBorder(0, 10, 0, 10));
                 return this;
             }
         };
     }
 
     /**
-     * Renderer căn giữa với màu nền riêng — dùng cho cột điểm thành phần QT1/QT2/CK.
+     * Renderer căn giữa với màu nền riêng.
      */
     public static DefaultTableCellRenderer centeredRenderer(Color evenBg, Color oddBg) {
         return new DefaultTableCellRenderer() {
@@ -147,13 +220,14 @@ public final class TableStyler {
                 setHorizontalAlignment(CENTER);
                 setBackground(sel ? Theme.ROW_SELECT : (row % 2 == 0 ? evenBg : oddBg));
                 setForeground(Theme.TEXT_MAIN);
+                setBorder(new EmptyBorder(0, 10, 0, 10));
                 return this;
             }
         };
     }
 
     /**
-     * Renderer cho cột Hạng — in đậm, màu tím, căn giữa.
+     * Renderer cho cột Hạng — in đậm, màu tím.
      */
     public static DefaultTableCellRenderer rankRenderer() {
         return new DefaultTableCellRenderer() {
@@ -165,9 +239,9 @@ public final class TableStyler {
                 setFont(Theme.FONT_BOLD);
                 setBackground(sel ? Theme.ROW_SELECT : (row % 2 == 0 ? Theme.ROW_EVEN : Theme.ROW_ODD));
                 setForeground(sel ? Theme.TEXT_MAIN : Theme.PURPLE);
+                setBorder(new EmptyBorder(0, 10, 0, 10));
                 return this;
             }
         };
     }
 }
-

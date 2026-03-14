@@ -1,8 +1,8 @@
 package com.company.ems.ui.panels;
 
 import com.company.ems.model.Class;
-import com.company.ems.model.Room;
 import com.company.ems.model.Schedule;
+import com.company.ems.model.enums.ClassStatus;
 import com.company.ems.service.RoomService;
 import com.company.ems.service.ScheduleService;
 import com.company.ems.ui.common.ComponentFactory;
@@ -15,12 +15,19 @@ import javax.swing.table.TableRowSorter;
 import java.awt.*;
 import java.time.DayOfWeek;
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
  * Panel quản lý lịch học (Schedule) của một lớp cụ thể.
  * Được nhúng bên phải ScheduleManagerPanel.
+ *
+ * Hỗ trợ:
+ * - CRUD theo trạng thái lớp (Lên kế hoạch: full; Mở lớp/Đang diễn ra: thêm+sửa; Hoàn thành/Hủy: read-only)
+ * - Double-click dòng → mở modal sửa
+ * - Combobox chọn tuần (khi course đơn vị Tuần/Tháng)
  */
 public class SchedulePanel extends JPanel {
 
@@ -40,7 +47,13 @@ public class SchedulePanel extends JPanel {
     private final JLabel statusLabel;
     private final JLabel lblClassInfo;
     private final JButton addBtn;
+    private final JButton editBtn;
+    private final JButton deleteBtn;
+    private final JComboBox<String> cbWeek;
     private TableRowSorter<DefaultTableModel> sorter;
+
+    // Week ranges for filter — index 0 = "Tất cả", index N = [startDate, endDate]
+    private List<LocalDate[]> weekRanges;
 
     public SchedulePanel(ScheduleService scheduleService, RoomService roomService) {
         this.scheduleService = scheduleService;
@@ -51,8 +64,21 @@ public class SchedulePanel extends JPanel {
         this.statusLabel  = new JLabel("Chọn một lớp bên trái để xem lịch học");
         this.lblClassInfo = new JLabel("Chưa chọn lớp");
         this.addBtn       = ComponentFactory.primaryButton("+ Thêm buổi học");
+        this.editBtn      = ComponentFactory.secondaryButton("✏️ Sửa buổi học");
+        this.deleteBtn    = ComponentFactory.dangerButton("🗑️ Xóa buổi học");
+        this.cbWeek       = new JComboBox<>();
+
         addBtn.setEnabled(false);
+        editBtn.setEnabled(false);
+        deleteBtn.setEnabled(false);
+
         addBtn.addActionListener(e -> openDialog(null));
+        editBtn.addActionListener(e -> editSelected());
+        deleteBtn.addActionListener(e -> deleteSelected());
+
+        cbWeek.setFont(Theme.FONT_PLAIN);
+        cbWeek.setVisible(false);
+        cbWeek.addActionListener(e -> filterByWeek());
 
         setLayout(new BorderLayout());
         setBackground(Theme.BG_PAGE);
@@ -73,8 +99,33 @@ public class SchedulePanel extends JPanel {
                 + "   |   Khóa học: " + course
                 + "   |   Giáo viên: " + teacher
                 + "   |   Phòng mặc định: " + room);
-        addBtn.setEnabled(true);
+
+        updateButtonsByClassStatus(clazz.getStatus());
+        buildWeekSelector();
         loadData();
+    }
+
+    // ── CRUD Permission by Class Status ──────────────────────────────────
+
+    private void updateButtonsByClassStatus(String status) {
+        ClassStatus cs = ClassStatus.fromValue(status);
+        switch (cs) {
+            case LEN_KE_HOACH -> {
+                addBtn.setEnabled(true);  addBtn.setVisible(true);
+                editBtn.setEnabled(true); editBtn.setVisible(true);
+                deleteBtn.setEnabled(true); deleteBtn.setVisible(true);
+            }
+            case MO_LOP, DANG_DIEN_RA -> {
+                addBtn.setEnabled(true);  addBtn.setVisible(true);
+                editBtn.setEnabled(true); editBtn.setVisible(true);
+                deleteBtn.setEnabled(false); deleteBtn.setVisible(false);
+            }
+            case HOAN_THANH, HUY_LOP -> {
+                addBtn.setEnabled(false); addBtn.setVisible(false);
+                editBtn.setEnabled(false); editBtn.setVisible(false);
+                deleteBtn.setEnabled(false); deleteBtn.setVisible(false);
+            }
+        }
     }
 
     // ── Build UI ──────────────────────────────────────────────────────────
@@ -96,6 +147,7 @@ public class SchedulePanel extends JPanel {
         JPanel toolbar = new JPanel(new BorderLayout());
         toolbar.setOpaque(false);
         toolbar.setBorder(BorderFactory.createEmptyBorder(8, 0, 0, 0));
+        toolbar.add(cbWeek, BorderLayout.WEST);
         toolbar.add(addBtn, BorderLayout.EAST);
 
         header.add(infoBar,  BorderLayout.NORTH);
@@ -122,11 +174,6 @@ public class SchedulePanel extends JPanel {
 
         JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         btnPanel.setOpaque(false);
-
-        JButton editBtn   = ComponentFactory.secondaryButton("✏️ Sửa buổi học");
-        JButton deleteBtn = ComponentFactory.dangerButton("🗑️ Xóa buổi học");
-        editBtn.addActionListener(e -> editSelected());
-        deleteBtn.addActionListener(e -> deleteSelected());
 
         btnPanel.add(editBtn);
         btnPanel.add(deleteBtn);
@@ -178,13 +225,90 @@ public class SchedulePanel extends JPanel {
             return comp;
         });
 
+        // Ẩn cột ID (index 0)
         t.getColumnModel().getColumn(0).setMinWidth(0);
         t.getColumnModel().getColumn(0).setMaxWidth(0);
         t.getColumnModel().getColumn(0).setWidth(0);
 
+        // Chỉnh cột STT sát lề trái
+        t.getColumnModel().getColumn(1).setMinWidth(50);
+        t.getColumnModel().getColumn(1).setMaxWidth(70);
+        t.getColumnModel().getColumn(1).setPreferredWidth(50);
+
         sorter = new TableRowSorter<>(tableModel);
         t.setRowSorter(sorter);
+
+        // Double-click → mở modal sửa
+        t.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override public void mouseClicked(java.awt.event.MouseEvent e) {
+                if (e.getClickCount() == 2 && t.getSelectedRow() >= 0) {
+                    editSelected();
+                }
+            }
+        });
+
         return t;
+    }
+
+    // ── Week Selector ─────────────────────────────────────────────────────
+
+    private void buildWeekSelector() {
+        cbWeek.removeAllItems();
+        weekRanges = new ArrayList<>();
+
+        if (currentClass == null || currentClass.getCourse() == null) {
+            cbWeek.setVisible(false);
+            return;
+        }
+
+        String durationUnit = currentClass.getCourse().getDurationUnit();
+        if (durationUnit == null || "Giờ".equals(durationUnit)) {
+            cbWeek.setVisible(false);
+            return;
+        }
+
+        LocalDate start = currentClass.getStartDate();
+        LocalDate end   = currentClass.getEndDate();
+        if (start == null || end == null) {
+            cbWeek.setVisible(false);
+            return;
+        }
+
+        cbWeek.addItem("Tất cả tuần");
+        weekRanges.add(null); // index 0 = all
+
+        int weekNum = 1;
+        LocalDate cursor = start;
+        while (!cursor.isAfter(end)) {
+            LocalDate weekEnd = cursor.plusDays(6).isAfter(end) ? end : cursor.plusDays(6);
+            cbWeek.addItem("Tuần " + weekNum + " (" + cursor.format(DATE_FMT) + " – " + weekEnd.format(DATE_FMT) + ")");
+            weekRanges.add(new LocalDate[]{cursor, weekEnd});
+            cursor = cursor.plusWeeks(1);
+            weekNum++;
+        }
+        cbWeek.setVisible(true);
+    }
+
+    private void filterByWeek() {
+        int selected = cbWeek.getSelectedIndex();
+        if (selected <= 0 || weekRanges == null || selected >= weekRanges.size()) {
+            sorter.setRowFilter(null);
+        } else {
+            LocalDate[] range = weekRanges.get(selected);
+            sorter.setRowFilter(new RowFilter<>() {
+                @Override
+                public boolean include(Entry<? extends DefaultTableModel, ? extends Integer> entry) {
+                    String dateStr = (String) entry.getValue(2);
+                    try {
+                        LocalDate d = LocalDate.parse(dateStr, DATE_FMT);
+                        return !d.isBefore(range[0]) && !d.isAfter(range[1]);
+                    } catch (Exception e) {
+                        return true;
+                    }
+                }
+            });
+        }
+        statusLabel.setText("Hiển thị: " + table.getRowCount() + " buổi học");
     }
 
     // ── Data ──────────────────────────────────────────────────────────────
@@ -216,12 +340,22 @@ public class SchedulePanel extends JPanel {
                 .forEach(tableModel::addRow);
 
             statusLabel.setText("Tổng: " + list.size() + " buổi học");
+
+            // Re-apply week filter if selected
+            if (cbWeek.isVisible() && cbWeek.getSelectedIndex() > 0) {
+                filterByWeek();
+            }
         } catch (Exception e) {
             showError("Không thể tải lịch học: " + e.getMessage());
         }
     }
 
     private void editSelected() {
+        if (currentClass == null) return;
+        // Block editing for completed/cancelled
+        ClassStatus cs = ClassStatus.fromValue(currentClass.getStatus());
+        if (cs == ClassStatus.HOAN_THANH || cs == ClassStatus.HUY_LOP) return;
+
         int viewRow = table.getSelectedRow();
         if (viewRow < 0) { showWarning("Vui lòng chọn một buổi học để sửa."); return; }
         int modelRow = table.convertRowIndexToModel(viewRow);
@@ -230,6 +364,11 @@ public class SchedulePanel extends JPanel {
     }
 
     private void deleteSelected() {
+        if (currentClass == null) return;
+        // Only allow delete for "Lên kế hoạch"
+        ClassStatus cs = ClassStatus.fromValue(currentClass.getStatus());
+        if (cs != ClassStatus.LEN_KE_HOACH) return;
+
         int viewRow = table.getSelectedRow();
         if (viewRow < 0) { showWarning("Vui lòng chọn một buổi học để xóa."); return; }
         int modelRow = table.convertRowIndexToModel(viewRow);
@@ -253,10 +392,13 @@ public class SchedulePanel extends JPanel {
 
     private void openDialog(Schedule existing) {
         if (currentClass == null) { showWarning("Vui lòng chọn lớp học trước."); return; }
+        // Block dialog for completed/cancelled
+        ClassStatus cs = ClassStatus.fromValue(currentClass.getStatus());
+        if (cs == ClassStatus.HOAN_THANH || cs == ClassStatus.HUY_LOP) return;
+
         try {
-            List<Room> rooms = roomService.findAll();
             Frame owner = (Frame) SwingUtilities.getWindowAncestor(this);
-            ScheduleFormDialog dlg = new ScheduleFormDialog(owner, existing, currentClass, rooms, scheduleService);
+            ScheduleFormDialog dlg = new ScheduleFormDialog(owner, existing, currentClass, roomService, scheduleService);
             dlg.setVisible(true);
             if (!dlg.isSaved()) return;
 
@@ -297,4 +439,3 @@ public class SchedulePanel extends JPanel {
         JOptionPane.showMessageDialog(this, msg, "Lỗi",        JOptionPane.ERROR_MESSAGE);
     }
 }
-

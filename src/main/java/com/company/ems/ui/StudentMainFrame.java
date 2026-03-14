@@ -58,6 +58,9 @@ public class StudentMainFrame extends JFrame {
         this.onLogout          = onLogout;
 
         setTitle("EMS - Cổng Học Viên");
+        if (this.classService != null) {
+            this.classService.syncAutoClassStatuses();
+        }
         setSize(1280, 760);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
@@ -96,7 +99,7 @@ public class StudentMainFrame extends JFrame {
         contentPanel.add(tuitionPanel, "tuition");
 
         // Tab 4 — Điểm danh
-        attendancePanel = new AttendanceStudentPanel(attendanceService, currentStudent);
+        attendancePanel = new AttendanceStudentPanel(attendanceService, classService, currentStudent);
         contentPanel.add(attendancePanel, "attendance");
 
         // Tab 5 — Thời khoá biểu (read-only weekly grid)
@@ -104,7 +107,7 @@ public class StudentMainFrame extends JFrame {
         contentPanel.add(schedulePanel, "schedule");
 
         // Tab 6 — Bảng điểm cá nhân
-        resultPanel = new ResultStudentPanel(resultService, currentStudent);
+        resultPanel = new ResultStudentPanel(resultService, classService, currentStudent);
         contentPanel.add(resultPanel, "results");
 
         // ── Cross-refresh callback ───────────────────────────────────────

@@ -29,5 +29,49 @@ public class TeacherService extends AbstractBaseService<Teacher, Long> {
             throw new RuntimeException("Lỗi khi tìm theo chuyên môn: " + e.getMessage(), e);
         }
     }
+
+    @Override
+    public void update(Teacher entity) {
+        try {
+            txManager.runInTransaction(em -> {
+                if ("Không hoạt động".equals(entity.getStatus()) || "Nghỉ việc".equals(entity.getStatus())) {
+                    Long count = em.createQuery(
+                        "SELECT COUNT(c) FROM Class c " +
+                        "WHERE c.teacher.teacherId = :teacherId " +
+                        "AND c.status IN ('Lên kế hoạch', 'Mở lớp', 'Đang diễn ra')", Long.class)
+                        .setParameter("teacherId", entity.getTeacherId())
+                        .getSingleResult();
+                    if (count > 0) {
+                        throw new RuntimeException("Không thể vô hiệu hóa giáo viên vì đang có " + count + " lớp học được phân công.");
+                    }
+                }
+                repository.update(em, entity);
+                return null;
+            });
+        } catch (Exception e) {
+            throw new RuntimeException(e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public void delete(Long id) {
+        try {
+            txManager.runInTransaction(em -> {
+                Long count = em.createQuery(
+                    "SELECT COUNT(c) FROM Class c " +
+                    "WHERE c.teacher.teacherId = :teacherId " +
+                    "AND c.status IN ('Lên kế hoạch', 'Mở lớp', 'Đang diễn ra')", Long.class)
+                    .setParameter("teacherId", id)
+                    .getSingleResult();
+                if (count > 0) {
+                    throw new RuntimeException("Không thể xóa giáo viên vì đang có " + count + " lớp học được phân công.");
+                }
+                repository.delete(em, id);
+                return null;
+            });
+        } catch (Exception e) {
+            throw new RuntimeException(e.getMessage(), e);
+        }
+    }
 }
 

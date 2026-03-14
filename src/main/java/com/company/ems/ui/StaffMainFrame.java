@@ -32,15 +32,15 @@ public class StaffMainFrame extends JFrame {
 
     // Menu Staff: không có staffs, attendances (tổng quan), accounts, dashboard
     private static final String[][] STAFF_MENU = {
-        {"👥",  "Học viên",   "students"},
-        {"👨",  "Giáo viên",  "teachers"},
-        {"📚",  "Khóa học",   "courses"},
-        {"🏫",  "Lớp học",    "classes"},
-        {"📋",  "Đăng ký",    "enrollments"},
-        {"💰",  "Thanh toán", "payments"},
-        {"✎",  "Kết quả",   "results"},
-        {"🗓️", "Lịch học",   "schedules"},
-        {"🚪",  "Phòng học",  "rooms"},
+        {"", "Học viên",   "students"},
+        {"", "Giáo viên",  "teachers"},
+        {"", "Khóa học",   "courses"},
+        {"", "Lớp học",    "classes"},
+        {"", "Đăng ký",    "enrollments"},
+        {"", "Thanh toán", "payments"},
+        {"", "Kết quả",    "results"},
+        {"", "Lịch học",   "schedules"},
+        {"", "Phòng học",  "rooms"},
     };
 
     private static final Map<String, String[]> PAGE_META = new HashMap<>();
@@ -112,7 +112,7 @@ public class StaffMainFrame extends JFrame {
         contentPanel.add(tuitionPanel,    "payments");
         contentPanel.add(resultPanel,     "results");
         contentPanel.add(new RoomPanel(roomService), "rooms");
-        contentPanel.add(new ScheduleManagerPanel(classService, scheduleService, roomService), "schedules");
+        contentPanel.add(new ScheduleManagerPanel(classService, courseService, scheduleService, roomService), "schedules");
 
         Runnable refreshAll = this::refreshAllPanels;
         studentPanel.setOnDataChanged(refreshAll);

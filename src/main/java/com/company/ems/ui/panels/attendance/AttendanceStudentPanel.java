@@ -1,8 +1,10 @@
 package com.company.ems.ui.panels.attendance;
 
 import com.company.ems.model.Attendance;
+import com.company.ems.model.Class;
 import com.company.ems.model.Student;
 import com.company.ems.service.AttendanceService;
+import com.company.ems.service.ClassService;
 import com.company.ems.ui.common.Theme;
 
 import javax.swing.*;
@@ -24,6 +26,7 @@ public class AttendanceStudentPanel extends JPanel {
 
     // ── Services / state ──────────────────────────────────────────────────
     private final AttendanceService attendanceService;
+    private final ClassService      classService;
     private final Student           currentStudent;
 
     private List<Attendance>            allAttendances = new ArrayList<>();
@@ -43,8 +46,10 @@ public class AttendanceStudentPanel extends JPanel {
     private final JPanel contentArea;
 
     public AttendanceStudentPanel(AttendanceService attendanceService,
+                                  ClassService classService,
                                   Student currentStudent) {
         this.attendanceService = attendanceService;
+        this.classService      = classService;
         this.currentStudent    = currentStudent;
 
         kpiTotal   = kpiVal("—");
@@ -182,7 +187,13 @@ public class AttendanceStudentPanel extends JPanel {
     public void loadData() {
         if (currentStudent == null) return;
         try {
-            allAttendances = attendanceService.findByStudentId(currentStudent.getStudentId());
+            // Chỉ lấy attendance của các lớp đã thanh toán
+            java.util.Set<Long> paidClassIds = classService.findPaidClassesByStudentId(currentStudent.getStudentId())
+                    .stream().map(Class::getClassId).collect(Collectors.toSet());
+
+            allAttendances = attendanceService.findByStudentId(currentStudent.getStudentId()).stream()
+                    .filter(a -> a.getClazz() != null && paidClassIds.contains(a.getClazz().getClassId()))
+                    .toList();
 
             byClass = allAttendances.stream()
                     .collect(Collectors.groupingBy(

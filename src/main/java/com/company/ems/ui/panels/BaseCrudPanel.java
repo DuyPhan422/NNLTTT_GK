@@ -211,9 +211,9 @@ public abstract class BaseCrudPanel<T> extends JPanel {
     private JTable buildTable() {
         JTable t = new JTable(tableModel);
         t.setFocusable(false);
-        t.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
         t.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         TableStyler.applyDefaults(t);
+        TableStyler.fitTableColumns(t);
 
         // Header căn trái
         var baseRenderer = t.getTableHeader().getDefaultRenderer();
