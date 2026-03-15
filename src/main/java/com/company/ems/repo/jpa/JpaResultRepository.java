@@ -4,7 +4,11 @@ import com.company.ems.model.Result;
 import com.company.ems.repo.ResultRepository;
 import jakarta.persistence.EntityManager;
 
+import java.math.BigDecimal;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 public class JpaResultRepository extends JpaBaseRepository<Result, Long>
         implements ResultRepository {
@@ -63,36 +67,45 @@ public class JpaResultRepository extends JpaBaseRepository<Result, Long>
 
     @Override
     public List<com.company.ems.service.ResultService.RankedResult> findRankedResultsByStudentId(EntityManager em, Long studentId) {
-        // Native query to calculate rank for a student's results
-        String nativeQuery = """
-            WITH ClassRank AS (
-                SELECT
-                    r.id,
-                    r.class_id,
-                    r.score,
-                    RANK() OVER(PARTITION BY r.class_id ORDER BY r.score DESC) as rnk,
-                    COUNT(*) OVER(PARTITION BY r.class_id) as total
-                FROM results r
-                WHERE r.score IS NOT NULL
-            )
-            SELECT
-                r.*,
-                COALESCE(cr.rnk, 0) as student_rank,
-                COALESCE(cr.total, 0) as total_in_class
-            FROM results r
-            LEFT JOIN ClassRank cr ON r.id = cr.id
-            WHERE r.student_id = :sid
-        """;
+        // 1. Fetch student's results
+        List<Result> studentResults = findByStudentId(em, studentId);
+        if (studentResults.isEmpty()) return List.of();
         
-        @SuppressWarnings("unchecked")
-        List<Object[]> rows = em.createNativeQuery(nativeQuery, Result.class)
-            .setParameter("sid", studentId)
-            .getResultList();
+        // 2. Identify the classes
+        List<Long> classIds = studentResults.stream()
+                .map(r -> r.getClazz().getClassId())
+                .distinct()
+                .toList();
+                
+        // 3. Fetch all scores for these classes to compute ranks
+        List<Object[]> classScores = em.createQuery(
+                "SELECT r.clazz.classId, r.score FROM Result r WHERE r.clazz.classId IN :cids AND r.score IS NOT NULL", Object[].class)
+                .setParameter("cids", classIds)
+                .getResultList();
+                
+        // Map classId -> list of scores
+        Map<Long, List<BigDecimal>> scoresByClass = classScores.stream()
+                .collect(Collectors.groupingBy(
+                    row -> (Long) row[0],
+                    Collectors.mapping(row -> (BigDecimal) row[1], Collectors.toList())
+                ));
+                
+        // Sort scores descending
+        scoresByClass.values().forEach(list -> list.sort(Comparator.reverseOrder()));
+        
+        // 4. Transform to RankedResult
+        return studentResults.stream().map(res -> {
+            if (res.getScore() == null) {
+                return new com.company.ems.service.ResultService.RankedResult(res, 0, 0);
+            }
+            Long cid = res.getClazz().getClassId();
+            List<BigDecimal> scores = scoresByClass.getOrDefault(cid, List.of());
             
-        return rows.stream().map(row -> {
-            Result res = (Result) row[0];
-            int rank = ((Number) row[1]).intValue();
-            int total = ((Number) row[2]).intValue();
+            // indexOf gets the first matching element's index.
+            // +1 gives us standard SQL RANK() behavior (1, 1, 3).
+            int rank = scores.indexOf(res.getScore()) + 1;
+            int total = scores.size();
+            
             return new com.company.ems.service.ResultService.RankedResult(res, rank, total);
         }).toList();
     }
