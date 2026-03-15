@@ -43,24 +43,7 @@ public class ResultService extends AbstractBaseService<Result, Long> {
      */
     public List<RankedResult> findByStudentIdWithRanking(Long studentId) {
         try {
-            return txManager.runInTransaction(em -> {
-                List<Result> myResults = resultRepository.findByStudentId(em, studentId);
-                return myResults.stream().map(r -> {
-                    if (r.getClazz() == null || r.getScore() == null) {
-                        return new RankedResult(r, 0, 0);
-                    }
-                    List<Result> classResults = resultRepository.findByClassId(em, r.getClazz().getClassId());
-                    List<Double> scores = classResults.stream()
-                            .filter(cr -> cr.getScore() != null)
-                            .map(cr -> cr.getScore().doubleValue())
-                            .sorted(java.util.Comparator.reverseOrder())
-                            .collect(java.util.stream.Collectors.toList());
-                    int total = scores.size();
-                    double myScore = r.getScore().doubleValue();
-                    int rank = (int) scores.stream().filter(s -> s > myScore).count() + 1;
-                    return new RankedResult(r, rank, total);
-                }).collect(java.util.stream.Collectors.toList());
-            });
+            return txManager.runInTransaction(em -> resultRepository.findRankedResultsByStudentId(em, studentId));
         } catch (Exception e) {
             throw new RuntimeException("Lỗi khi tải bảng điểm học viên: " + e.getMessage(), e);
         }

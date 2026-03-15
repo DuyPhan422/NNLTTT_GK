@@ -6,6 +6,7 @@ import com.company.ems.model.Student;
 import com.company.ems.service.ClassService;
 import com.company.ems.service.ResultService;
 import com.company.ems.service.ResultService.RankedResult;
+import com.company.ems.stream.ResultStreamQueries;
 import com.company.ems.ui.common.ComponentFactory;
 import com.company.ems.ui.common.TableStyler;
 import com.company.ems.ui.common.Theme;
@@ -211,10 +212,9 @@ public class ResultStudentPanel extends JPanel {
             Set<Long> paidClassIds = classService.findPaidClassesByStudentId(currentStudent.getStudentId())
                     .stream().map(Class::getClassId).collect(Collectors.toSet());
 
-            results = resultService.findByStudentIdWithRanking(currentStudent.getStudentId()).stream()
-                    .filter(rr -> rr.result().getClazz() != null
-                            && paidClassIds.contains(rr.result().getClazz().getClassId()))
-                    .toList();
+            results = resultService.findByStudentIdWithRanking(currentStudent.getStudentId());
+            results = ResultStreamQueries.filterByPaidClasses(results, paidClassIds);
+
             renderTable();
             updateKpi();
         } catch (Exception e) {
@@ -255,20 +255,9 @@ public class ResultStudentPanel extends JPanel {
 
     private void updateKpi() {
         long totalClasses = results.size();
-        long scored = results.stream()
-                .filter(rr -> rr.result().getScore() != null)
-                .count();
-
-        double gpa = results.stream()
-                .filter(rr -> rr.result().getScore() != null)
-                .mapToDouble(rr -> rr.result().getScore().doubleValue())
-                .average()
-                .orElse(0.0);
-
-        long pass = results.stream()
-                .filter(rr -> rr.result().getScore() != null
-                        && rr.result().getScore().doubleValue() >= 5.0)
-                .count();
+        long scored = ResultStreamQueries.countScored(results);
+        double gpa = ResultStreamQueries.calculateGpa(results);
+        long pass = ResultStreamQueries.countPass(results);
         long fail = scored - pass;
 
         kpiClasses.setText(String.valueOf(totalClasses));

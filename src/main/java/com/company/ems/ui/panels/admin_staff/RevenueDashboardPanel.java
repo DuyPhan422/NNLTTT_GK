@@ -4,6 +4,8 @@ import com.company.ems.model.Invoice;
 import com.company.ems.model.Payment;
 import com.company.ems.service.InvoiceService;
 import com.company.ems.service.PaymentService;
+import com.company.ems.stream.InvoiceStreamQueries;
+import com.company.ems.stream.PaymentStreamQueries;
 import com.company.ems.ui.common.ComponentFactory;
 import com.company.ems.ui.common.Theme;
 
@@ -377,31 +379,22 @@ public class RevenueDashboardPanel extends JPanel {
 
     private void updateUI(List<Payment> payments, List<Invoice> invoices) {
         // ── KPI ───────────────────────────────────────────────────────────
-        BigDecimal totalRevenue = sumAmounts(payments.stream()
-                .filter(p -> isPaid(p.getStatus()))
-                .map(Payment::getAmount).collect(Collectors.toList()));
-        BigDecimal paidInvTotal = sumAmounts(invoices.stream()
-                .filter(i -> "Đã thanh toán".equals(i.getStatus()))
-                .map(Invoice::getTotalAmount).collect(Collectors.toList()));
-        BigDecimal pendingInv = sumAmounts(invoices.stream()
-                .filter(i -> "Chờ thanh toán".equals(i.getStatus()))
-                .map(Invoice::getTotalAmount).collect(Collectors.toList()));
-        long txCount = payments.stream()
-                .filter(p -> isPaid(p.getStatus())).count();
+        PaymentStreamQueries.RevenueKpi kpi = PaymentStreamQueries.buildRevenueKpi(payments);
+        BigDecimal paidInvTotal = InvoiceStreamQueries.sumPendingDebt(
+                InvoiceStreamQueries.filterByStatus(invoices, "Đã thanh toán"), "Đã thanh toán");
+        BigDecimal pendingInv = InvoiceStreamQueries.sumPendingDebt(invoices, "Chờ thanh toán");
 
-        lblTotalRevenue.setText(formatVnd(totalRevenue));
+        lblTotalRevenue.setText(formatVnd(kpi.totalRevenue()));
         lblPaid.setText(formatVnd(paidInvTotal));
         lblPending.setText(formatVnd(pendingInv));
-        lblTxCount.setText(txCount + " giao dịch");
+        lblTxCount.setText(kpi.txCount() + " giao dịch");
 
         rebuildBarChart(payments);
 
         // ── Bảng hoá đơn ──────────────────────────────────────────────────
         invModel.setRowCount(0);
         DateTimeFormatter dFmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-        List<Invoice> sortedInv = invoices.stream()
-                .sorted(Comparator.comparing(Invoice::getIssueDate,
-                        Comparator.nullsLast(Comparator.reverseOrder())))
+        List<Invoice> sortedInv = InvoiceStreamQueries.sortByIssueDateDesc(invoices).stream()
                 .limit(50).collect(Collectors.toList());
         displayedInvoices = new ArrayList<>(sortedInv);
         int j = 1;
@@ -424,18 +417,7 @@ public class RevenueDashboardPanel extends JPanel {
     // ════════════════════════════════════════════════════════════════════════
 
     private void rebuildBarChart(List<Payment> payments) {
-        LocalDate now = LocalDate.now();
-        LinkedHashMap<String, BigDecimal> monthly = new LinkedHashMap<>();
-        for (int i = 5; i >= 0; i--) {
-            LocalDate m = now.minusMonths(i);
-            monthly.put(m.getYear() + "/" + String.format("%02d", m.getMonthValue()), BigDecimal.ZERO);
-        }
-        for (Payment p : payments) {
-            if (!isPaid(p.getStatus()) || p.getPaymentDate() == null) continue;
-            LocalDate d = p.getPaymentDate().toLocalDate();
-            String key = d.getYear() + "/" + String.format("%02d", d.getMonthValue());
-            monthly.merge(key, p.getAmount(), BigDecimal::add);
-        }
+        LinkedHashMap<String, BigDecimal> monthly = PaymentStreamQueries.revenueByMonth(payments, 6);
 
         BigDecimal maxVal = monthly.values().stream().max(BigDecimal::compareTo).orElse(BigDecimal.ONE);
         if (maxVal.compareTo(BigDecimal.ZERO) == 0) maxVal = BigDecimal.ONE;
@@ -618,14 +600,12 @@ public class RevenueDashboardPanel extends JPanel {
     }
 
     private BigDecimal sumAmounts(List<BigDecimal> list) {
-        return list.stream().reduce(BigDecimal.ZERO, BigDecimal::add);
+        return PaymentStreamQueries.sumAmounts(list);
     }
 
     /** Chấp nhận cả "Đã thanh toán" (mới) lẫn "Hoàn thành" / "Completed" (data cũ) */
     private static boolean isPaid(String status) {
-        return "Đã thanh toán".equals(status)
-                || "Hoàn thành".equals(status)
-                || "Completed".equals(status);
+        return PaymentStreamQueries.isPaid(status);
     }
 
     private String formatVnd(BigDecimal amount) {

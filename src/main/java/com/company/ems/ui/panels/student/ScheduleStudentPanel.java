@@ -5,6 +5,7 @@ import com.company.ems.model.Schedule;
 import com.company.ems.model.Student;
 import com.company.ems.service.ClassService;
 import com.company.ems.service.ScheduleService;
+import com.company.ems.stream.ScheduleStreamQueries;
 import com.company.ems.ui.common.ComponentFactory;
 import com.company.ems.ui.common.Theme;
 
@@ -147,11 +148,7 @@ public class ScheduleStudentPanel extends JPanel {
         gridPanel.removeAll();
 
         String selectedClassName = (String) cbFilterClass.getSelectedItem();
-        List<Schedule> filtered = weekSchedules.stream()
-                .filter(s -> selectedClassName == null
-                        || "Tất cả lớp".equals(selectedClassName)
-                        || s.getClazz().getClassName().equals(selectedClassName))
-                .toList();
+        List<Schedule> filtered = ScheduleStreamQueries.filterByClassName(weekSchedules, selectedClassName);
 
         int cols = 7;
         int rows = SESSIONS.size() + 1;
@@ -204,12 +201,8 @@ public class ScheduleStudentPanel extends JPanel {
             for (int d = 0; d < 6; d++) {
                 LocalDate day = weekStart.plusDays(d);
 
-                List<Schedule> cellSchedules = filtered.stream()
-                        .filter(s -> s.getStudyDate().equals(day)
-                                && s.getStartTime().getHour() >= session.startHour()
-                                && s.getStartTime().getHour() < session.endHour())
-                        .sorted(Comparator.comparing(Schedule::getStartTime))
-                        .toList();
+                List<Schedule> cellSchedules = ScheduleStreamQueries.filterBySession(
+                        filtered, day, session.startHour(), session.endHour());
 
                 boolean isToday  = day.equals(LocalDate.now());
                 boolean lastDay  = (d == 5);
@@ -318,9 +311,7 @@ public class ScheduleStudentPanel extends JPanel {
                     .map(Class::getClassId)
                     .collect(Collectors.toSet());
 
-            weekSchedules = allWeek.stream()
-                    .filter(s -> s.getClazz() != null && myClassIds.contains(s.getClazz().getClassId()))
-                    .toList();
+            weekSchedules = ScheduleStreamQueries.filterByMyClasses(allWeek, myClassIds);
 
             LocalDate end = weekStart.plusDays(6);
             lblWeekRange.setText(weekStart.format(FULL_FMT) + " — " + end.format(FULL_FMT));

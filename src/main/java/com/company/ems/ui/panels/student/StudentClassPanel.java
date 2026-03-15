@@ -26,23 +26,25 @@ import java.util.List;
 public class StudentClassPanel extends JPanel {
 
     private final EnrollmentService enrollmentService;
-    private final ClassService      classService;
-    private final InvoiceService    invoiceService;
-    private final Student           currentStudent;
+    private final ClassService classService;
+    private final InvoiceService invoiceService;
+    private final Student currentStudent;
 
     private DefaultTableModel tableModel;
-    private JTable            table;
-    private Runnable          onDataChanged;
+    private JTable table;
+    private Runnable onDataChanged;
 
     /** Đăng ký callback refresh khi ghi danh / hủy lớp thành công. */
-    public void setOnDataChanged(Runnable r) { this.onDataChanged = r; }
+    public void setOnDataChanged(Runnable r) {
+        this.onDataChanged = r;
+    }
 
     public StudentClassPanel(EnrollmentService enrollmentService, ClassService classService,
-                             StudentService studentService, InvoiceService invoiceService, Long studentId) {
+            StudentService studentService, InvoiceService invoiceService, Long studentId) {
         this.enrollmentService = enrollmentService;
-        this.classService      = classService;
-        this.invoiceService    = invoiceService;
-        this.currentStudent    = studentService.findById(studentId);
+        this.classService = classService;
+        this.invoiceService = invoiceService;
+        this.currentStudent = studentService.findById(studentId);
 
         setLayout(new BorderLayout());
         setBackground(Theme.BG_PAGE);
@@ -66,7 +68,7 @@ public class StudentClassPanel extends JPanel {
         JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         btnPanel.setOpaque(false);
 
-        JButton btnCancel   = ComponentFactory.dangerButton("❌ Hủy lớp đang chọn");
+        JButton btnCancel = ComponentFactory.dangerButton("❌ Hủy lớp đang chọn");
         btnCancel.addActionListener(e -> handleCancelEnrollment());
 
         JButton btnRegister = ComponentFactory.primaryButton("+ Đăng ký lớp mới");
@@ -80,9 +82,12 @@ public class StudentClassPanel extends JPanel {
         add(toolbar, BorderLayout.NORTH);
 
         // ── Table ─────────────────────────────────────────────────────────
-        String[] cols = {"ID", "STT", "Mã Lớp", "Tên Lớp", "Khóa học", "Học phí", "Ngày KG", "Trạng thái"};
+        String[] cols = { "ID", "STT", "Mã Lớp", "Tên Lớp", "Khóa học", "Học phí", "Ngày KG", "Trạng thái" };
         tableModel = new DefaultTableModel(cols, 0) {
-            @Override public boolean isCellEditable(int r, int c) { return false; }
+            @Override
+            public boolean isCellEditable(int r, int c) {
+                return false;
+            }
         };
 
         table = new JTable(tableModel);
@@ -99,12 +104,13 @@ public class StudentClassPanel extends JPanel {
     // ── Invoice sync ──────────────────────────────────────────────────────
 
     private void syncInvoiceWithEnrollments() {
-        if (currentStudent == null) return;
+        if (currentStudent == null)
+            return;
 
         List<Enrollment> enrolledList = enrollmentService.findAll().stream()
                 .filter(e -> e.getStudent() != null
-                          && e.getStudent().getStudentId().equals(currentStudent.getStudentId())
-                          && "Đã đăng ký".equals(e.getStatus()))
+                        && e.getStudent().getStudentId().equals(currentStudent.getStudentId())
+                        && "Đã đăng ký".equals(e.getStatus()))
                 .toList();
 
         BigDecimal totalFee = enrolledList.stream()
@@ -113,12 +119,13 @@ public class StudentClassPanel extends JPanel {
 
         Invoice pendingInv = invoiceService.findAll().stream()
                 .filter(i -> i.getStudent() != null
-                          && i.getStudent().getStudentId().equals(currentStudent.getStudentId())
-                          && "Chờ thanh toán".equals(i.getStatus()))
+                        && i.getStudent().getStudentId().equals(currentStudent.getStudentId())
+                        && "Chờ thanh toán".equals(i.getStatus()))
                 .findFirst().orElse(null);
 
         if (totalFee.compareTo(BigDecimal.ZERO) <= 0) {
-            if (pendingInv != null) invoiceService.delete(pendingInv.getInvoiceId());
+            if (pendingInv != null)
+                invoiceService.delete(pendingInv.getInvoiceId());
             return;
         }
 
@@ -141,25 +148,26 @@ public class StudentClassPanel extends JPanel {
 
     public void loadData() {
         tableModel.setRowCount(0);
-        if (currentStudent == null) return;
+        if (currentStudent == null)
+            return;
 
         List<Enrollment> myEnrollments = enrollmentService.findAll().stream()
                 .filter(e -> e.getStudent() != null
-                          && e.getStudent().getStudentId().equals(currentStudent.getStudentId()))
+                        && e.getStudent().getStudentId().equals(currentStudent.getStudentId()))
                 .toList();
 
-        int[] stt = {1};
+        int[] stt = { 1 };
         DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
         myEnrollments.forEach(e -> {
             Class c = e.getClazz();
-            tableModel.addRow(new Object[]{
-                e.getEnrollmentId(), stt[0]++,
-                "CLS" + c.getClassId(),
-                c.getClassName(),
-                c.getCourse().getCourseName(),
-                String.format("%,.0f", c.getCourse().getFee()),
-                c.getStartDate() != null ? c.getStartDate().format(fmt) : "",
-                e.getStatus()
+            tableModel.addRow(new Object[] {
+                    e.getEnrollmentId(), stt[0]++,
+                    "CLS" + c.getClassId(),
+                    c.getClassName(),
+                    c.getCourse().getCourseName(),
+                    String.format("%,.0f", c.getCourse().getFee()),
+                    c.getStartDate() != null ? c.getStartDate().format(fmt) : "",
+                    e.getStatus()
             });
         });
         SwingUtilities.invokeLater(() -> UI.autoResizeColumns(table));
@@ -177,7 +185,7 @@ public class StudentClassPanel extends JPanel {
 
         List<Long> myClassIds = enrollmentService.findAll().stream()
                 .filter(e -> e.getStudent() != null
-                          && e.getStudent().getStudentId().equals(currentStudent.getStudentId()))
+                        && e.getStudent().getStudentId().equals(currentStudent.getStudentId()))
                 .map(e -> e.getClazz().getClassId()).toList();
 
         java.util.Map<Long, Long> enrollCounts = enrollmentService.findAll().stream()
@@ -187,9 +195,9 @@ public class StudentClassPanel extends JPanel {
 
         List<Class> availableClasses = classService.findAll().stream()
                 .filter(c -> "Mở lớp".equals(c.getStatus())
-                          && !myClassIds.contains(c.getClassId())
-                          && (c.getMaxStudent() == null || c.getMaxStudent() <= 0
-                              || enrollCounts.getOrDefault(c.getClassId(), 0L) < c.getMaxStudent()))
+                        && !myClassIds.contains(c.getClassId())
+                        && (c.getMaxStudent() == null || c.getMaxStudent() <= 0
+                                || enrollCounts.getOrDefault(c.getClassId(), 0L) < c.getMaxStudent()))
                 .toList();
 
         if (availableClasses.isEmpty()) {
@@ -224,11 +232,14 @@ public class StudentClassPanel extends JPanel {
         dialog.add(headerBar, BorderLayout.NORTH);
 
         // LEFT: Course table
-        String[] courseCols = {"_id", "Tên Khóa học", "Cấp độ", "Học phí (VND)", "Số lớp trống"};
+        String[] courseCols = { "_id", "Tên Khóa học", "Cấp độ", "Học phí (VND)", "Số lớp trống" };
         DefaultTableModel courseModel = new DefaultTableModel(courseCols, 0) {
-            @Override public boolean isCellEditable(int r, int c) { return false; }
+            @Override
+            public boolean isCellEditable(int r, int c) {
+                return false;
+            }
         };
-        courseList.forEach(c -> courseModel.addRow(new Object[]{
+        courseList.forEach(c -> courseModel.addRow(new Object[] {
                 c.getCourseId(), c.getCourseName(),
                 c.getLevel() != null ? c.getLevel() : "—",
                 String.format("%,.0f", c.getFee()),
@@ -250,9 +261,12 @@ public class StudentClassPanel extends JPanel {
         leftPanel.add(courseScroll, BorderLayout.CENTER);
 
         // RIGHT: Class table
-        String[] classCols = {"_id", "Tên Lớp", "Ngày khai giảng", "Ngày kết thúc", "Phòng", "Sĩ số"};
+        String[] classCols = { "_id", "Tên Lớp", "Ngày khai giảng", "Ngày kết thúc", "Phòng", "Sĩ số" };
         DefaultTableModel classModel = new DefaultTableModel(classCols, 0) {
-            @Override public boolean isCellEditable(int r, int c) { return false; }
+            @Override
+            public boolean isCellEditable(int r, int c) {
+                return false;
+            }
         };
         JTable classTbl = new JTable(classModel);
         TableStyler.applyDefaults(classTbl);
@@ -286,26 +300,29 @@ public class StudentClassPanel extends JPanel {
         dialog.add(split, BorderLayout.CENTER);
 
         @SuppressWarnings("unchecked")
-        final List<Class>[] currentClasses = new List[]{java.util.Collections.emptyList()};
+        final List<Class>[] currentClasses = new List[] { java.util.Collections.emptyList() };
         DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
         // Click course → update class table
         courseTbl.getSelectionModel().addListSelectionListener(ev -> {
-            if (ev.getValueIsAdjusting()) return;
+            if (ev.getValueIsAdjusting())
+                return;
             int sel = courseTbl.getSelectedRow();
-            if (sel < 0) return;
+            if (sel < 0)
+                return;
             Course selectedCourse = courseList.get(sel);
             List<Class> classes = courseMap.get(selectedCourse);
             currentClasses[0] = classes;
             classModel.setRowCount(0);
             classes.forEach(c -> {
-                long cur  = enrollCounts.getOrDefault(c.getClassId(), 0L);
+                long cur = enrollCounts.getOrDefault(c.getClassId(), 0L);
                 String slot = (c.getMaxStudent() != null && c.getMaxStudent() > 0)
-                        ? cur + "/" + c.getMaxStudent() : cur + "/∞";
-                classModel.addRow(new Object[]{
+                        ? cur + "/" + c.getMaxStudent()
+                        : cur + "/∞";
+                classModel.addRow(new Object[] {
                         c.getClassId(), c.getClassName(),
                         c.getStartDate() != null ? c.getStartDate().format(fmt) : "—",
-                        c.getEndDate()   != null ? c.getEndDate().format(fmt)   : "—",
+                        c.getEndDate() != null ? c.getEndDate().format(fmt) : "—",
                         c.getRoom() != null ? c.getRoom().getRoomName() : "—",
                         slot
                 });
@@ -317,7 +334,8 @@ public class StudentClassPanel extends JPanel {
 
         // Double-click → enroll immediately
         classTbl.addMouseListener(new java.awt.event.MouseAdapter() {
-            @Override public void mouseClicked(java.awt.event.MouseEvent e) {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent e) {
                 if (e.getClickCount() == 2 && classTbl.getSelectedRow() >= 0) {
                     int row = classTbl.getSelectedRow();
                     dialog.dispose();
@@ -356,7 +374,7 @@ public class StudentClassPanel extends JPanel {
         JPanel footerWrap = new JPanel(new BorderLayout());
         footerWrap.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, Theme.BORDER));
         footerWrap.add(hintBar, BorderLayout.WEST);
-        footerWrap.add(btnBar,  BorderLayout.EAST);
+        footerWrap.add(btnBar, BorderLayout.EAST);
         dialog.add(footerWrap, BorderLayout.SOUTH);
 
         dialog.setSize(1040, 560);
@@ -383,15 +401,15 @@ public class StudentClassPanel extends JPanel {
     private void doEnroll(Class selected) {
         long curCount = enrollmentService.findAll().stream()
                 .filter(e -> e.getClazz() != null
-                          && e.getClazz().getClassId().equals(selected.getClassId()))
+                        && e.getClazz().getClassId().equals(selected.getClassId()))
                 .count();
         if (selected.getMaxStudent() != null && selected.getMaxStudent() > 0
                 && curCount >= selected.getMaxStudent()) {
             JOptionPane.showMessageDialog(this,
-                "<html>Lớp <b>" + selected.getClassName() + "</b> đã đầy ("
-                + curCount + "/" + selected.getMaxStudent() + " học viên).<br>"
-                + "Vui lòng chọn lớp khác.</html>",
-                "Lớp đã đầy", JOptionPane.WARNING_MESSAGE);
+                    "<html>Lớp <b>" + selected.getClassName() + "</b> đã đầy ("
+                            + curCount + "/" + selected.getMaxStudent() + " học viên).<br>"
+                            + "Vui lòng chọn lớp khác.</html>",
+                    "Lớp đã đầy", JOptionPane.WARNING_MESSAGE);
             return;
         }
         Enrollment e = new Enrollment();
@@ -403,10 +421,13 @@ public class StudentClassPanel extends JPanel {
         enrollmentService.save(e);
 
         syncInvoiceWithEnrollments();
-        if (onDataChanged != null) onDataChanged.run(); else loadData();
+        if (onDataChanged != null)
+            onDataChanged.run();
+        else
+            loadData();
         JOptionPane.showMessageDialog(this,
                 "<html>✅  Đăng ký thành công!<br>Lớp: <b>" + selected.getClassName()
-                + "</b><br>Học phí đã được cập nhật vào tab Thanh toán.</html>",
+                        + "</b><br>Học phí đã được cập nhật vào tab Thanh toán.</html>",
                 "Thành công", JOptionPane.INFORMATION_MESSAGE);
     }
 
@@ -422,8 +443,9 @@ public class StudentClassPanel extends JPanel {
 
         if ("Đã thanh toán".equals(env.getStatus()) || "Hoàn thành".equals(env.getStatus())) {
             JOptionPane.showMessageDialog(this,
-                "Lớp \"" + (env.getClazz() != null ? env.getClazz().getClassName() : "") + "\" đã thanh toán — không thể hủy!",
-                "Không thể hủy", JOptionPane.WARNING_MESSAGE);
+                    "Lớp \"" + (env.getClazz() != null ? env.getClazz().getClassName() : "")
+                            + "\" đã thanh toán — không thể hủy!",
+                    "Không thể hủy", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
@@ -433,12 +455,11 @@ public class StudentClassPanel extends JPanel {
         if (res == JOptionPane.YES_OPTION) {
             enrollmentService.delete(envId);
             syncInvoiceWithEnrollments();
-            if (onDataChanged != null) onDataChanged.run(); else loadData();
+            if (onDataChanged != null)
+                onDataChanged.run();
+            else
+                loadData();
             JOptionPane.showMessageDialog(this, "Đã hủy thành công!");
         }
     }
 }
-
-
-
-

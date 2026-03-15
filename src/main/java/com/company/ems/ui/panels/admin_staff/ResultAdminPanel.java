@@ -23,6 +23,8 @@ import java.util.List;
 import java.util.OptionalDouble;
 import java.util.stream.Collectors;
 
+import com.company.ems.stream.ResultStreamQueries;
+
 /**
  * Panel hiển thị & quản lý kết quả học tập của toàn bộ học viên.
  * <p>
@@ -259,44 +261,23 @@ public class ResultAdminPanel extends JPanel {
     private void filterAndDisplay() {
         String keyword  = tfSearch.getText().trim().toLowerCase();
         Object selClass = cbClass.getSelectedItem();
+        Long classId = (selClass instanceof Class c) ? c.getClassId() : null;
 
-        filteredResults = allResults.stream()
-            .filter(r -> {
-                if (!(selClass instanceof Class c)) return true;
-                return r.getClazz() != null && r.getClazz().getClassId().equals(c.getClassId());
-            })
-            .filter(r -> {
-                if (keyword.isEmpty()) return true;
-                String name = r.getStudent() != null ? r.getStudent().getFullName().toLowerCase() : "";
-                String code = r.getStudent() != null && r.getStudent().getStudentId() != null
-                        ? ("hv" + String.format("%04d", r.getStudent().getStudentId())) : "";
-                return name.contains(keyword) || code.contains(keyword);
-            })
-            .sorted(Comparator.comparing(
-                r -> r.getStudent() != null ? r.getStudent().getFullName() : "",
-                String.CASE_INSENSITIVE_ORDER))
-            .collect(Collectors.toList());
+        filteredResults = ResultStreamQueries.filterByClassAndKeyword(allResults, classId, keyword);
 
         updateKpis(filteredResults);
         updateTable(filteredResults);
     }
 
     private void updateKpis(List<Result> results) {
-        long totalGraded = results.stream().filter(r -> r.getScore() != null).count();
-        OptionalDouble avg = results.stream()
-                .filter(r -> r.getScore() != null)
-                .mapToDouble(r -> r.getScore().doubleValue()).average();
-        long passCount = results.stream()
-                .filter(r -> r.getScore() != null && r.getScore().doubleValue() >= 5.0).count();
-        long failCount = results.stream()
-                .filter(r -> r.getScore() != null && r.getScore().doubleValue() < 5.0).count();
-        double passRate = totalGraded > 0 ? (passCount * 100.0 / totalGraded) : 0.0;
+        ResultStreamQueries.ResultKpi kpi = ResultStreamQueries.buildKpi(results);
+        double passRate = kpi.totalGraded() > 0 ? (kpi.passCount() * 100.0 / kpi.totalGraded()) : 0.0;
 
         DecimalFormat df = new DecimalFormat("0.##");
-        lblTotal.setText(String.valueOf(totalGraded));
-        lblAvg.setText(avg.isPresent() ? df.format(avg.getAsDouble()) : "—");
+        lblTotal.setText(String.valueOf(kpi.totalGraded()));
+        lblAvg.setText(kpi.avg().isPresent() ? df.format(kpi.avg().getAsDouble()) : "—");
         lblPassRate.setText(df.format(passRate) + "%");
-        lblFailCnt.setText(String.valueOf(failCount));
+        lblFailCnt.setText(String.valueOf(kpi.failCount()));
     }
 
     private void updateTable(List<Result> results) {

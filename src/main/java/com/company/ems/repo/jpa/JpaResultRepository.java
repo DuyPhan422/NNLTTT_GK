@@ -60,5 +60,41 @@ public class JpaResultRepository extends JpaBaseRepository<Result, Long>
                 .setParameter("sid", studentId)
                 .getResultList();
     }
+
+    @Override
+    public List<com.company.ems.service.ResultService.RankedResult> findRankedResultsByStudentId(EntityManager em, Long studentId) {
+        // Native query to calculate rank for a student's results
+        String nativeQuery = """
+            WITH ClassRank AS (
+                SELECT
+                    r.id,
+                    r.class_id,
+                    r.score,
+                    RANK() OVER(PARTITION BY r.class_id ORDER BY r.score DESC) as rnk,
+                    COUNT(*) OVER(PARTITION BY r.class_id) as total
+                FROM results r
+                WHERE r.score IS NOT NULL
+            )
+            SELECT
+                r.*,
+                COALESCE(cr.rnk, 0) as student_rank,
+                COALESCE(cr.total, 0) as total_in_class
+            FROM results r
+            LEFT JOIN ClassRank cr ON r.id = cr.id
+            WHERE r.student_id = :sid
+        """;
+        
+        @SuppressWarnings("unchecked")
+        List<Object[]> rows = em.createNativeQuery(nativeQuery, Result.class)
+            .setParameter("sid", studentId)
+            .getResultList();
+            
+        return rows.stream().map(row -> {
+            Result res = (Result) row[0];
+            int rank = ((Number) row[1]).intValue();
+            int total = ((Number) row[2]).intValue();
+            return new com.company.ems.service.ResultService.RankedResult(res, rank, total);
+        }).toList();
+    }
 }
 

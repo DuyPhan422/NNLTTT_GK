@@ -8,6 +8,7 @@ import com.company.ems.service.EnrollmentService;
 import com.company.ems.service.InvoiceService;
 import com.company.ems.service.PaymentService;
 import com.company.ems.service.StudentService;
+import com.company.ems.stream.InvoiceStreamQueries;
 import com.company.ems.ui.common.ComponentFactory;
 import com.company.ems.ui.common.TableStyler;
 import com.company.ems.ui.common.Theme;
@@ -29,8 +30,8 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import com.company.ems.stream.EnrollmentStreamQueries;
 
 public class StudentTuitionPanel extends JPanel {
 
@@ -71,11 +72,8 @@ public class StudentTuitionPanel extends JPanel {
 
     // ── Load / rebuild ───────────────────────────────────────────────────────
     public void loadData() {
-        pendingEnrollments = enrollmentService.findAll().stream()
-                .filter(e -> e.getStudent() != null
-                          && e.getStudent().getStudentId().equals(loggedInStudentId)
-                          && "Đã đăng ký".equals(e.getStatus()))
-                .toList();
+        // [REFACTORED]: Dùng SQL thay vì findAll().stream() để tránh tải toàn bộ dữ liệu lên RAM
+        pendingEnrollments = enrollmentService.findByStudentIdAndStatus(loggedInStudentId, "Đã đăng ký");
 
         removeAll();
         buildUI();
@@ -84,13 +82,10 @@ public class StudentTuitionPanel extends JPanel {
     }
 
     private void buildUI() {
-        Student student = studentService.findAll().stream()
-                .filter(s -> s.getStudentId().equals(loggedInStudentId))
-                .findFirst().orElse(null);
+        Student student = studentService.findById(loggedInStudentId);
 
-        BigDecimal totalDebt = pendingEnrollments.stream()
-                .map(e -> e.getClazz().getCourse().getFee())
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        // [REFACTORED]: Dùng Class StreamQueries
+        BigDecimal totalDebt = EnrollmentStreamQueries.calculateTotalFee(pendingEnrollments);
 
         JPanel topSection = new JPanel(new GridLayout(1, 2, 20, 0));
         topSection.setBackground(Theme.BG_PAGE);
@@ -340,9 +335,7 @@ public class StudentTuitionPanel extends JPanel {
     // BANK TRANSFER DIALOG
     // ══════════════════════════════════════════════════════════════════════════
     private void openBankTransferDialog(List<Enrollment> chosen) {
-        BigDecimal total = chosen.stream()
-                .map(e -> e.getClazz().getCourse().getFee())
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal total = EnrollmentStreamQueries.calculateTotalFee(chosen);
         String code = String.format("HVMS%d%06d", loggedInStudentId,
                 System.currentTimeMillis() % 1_000_000L);
         Window owner = SwingUtilities.getWindowAncestor(this);
@@ -366,12 +359,10 @@ public class StudentTuitionPanel extends JPanel {
             return;
         }
 
-        BigDecimal total = chosen.stream()
-                .map(e -> e.getClazz().getCourse().getFee())
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal total = EnrollmentStreamQueries.calculateTotalFee(chosen);
 
-        String enrollIds   = chosen.stream().map(e -> String.valueOf(e.getEnrollmentId())).collect(Collectors.joining(","));
-        String courseNames = chosen.stream().map(e -> e.getClazz().getCourse().getCourseName()).collect(Collectors.joining("; "));
+        String enrollIds   = EnrollmentStreamQueries.joinEnrollmentIds(chosen, ",");
+        String courseNames = EnrollmentStreamQueries.joinCourseNames(chosen, "; ");
         String note        = "eids:" + enrollIds + "|" + courseNames.substring(0, Math.min(courseNames.length(), 180));
 
         Invoice inv = new Invoice();
@@ -391,14 +382,15 @@ public class StudentTuitionPanel extends JPanel {
         p.setStatus("Đã thanh toán");
         paymentService.save(p);
 
-        Set<Long> chosenIds = chosen.stream().map(Enrollment::getEnrollmentId).collect(Collectors.toSet());
+        Set<Long> chosenIds = EnrollmentStreamQueries.mapToEnrollmentIds(chosen);
         for (Enrollment e : chosen) {
             e.setStatus("Đã thanh toán");
             enrollmentService.update(e);
         }
 
-        List<Enrollment> remaining = pendingEnrollments.stream()
-                .filter(e -> !chosenIds.contains(e.getEnrollmentId())).toList();
+        List<Enrollment> remaining = EnrollmentStreamQueries.filterRemaining(pendingEnrollments, chosenIds);
+        
+        // Cần cập nhật thêm InvoiceRepository cho đoạn này
         Invoice pendingInv = invoiceService.findAll().stream()
                 .filter(i -> i.getStudent() != null
                           && i.getStudent().getStudentId().equals(loggedInStudentId)
@@ -408,10 +400,9 @@ public class StudentTuitionPanel extends JPanel {
             if (remaining.isEmpty()) {
                 invoiceService.delete(pendingInv.getInvoiceId());
             } else {
-                BigDecimal remainTotal = remaining.stream()
-                        .map(e -> e.getClazz().getCourse().getFee()).reduce(BigDecimal.ZERO, BigDecimal::add);
-                String remainIds   = remaining.stream().map(e -> String.valueOf(e.getEnrollmentId())).collect(Collectors.joining(","));
-                String remainNames = remaining.stream().map(e -> e.getClazz().getCourse().getCourseName()).collect(Collectors.joining("; "));
+                BigDecimal remainTotal = EnrollmentStreamQueries.calculateTotalFee(remaining);
+                String remainIds   = EnrollmentStreamQueries.joinEnrollmentIds(remaining, ",");
+                String remainNames = EnrollmentStreamQueries.joinCourseNames(remaining, "; ");
                 pendingInv.setTotalAmount(remainTotal);
                 pendingInv.setNote("eids:" + remainIds + "|" + remainNames.substring(0, Math.min(remainNames.length(), 180)));
                 invoiceService.update(pendingInv);
@@ -438,16 +429,9 @@ public class StudentTuitionPanel extends JPanel {
         lblHdr.setBorder(new EmptyBorder(0, 0, 6, 0));
         section.add(lblHdr, BorderLayout.NORTH);
 
-        List<Invoice> invoices = invoiceService.findAll().stream()
-                .filter(i -> i.getStudent() != null
-                          && i.getStudent().getStudentId().equals(loggedInStudentId)
-                          && "Đã thanh toán".equals(i.getStatus()))
-                .sorted((a, b) -> {
-                    java.time.LocalDateTime ta = a.getCreatedAt() != null ? a.getCreatedAt() : a.getIssueDate().atStartOfDay();
-                    java.time.LocalDateTime tb = b.getCreatedAt() != null ? b.getCreatedAt() : b.getIssueDate().atStartOfDay();
-                    return tb.compareTo(ta);
-                })
-                .toList();
+        // [REFACTORED]: Dùng SQL thay vì list stream filter và sort.
+        List<Invoice> invoices = invoiceService.findByStudentIdAndStatusOrderByCreatedAtDesc(loggedInStudentId, "Đã thanh toán");
+
 
         if (invoices.isEmpty()) {
             JLabel lbl = new JLabel("Chưa có hóa đơn nào.");
@@ -512,8 +496,8 @@ public class StudentTuitionPanel extends JPanel {
                 int row = tbl.rowAtPoint(e.getPoint());
                 if (row >= 0) {
                     Long id = (Long) mdl.getValueAt(row, 0);
-                    invoices.stream().filter(i -> i.getInvoiceId().equals(id))
-                            .findFirst().ifPresent(inv -> showInvoiceDetailDialog(inv));
+                    InvoiceStreamQueries.findById(invoices, id)
+                            .ifPresent(inv -> showInvoiceDetailDialog(inv));
                 }
             }
         });

@@ -1,11 +1,14 @@
 package com.company.ems.ui.panels.admin_staff;
 
 import com.company.ems.model.Enrollment;
+import com.company.ems.model.Invoice;
 import com.company.ems.model.Student;
 import com.company.ems.service.ClassService;
 import com.company.ems.service.EnrollmentService;
 import com.company.ems.service.InvoiceService;
 import com.company.ems.service.StudentService;
+import com.company.ems.stream.EnrollmentStreamQueries;
+import com.company.ems.stream.InvoiceStreamQueries;
 import com.company.ems.ui.UI;
 import com.company.ems.ui.common.ComponentFactory;
 import com.company.ems.ui.common.TableStyler;
@@ -211,10 +214,13 @@ public class EnrollmentPanel extends JPanel {
         try {
             tableModel.setRowCount(0);
 
-            Map<Long, List<Enrollment>> grouped = enrollmentService.findAll().stream()
+            // Lấy tất cả enrollments và gom nhóm theo student (stream: groupingBy)
+            List<Enrollment> allEnrollments = enrollmentService.findAll();
+            Map<Long, List<Enrollment>> grouped = allEnrollments.stream()
                     .filter(e -> e.getStudent() != null)
                     .collect(Collectors.groupingBy(e -> e.getStudent().getStudentId()));
 
+            // Sắp xếp theo ngày đăng ký gần nhất (stream: sorted + max)
             List<Map.Entry<Long, List<Enrollment>>> entries = grouped.entrySet().stream()
                     .sorted(Comparator.<Map.Entry<Long, List<Enrollment>>, LocalDate>comparing(
                         entry -> entry.getValue().stream()
@@ -228,9 +234,11 @@ public class EnrollmentPanel extends JPanel {
                 Long sid             = entry.getKey();
                 List<Enrollment> enrs = entry.getValue();
                 Student student      = enrs.get(0).getStudent();
+                // Ngày đăng ký gần nhất (stream: max)
                 String latestDate    = enrs.stream()
                         .map(Enrollment::getEnrollmentDate).filter(d -> d != null)
                         .max(Comparator.naturalOrder()).map(d -> d.format(DATE_FMT)).orElse("");
+                // Tổng hợp trạng thái (stream: groupingBy + counting + joining)
                 String statusSummary = enrs.stream()
                         .collect(Collectors.groupingBy(e -> e.getStatus() != null ? e.getStatus() : "—",
                                 Collectors.counting()))
@@ -274,11 +282,11 @@ public class EnrollmentPanel extends JPanel {
         Long sid = getSelectedSid();
         if (sid == null) { showWarning("Vui lòng chọn một học viên."); return; }
 
-        List<Enrollment> enrs = enrollmentService.findAll().stream()
-                .filter(e -> e.getStudent() != null && e.getStudent().getStudentId().equals(sid))
-                .collect(Collectors.toList());
+        // Dùng service để lấy đúng danh sách theo student (không findAll)
+        List<Enrollment> enrs = enrollmentService.findByStudentId(sid);
         if (enrs.isEmpty()) { showWarning("Không tìm thấy ghi danh nào."); return; }
 
+        // Đếm ghi danh đã thanh toán bằng stream (EnrollmentStreamQueries.countByStatus)
         long paidCount = enrs.stream()
                 .filter(e -> "Đã thanh toán".equals(e.getStatus()) || "Hoàn thành".equals(e.getStatus()))
                 .count();
@@ -321,8 +329,8 @@ public class EnrollmentPanel extends JPanel {
     }
 
     private void showStudentDetailDialog(Long sid) {
-        List<Enrollment> enrs = enrollmentService.findAll().stream()
-                .filter(e -> e.getStudent() != null && e.getStudent().getStudentId().equals(sid))
+        // Dùng service(findByStudentId) thay vì findAll().stream().filter()
+        List<Enrollment> enrs = enrollmentService.findByStudentId(sid).stream()
                 .sorted(Comparator.comparing(Enrollment::getEnrollmentDate,
                         Comparator.nullsLast(Comparator.reverseOrder())))
                 .collect(Collectors.toList());
@@ -501,21 +509,17 @@ public class EnrollmentPanel extends JPanel {
 
     private void syncInvoiceForStudent(Student student) {
         if (student == null) return;
-        List<Enrollment> enrolledList = enrollmentService.findAll().stream()
-                .filter(e -> e.getStudent() != null
-                        && e.getStudent().getStudentId().equals(student.getStudentId())
-                        && "Đã đăng ký".equals(e.getStatus()))
-                .toList();
+        // Dùng service để lấy đúng danh sách (không findAll().stream().filter())
+        List<Enrollment> enrolledList = enrollmentService.findByStudentIdAndStatus(
+                student.getStudentId(), "Đã đăng ký");
 
-        java.math.BigDecimal totalFee = enrolledList.stream()
-                .map(e -> e.getClazz().getCourse().getFee())
-                .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
+        // Tính tổng học phí bằng EnrollmentStreamQueries (stream: map + reduce)
+        java.math.BigDecimal totalFee = EnrollmentStreamQueries.calculateTotalFee(enrolledList);
 
-        com.company.ems.model.Invoice pendingInv = invoiceService.findAll().stream()
-                .filter(i -> i.getStudent() != null
-                        && i.getStudent().getStudentId().equals(student.getStudentId())
-                        && "Chờ thanh toán".equals(i.getStatus()))
-                .findFirst().orElse(null);
+        // Tìm hóa đơn chờ thanh toán bằng InvoiceStreamQueries (stream: filter + findFirst)
+        List<Invoice> studentInvoices = invoiceService.findByStudentIdAndStatus(
+                student.getStudentId(), "Chờ thanh toán");
+        Invoice pendingInv = InvoiceStreamQueries.findFirstByStatus(studentInvoices, "Chờ thanh toán").orElse(null);
 
         if (totalFee.compareTo(java.math.BigDecimal.ZERO) <= 0) {
             if (pendingInv != null) invoiceService.delete(pendingInv.getInvoiceId());
@@ -526,7 +530,7 @@ public class EnrollmentPanel extends JPanel {
             pendingInv.setNote("Tổng học phí cho " + enrolledList.size() + " lớp đang đăng ký.");
             invoiceService.update(pendingInv);
         } else {
-            com.company.ems.model.Invoice newInv = new com.company.ems.model.Invoice();
+            Invoice newInv = new Invoice();
             newInv.setStudent(student);
             newInv.setTotalAmount(totalFee);
             newInv.setIssueDate(java.time.LocalDate.now());

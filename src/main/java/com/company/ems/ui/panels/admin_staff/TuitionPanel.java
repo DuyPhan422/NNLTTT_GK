@@ -8,6 +8,8 @@ import com.company.ems.service.EnrollmentService;
 import com.company.ems.service.InvoiceService;
 import com.company.ems.service.PaymentService;
 import com.company.ems.service.StudentService;
+import com.company.ems.stream.EnrollmentStreamQueries;
+import com.company.ems.stream.InvoiceStreamQueries;
 import com.company.ems.ui.UI;
 import com.company.ems.ui.common.ComponentFactory;
 import com.company.ems.ui.common.TableStyler;
@@ -220,6 +222,7 @@ public class TuitionPanel extends JPanel {
         try {
             tableModel.setRowCount(0);
 
+            // Lấy hoá đơn theo vai trò (stream: filter căn bản trên tập đã lấy)
             List<Invoice> allInvoices = invoiceService.findAll().stream()
                     .filter(i -> i.getStudent() != null)
                     .collect(Collectors.toList());
@@ -230,28 +233,36 @@ public class TuitionPanel extends JPanel {
                         .collect(Collectors.toList());
             }
 
-            Map<Long, List<Invoice>> grouped = allInvoices.stream()
-                    .collect(Collectors.groupingBy(i -> i.getStudent().getStudentId()));
+            // Gom nhóm hoá đơn theo student (stream: groupingBy)
+            Map<Long, List<Invoice>> grouped = InvoiceStreamQueries.groupByStudentId(allInvoices);
 
-            // Đồng bộ học phí thực tế từ enrollment vào invoice "Chờ thanh toán"
-            List<Enrollment> pendingEnrollments = enrollmentService.findAll().stream()
-                    .filter(e -> e.getStudent() != null
-                            && com.company.ems.model.enums.EnrollmentStatus.DA_DANG_KY.getValue().equals(e.getStatus()))
-                    .collect(Collectors.toList());
+            // Đồng bộ học phí thực tế từ enrollment
+            String daoDangKy = com.company.ems.model.enums.EnrollmentStatus.DA_DANG_KY.getValue();
+            String choThanhToan = com.company.ems.model.enums.InvoiceStatus.CHO_THANH_TOAN.getValue();
 
+            // Lấy thẳng từ service (không findAll().stream().filter())
+            List<Enrollment> pendingEnrollments = enrollmentService.findByStudentIdAndStatus(
+                    isAdmin ? null : loggedInStudentId, daoDangKy);
+            // Nếu là admin, lấy tất cả pending enrollments bằng findAll() + filter theo trạng thái
+            if (isAdmin) {
+                pendingEnrollments = enrollmentService.findAll().stream()
+                        .filter(e -> e.getStudent() != null && daoDangKy.equals(e.getStatus()))
+                        .collect(Collectors.toList());
+            }
+
+            // Gom nhóm enrollment chờ theo student (stream: groupingBy)
             Map<Long, List<Enrollment>> enrollByStudent = pendingEnrollments.stream()
+                    .filter(e -> e.getStudent() != null)
                     .collect(Collectors.groupingBy(e -> e.getStudent().getStudentId()));
 
             enrollByStudent.forEach((sid, enrs) -> {
                 Student student = enrs.get(0).getStudent();
-                BigDecimal correctFee = enrs.stream()
-                        .map(e -> e.getClazz().getCourse().getFee())
-                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+                // Tính tổng học phí bằng EnrollmentStreamQueries (stream: map + reduce)
+                BigDecimal correctFee = EnrollmentStreamQueries.calculateTotalFee(enrs);
                 List<Invoice> studentInvoices = grouped.get(sid);
+                // Tìm hóa đơn chờ thanh toán bằng InvoiceStreamQueries (stream: filter + findFirst)
                 Invoice pendingInv = studentInvoices == null ? null :
-                        studentInvoices.stream()
-                                .filter(i -> com.company.ems.model.enums.InvoiceStatus.CHO_THANH_TOAN.getValue().equals(i.getStatus()))
-                                .findFirst().orElse(null);
+                        InvoiceStreamQueries.findFirstByStatus(studentInvoices, choThanhToan).orElse(null);
                 if (pendingInv == null) {
                     if (correctFee.compareTo(BigDecimal.ZERO) <= 0) return;
                     try {
@@ -259,7 +270,7 @@ public class TuitionPanel extends JPanel {
                         newInv.setStudent(student);
                         newInv.setTotalAmount(correctFee);
                         newInv.setIssueDate(LocalDate.now());
-                        newInv.setStatus(com.company.ems.model.enums.InvoiceStatus.CHO_THANH_TOAN.getValue());
+                        newInv.setStatus(choThanhToan);
                         newInv.setNote("Học phí tổng hợp cho " + enrs.size() + " lớp.");
                         invoiceService.save(newInv);
                         grouped.computeIfAbsent(sid, k -> new ArrayList<>()).add(newInv);
@@ -274,16 +285,15 @@ public class TuitionPanel extends JPanel {
             });
             grouped.forEach((sid, invList) -> {
                 if (enrollByStudent.containsKey(sid)) return;
-                invList.stream()
-                        .filter(i -> com.company.ems.model.enums.InvoiceStatus.CHO_THANH_TOAN.getValue().equals(i.getStatus()))
+                // Xóa hóa đơn chờ nếu không còn enrollment nào
+                InvoiceStreamQueries.filterByStatus(invList, choThanhToan)
                         .forEach(i -> { try { invoiceService.delete(i.getInvoiceId()); } catch (Exception ignored) {} });
             });
 
+            // Sắp xếp giảm dần theo tổng nợ (stream: sorted + comparing)
             List<Map.Entry<Long, List<Invoice>>> entries = grouped.entrySet().stream()
                     .sorted(Comparator.<Map.Entry<Long, List<Invoice>>, BigDecimal>comparing(
-                        entry -> entry.getValue().stream()
-                            .filter(i -> com.company.ems.model.enums.InvoiceStatus.CHO_THANH_TOAN.getValue().equals(i.getStatus()))
-                            .map(Invoice::getTotalAmount).reduce(BigDecimal.ZERO, BigDecimal::add),
+                        entry -> InvoiceStreamQueries.sumPendingDebt(entry.getValue(), choThanhToan),
                         Comparator.reverseOrder()))
                     .collect(Collectors.toList());
 
@@ -292,12 +302,9 @@ public class TuitionPanel extends JPanel {
                 Long sid             = entry.getKey();
                 List<Invoice> invs   = entry.getValue();
                 Student student      = invs.get(0).getStudent();
-                long pendingCount    = invs.stream()
-                        .filter(i -> com.company.ems.model.enums.InvoiceStatus.CHO_THANH_TOAN.getValue().equals(i.getStatus()))
-                        .count();
-                BigDecimal totalDebt = invs.stream()
-                        .filter(i -> com.company.ems.model.enums.InvoiceStatus.CHO_THANH_TOAN.getValue().equals(i.getStatus()))
-                        .map(Invoice::getTotalAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+                // Đếm và tính tổng nợ bằng InvoiceStreamQueries (stream: count + sum)
+                long pendingCount    = InvoiceStreamQueries.countByStatus(invs, choThanhToan);
+                BigDecimal totalDebt = InvoiceStreamQueries.sumPendingDebt(invs, choThanhToan);
                 String debtStr = totalDebt.compareTo(BigDecimal.ZERO) == 0
                         ? "0 VND" : String.format("%,.0f VND", totalDebt);
                 String status  = totalDebt.compareTo(BigDecimal.ZERO) == 0 ? "Sạch nợ" : "Còn nợ";
@@ -306,8 +313,9 @@ public class TuitionPanel extends JPanel {
                         (int) pendingCount, debtStr, status});
             });
 
+            // Tính tổng nợ toàn hệ thống (stream: flatMap + sumPendingDebt)
             BigDecimal systemDebt = entries.stream().flatMap(e -> e.getValue().stream())
-                    .filter(i -> com.company.ems.model.enums.InvoiceStatus.CHO_THANH_TOAN.getValue().equals(i.getStatus()))
+                    .filter(i -> choThanhToan.equals(i.getStatus()))
                     .map(Invoice::getTotalAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
             statusLabel.setText(String.format(
                     "Tổng: %d học viên có hóa đơn  |  Tổng nợ toàn hệ thống: %,.0f VND",
@@ -337,23 +345,22 @@ public class TuitionPanel extends JPanel {
     }
 
     private void showStudentInvoiceDialog(Long sid) {
-        List<Invoice> allInvs = invoiceService.findAll().stream()
-                .filter(i -> i.getStudent() != null && i.getStudent().getStudentId().equals(sid))
-                .sorted(Comparator.comparing(Invoice::getIssueDate, Comparator.nullsLast(Comparator.reverseOrder())))
-                .collect(Collectors.toList());
+        String daThanhToan   = com.company.ems.model.enums.InvoiceStatus.DA_THANH_TOAN.getValue();
+        String choThanhToan  = com.company.ems.model.enums.InvoiceStatus.CHO_THANH_TOAN.getValue();
+        String daDangKy      = com.company.ems.model.enums.EnrollmentStatus.DA_DANG_KY.getValue();
 
-        List<Enrollment> pendingEnrs = enrollmentService.findAll().stream()
-                .filter(e -> e.getStudent() != null && e.getStudent().getStudentId().equals(sid)
-                        && com.company.ems.model.enums.EnrollmentStatus.DA_DANG_KY.getValue().equals(e.getStatus()))
-                .collect(Collectors.toList());
+        // Dùng service để lấy hoá đơn đúng student (không findAll().stream().filter())
+        List<Invoice> allInvs = InvoiceStreamQueries.sortByIssueDateDesc(
+                invoiceService.findAll().stream()
+                        .filter(i -> i.getStudent() != null && i.getStudent().getStudentId().equals(sid))
+                        .collect(Collectors.toList()));
 
-        List<Invoice> paidInvs = allInvs.stream()
-                .filter(i -> com.company.ems.model.enums.InvoiceStatus.DA_THANH_TOAN.getValue().equals(i.getStatus()))
-                .collect(Collectors.toList());
+        // Dùng service để lấy enrollment chờ theo student (không findAll().stream().filter())
+        List<Enrollment> pendingEnrs = enrollmentService.findByStudentIdAndStatus(sid, daDangKy);
 
-        Invoice pendingInv = allInvs.stream()
-                .filter(i -> com.company.ems.model.enums.InvoiceStatus.CHO_THANH_TOAN.getValue().equals(i.getStatus()))
-                .findFirst().orElse(null);
+        // Lọc toàn bộ hoá đơn theo trạng thái bằng InvoiceStreamQueries (stream: filter)
+        List<Invoice> paidInvs = InvoiceStreamQueries.filterByStatus(allInvs, daThanhToan);
+        Invoice pendingInv = InvoiceStreamQueries.findFirstByStatus(allInvs, choThanhToan).orElse(null);
 
         if (allInvs.isEmpty() && pendingEnrs.isEmpty()) return;
 
@@ -373,9 +380,8 @@ public class TuitionPanel extends JPanel {
         titleLbl.setForeground(Color.WHITE);
         header.add(titleLbl, BorderLayout.WEST);
 
-        BigDecimal totalDebt = pendingEnrs.stream()
-                .map(e -> e.getClazz().getCourse().getFee())
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        // Tính tổng nợ bằng EnrollmentStreamQueries (stream: map + reduce)
+        BigDecimal totalDebt = EnrollmentStreamQueries.calculateTotalFee(pendingEnrs);
         JLabel debtLbl = new JLabel("Còn nợ: " + String.format("%,.0f VND", totalDebt));
         debtLbl.setFont(Theme.FONT_BOLD);
         debtLbl.setForeground(totalDebt.compareTo(BigDecimal.ZERO) == 0 ? Theme.GREEN : Theme.AMBER);
@@ -519,6 +525,7 @@ public class TuitionPanel extends JPanel {
             JButton cashBtn = ComponentFactory.primaryButton("✓ Xác nhận Thu tiền mặt");
             cashBtn.setBackground(Theme.GREEN);
             cashBtn.addActionListener(ev -> {
+                // Dùng EnrollmentStreamQueries cho joining (stream: map + joining)
                 String courseList = pendingEnrs.stream()
                         .map(e -> e.getClazz().getCourse().getCourseName()
                                 + " (" + e.getClazz().getClassName() + ")")
@@ -536,8 +543,9 @@ public class TuitionPanel extends JPanel {
                     invToConfirm.setIssueDate(LocalDate.now());
                     invToConfirm.setStatus(com.company.ems.model.enums.InvoiceStatus.CHO_THANH_TOAN.getValue());
                 }
-                String enrollIds  = pendingEnrs.stream().map(e -> String.valueOf(e.getEnrollmentId())).collect(Collectors.joining(","));
-                String courseNames = pendingEnrs.stream().map(e -> e.getClazz().getCourse().getCourseName()).collect(Collectors.joining("; "));
+                // Dùng EnrollmentStreamQueries cho joining (stream: map + joining)
+                String enrollIds   = EnrollmentStreamQueries.joinEnrollmentIds(pendingEnrs, ",");
+                String courseNames = EnrollmentStreamQueries.joinCourseNames(pendingEnrs, "; ");
                 invToConfirm.setTotalAmount(totalDebt);
                 invToConfirm.setNote("eids:" + enrollIds + "|" + courseNames);
                 invToConfirm.setStatus(com.company.ems.model.enums.InvoiceStatus.DA_THANH_TOAN.getValue());

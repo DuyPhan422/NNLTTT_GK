@@ -6,8 +6,8 @@ import com.company.ems.ui.components.HeaderPanel;
 import com.company.ems.ui.components.SidebarPanel;
 import com.company.ems.ui.panels.admin_staff.*;
 import com.company.ems.ui.panels.admin_staff.AttendanceAdminPanel;
-import com.company.ems.ui.panels.student.StudentPanel;
-import com.company.ems.ui.panels.teacher.TeacherPanel;
+import com.company.ems.ui.panels.admin_staff.StudentPanel;
+import com.company.ems.ui.panels.admin_staff.TeacherPanel;
 
 import javax.swing.*;
 import java.awt.*;

@@ -22,6 +22,9 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
+import com.company.ems.stream.EnrollmentStreamQueries;
+import com.company.ems.stream.InvoiceStreamQueries;
+
 /**
  * Panel quản lý Lớp học.
  * Kế thừa {@link BaseCrudPanel} — chỉ chứa logic đặc thù của Class.
@@ -177,11 +180,7 @@ public class ClassPanel extends BaseCrudPanel<Class> {
     /** Hủy tất cả ghi danh trong lớp và cập nhật hóa đơn cho từng học viên. */
     private void cancelClassEnrollments(Class clazz) {
         try {
-            List<Enrollment> enrollments = enrollmentService.findAll().stream()
-                    .filter(e -> e.getClazz() != null
-                              && e.getClazz().getClassId().equals(clazz.getClassId())
-                              && "Đã đăng ký".equals(e.getStatus()))
-                    .toList();
+            List<Enrollment> enrollments = enrollmentService.findByClassIdAndStatus(clazz.getClassId(), "Đã đăng ký");
 
             Set<Long> affectedStudentIds = new HashSet<>();
             enrollments.forEach(e -> {
@@ -196,18 +195,11 @@ public class ClassPanel extends BaseCrudPanel<Class> {
     }
 
     private void recalcInvoice(Long studentId) {
-        BigDecimal total = enrollmentService.findAll().stream()
-                .filter(e -> e.getStudent() != null
-                          && e.getStudent().getStudentId().equals(studentId)
-                          && "Đã đăng ký".equals(e.getStatus()))
-                .map(e -> e.getClazz().getCourse().getFee())
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        List<Enrollment> activeEnrollments = enrollmentService.findByStudentIdAndStatus(studentId, "Đã đăng ký");
+        BigDecimal total = EnrollmentStreamQueries.calculateTotalFee(activeEnrollments);
 
-        Invoice pending = invoiceService.findAll().stream()
-                .filter(i -> i.getStudent() != null
-                          && i.getStudent().getStudentId().equals(studentId)
-                          && "Chờ thanh toán".equals(i.getStatus()))
-                .findFirst().orElse(null);
+        List<Invoice> pendingList = invoiceService.findByStudentIdAndStatus(studentId, "Chờ thanh toán");
+        Invoice pending = InvoiceStreamQueries.findFirstByStatus(pendingList, "Chờ thanh toán").orElse(null);
 
         if (total.compareTo(BigDecimal.ZERO) <= 0) {
             if (pending != null) invoiceService.delete(pending.getInvoiceId());

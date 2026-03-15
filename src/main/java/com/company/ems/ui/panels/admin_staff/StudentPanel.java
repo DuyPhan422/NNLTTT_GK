@@ -1,4 +1,4 @@
-package com.company.ems.ui.panels.student;
+package com.company.ems.ui.panels.admin_staff;
 
 import com.company.ems.model.Student;
 import com.company.ems.service.StudentService;

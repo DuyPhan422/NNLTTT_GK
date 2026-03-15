@@ -15,5 +15,8 @@ public interface ResultRepository extends BaseRepository<Result, Long> {
 
     /** Toàn bộ kết quả của một học viên */
     List<Result> findByStudentId(EntityManager em, Long studentId);
+
+    /** Kết quả của học viên kèm thứ hạng */
+    List<com.company.ems.service.ResultService.RankedResult> findRankedResultsByStudentId(EntityManager em, Long studentId);
 }
 

@@ -5,6 +5,7 @@ import com.company.ems.model.Class;
 import com.company.ems.model.Student;
 import com.company.ems.service.AttendanceService;
 import com.company.ems.service.ClassService;
+import com.company.ems.stream.AttendanceStreamQueries;
 import com.company.ems.ui.common.Theme;
 
 import javax.swing.*;
@@ -191,15 +192,10 @@ public class AttendanceStudentPanel extends JPanel {
             java.util.Set<Long> paidClassIds = classService.findPaidClassesByStudentId(currentStudent.getStudentId())
                     .stream().map(Class::getClassId).collect(Collectors.toSet());
 
-            allAttendances = attendanceService.findByStudentId(currentStudent.getStudentId()).stream()
-                    .filter(a -> a.getClazz() != null && paidClassIds.contains(a.getClazz().getClassId()))
-                    .toList();
+            allAttendances = attendanceService.findByStudentId(currentStudent.getStudentId());
+            allAttendances = AttendanceStreamQueries.filterByPaidClasses(allAttendances, paidClassIds);
 
-            byClass = allAttendances.stream()
-                    .collect(Collectors.groupingBy(
-                            a -> a.getClazz().getClassId(),
-                            LinkedHashMap::new,
-                            Collectors.toList()));
+            byClass = AttendanceStreamQueries.groupByClassId(allAttendances);
 
             updateKpiAll();
             renderClassSidebar();
@@ -213,9 +209,9 @@ public class AttendanceStudentPanel extends JPanel {
 
     private void updateKpiAll() {
         long total   = allAttendances.size();
-        long present = allAttendances.stream().filter(a -> "Có mặt".equals(a.getStatus())).count();
-        long absent  = allAttendances.stream().filter(a -> "Vắng"  .equals(a.getStatus())).count();
-        long late    = allAttendances.stream().filter(a -> "Đi trễ".equals(a.getStatus())).count();
+        long present = AttendanceStreamQueries.countPresent(allAttendances);
+        long absent  = AttendanceStreamQueries.countAbsent(allAttendances);
+        long late    = AttendanceStreamQueries.countLate(allAttendances);
         double rate  = total > 0 ? (present * 100.0 / total) : 0.0;
 
         kpiTotal  .setText(String.valueOf(total));
@@ -236,7 +232,7 @@ public class AttendanceStudentPanel extends JPanel {
         } else {
             byClass.forEach((classId, records) -> {
                 String className = records.get(0).getClazz().getClassName();
-                long present = records.stream().filter(a -> "Có mặt".equals(a.getStatus())).count();
+                long present = AttendanceStreamQueries.countPresent(records);
                 double rate  = records.isEmpty() ? 0 : (present * 100.0 / records.size());
                 classSidebarList.add(buildClassSidebarItem(classId, className, records.size(), rate));
             });
@@ -300,9 +296,9 @@ public class AttendanceStudentPanel extends JPanel {
         List<Attendance> records = byClass.getOrDefault(classId, List.of());
 
         long total   = records.size();
-        long present = records.stream().filter(a -> "Có mặt".equals(a.getStatus())).count();
-        long absent  = records.stream().filter(a -> "Vắng"  .equals(a.getStatus())).count();
-        long late    = records.stream().filter(a -> "Đi trễ".equals(a.getStatus())).count();
+        long present = AttendanceStreamQueries.countPresent(records);
+        long absent  = AttendanceStreamQueries.countAbsent(records);
+        long late    = AttendanceStreamQueries.countLate(records);
         double rate  = total > 0 ? (present * 100.0 / total) : 0.0;
 
         kpiTotal  .setText(String.valueOf(total));
@@ -316,8 +312,7 @@ public class AttendanceStudentPanel extends JPanel {
             @Override public boolean isCellEditable(int r, int c) { return false; }
         };
 
-        records.stream()
-               .sorted(Comparator.comparing(Attendance::getAttendDate).reversed())
+        AttendanceStreamQueries.sortByDateDesc(records)
                .forEach(a -> model.addRow(new Object[]{
                        a.getAttendDate().format(DATE_FMT),
                        capitalize(a.getAttendDate().format(DAY_FMT)),
